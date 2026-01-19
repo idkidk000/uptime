@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light dark;
+}
+
+@theme inline {
+  --color-foreground: light-dark(var(--color-gray-950), var(--color-gray-50));
+  --color-background: light-dark(var(--color-gray-50), var(--color-gray-950));
+  --color-accent: light-dark(var(--color-pink-400), var(--color-pink-600));
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground transition-colors duration-200 accent-accent antialiased;
+  }
+}
