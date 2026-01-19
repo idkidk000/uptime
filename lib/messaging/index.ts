@@ -6,14 +6,17 @@ import { Logger } from '@/lib/logger';
 
 const SOCKET_ADDR = '.messaging.sock';
 
+export type ActionKinds = 'run-monitor';
+export type InvalidationKinds = 'group' | 'monitor' | 'monitor-history';
+
 type Message =
   | {
       kind: 'action';
-      value: 'run-monitor';
+      value: ActionKinds;
     }
   | {
       kind: 'invalidation';
-      value: 'group' | 'monitor';
+      value: InvalidationKinds;
     };
 
 export type MessageWithId = Message & { id: number };
@@ -32,9 +35,7 @@ type InternalMessage =
 // TODO: may need a mutex. though createServer is probably older than async so perhaps not
 export class MessageServer {
   #logger = new Logger(import.meta.url, 'MessageServer');
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: biome bug
   #subscriptions = new Map<SubscriptionKey, Set<Socket>>();
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: biome bug
   #parseMessage(data: string): InternalMessage | null {
     try {
       const parsed: InternalMessage = SuperJSON.parse(data);
@@ -117,7 +118,6 @@ export class MessageClient {
     const interval = setInterval(() => {
       const socket = createConnection(SOCKET_ADDR);
       socket.addListener('error', (err) => {
-        /* createConnection does not throw or return a promise rejection. instead, you have to handle the `error` event. yay js */
         this.#logger.debugLow('MessageClient error', err);
       });
       socket.addListener('ready', () => {
@@ -155,19 +155,21 @@ export class MessageClient {
       value: message,
     });
   }
-  //TODO: fix callback type
-  subscribe(filter: Message, callback: Callback): Unsubscribe {
+  subscribe<Filter extends Message>(
+    filter: Filter,
+    callback: (message: Extract<MessageWithId, Filter>) => void | Promise<void>
+  ): Unsubscribe {
     const key = `${filter.kind}.${filter.value}` satisfies SubscriptionKey;
     if (!this.#subscriptions.has(key)) {
       this.#sendInternalMessage({
         kind: 'subscribe',
         value: key,
       });
-      this.#subscriptions.set(key, new Set([callback]));
-    } else this.#subscriptions.get(key)?.add(callback);
+      this.#subscriptions.set(key, new Set([callback as Callback]));
+    } else this.#subscriptions.get(key)?.add(callback as Callback);
     return () => {
       const set = this.#subscriptions.get(key);
-      set?.delete(callback);
+      set?.delete(callback as Callback);
       if (set?.size === 0) {
         this.#sendInternalMessage({
           kind: 'unsubscribe',

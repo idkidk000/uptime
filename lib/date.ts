@@ -134,7 +134,8 @@ export const toWeekStart = (date: Date | number) => {
   return dt;
 };
 
-export const toRelative = (date: Date | number | string) => {
+export const toRelative = (date: Date | number | string | undefined) => {
+  if (typeof date === 'undefined') return '';
   const ts = new Date(date).getTime();
   const now = Date.now();
   const totalMillis = Math.abs(now - ts);

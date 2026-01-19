@@ -29,13 +29,19 @@ export interface HttpMonitorParams extends BaseMonitorParams {
   };
 }
 
+export enum HttpMonitorDownReason {
+  IncorrectStatus,
+  QueryNotSatisfied,
+  Error,
+}
+
 interface HttpMonitorResponseUp extends BaseMonitorResponseUp {
   kind: 'http';
 }
 
 interface HttpMonitorResponseDown extends BaseMonitorResponseDown {
   kind: 'http';
-  reason: 'incorrect-status' | 'query-not-satisfied' | 'error';
+  reason: HttpMonitorDownReason;
   result: unknown;
 }
 
@@ -51,7 +57,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
         return {
           kind: 'http',
           ok: false,
-          reason: 'incorrect-status',
+          reason: HttpMonitorDownReason.IncorrectStatus,
           result: response.status,
         };
       if (this.params.upWhen.query) {
@@ -64,7 +70,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
               return {
                 kind: 'http',
                 ok: false,
-                reason: 'query-not-satisfied',
+                reason: HttpMonitorDownReason.QueryNotSatisfied,
                 result,
               };
             }
@@ -78,7 +84,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
               return {
                 kind: 'http',
                 ok: false,
-                reason: 'query-not-satisfied',
+                reason: HttpMonitorDownReason.QueryNotSatisfied,
                 result: rawResult,
               };
             break;
@@ -95,7 +101,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
               return {
                 kind: 'http',
                 ok: false,
-                reason: 'query-not-satisfied',
+                reason: HttpMonitorDownReason.QueryNotSatisfied,
                 result,
               };
             }
@@ -109,10 +115,10 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
       return {
         kind: 'http',
         ok: true,
-        latencyMs: latency,
+        latency,
       };
     } catch (err) {
-      return { kind: 'http', ok: false, reason: 'error', result: String(err) };
+      return { kind: 'http', ok: false, reason: HttpMonitorDownReason.Error, result: String(err) };
     }
   }
 }

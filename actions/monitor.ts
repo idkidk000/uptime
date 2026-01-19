@@ -1,47 +1,49 @@
+/** biome-ignore-all lint/suspicious/useAwait: server actions must be async */
 'use server';
 
-import { desc, eq } from 'drizzle-orm';
+import { getTableColumns, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { type HistorySelect, historyTable, type MonitorSelect, monitorTable } from '@/lib/db/schema';
+import { MessageClient } from '@/lib/messaging';
+import { pick } from '@/lib/utils';
 
-export type MonitorWithHistorySelect = MonitorSelect & {
-  history: Pick<HistorySelect, 'createdAt' | 'result'>[];
+const messageClient = new MessageClient(import.meta.url);
+
+export type MinifiedHistory = Pick<HistorySelect, 'createdAt' | 'state'> & { latency?: number };
+
+export type FrontendMonitor = MonitorSelect & {
+  latest: Pick<HistorySelect, 'createdAt' | 'result' | 'state'> | null;
+  history: MinifiedHistory[];
 };
 
-// TODO: only really need full detail for latest history item. prev can be date and state
-export async function getMonitors(): Promise<MonitorWithHistorySelect[]> {
-  // FIXME: optimise. i don't know the drizzle syntax to put a joined subquery into an array
+export async function getMonitors(): Promise<FrontendMonitor[]> {
+  // FIXME: think about how to do this efficiently
+  // trying to join monitors and subquery through drizzle looks like it duplicates monitors for each joined row of subquery
   const monitors = await db.select().from(monitorTable);
-  const result: MonitorWithHistorySelect[] = new Array(monitors.length);
+  const subquery = db
+    .select({
+      ...getTableColumns(historyTable),
+      rowNo: sql<number>`row_number() over (partition by monitorId order by createdAt desc)`.as('rowNo'),
+    })
+    .from(historyTable)
+    .as('subquery');
+  const history = await db.select().from(subquery).where(sql`rowNo <= 24`);
+  const result: FrontendMonitor[] = new Array(monitors.length);
   for (const [m, monitor] of monitors.entries()) {
-    const history = await db
-      .select({ result: historyTable.result, createdAt: historyTable.createdAt })
-      .from(historyTable)
-      .where(eq(historyTable.monitorId, monitor.id))
-      .orderBy(desc(historyTable.createdAt))
-      .limit(10);
-    result[m] = { ...monitor, history };
+    const monitorHistory = history.filter((item) => item.monitorId === monitor.id);
+    const [latestFull] = monitorHistory;
+    const latest = latestFull ? pick(latestFull, ['createdAt', 'result', 'state']) : null;
+    const minifiedHistory = monitorHistory.map(({ createdAt, state, result }) => ({
+      createdAt,
+      state,
+      ...('latency' in result ? { latency: result.latency } : {}),
+    }));
+    result[m] = { ...monitor, latest, history: minifiedHistory };
   }
+
   return result;
-  // const subquery = db
-  //   .select({
-  //     monitorId: historyTable.monitorId,
-  //     createdAt: historyTable.createdAt,
-  //     result: historyTable.result,
-  //     rowNo: sql<number>`row_number() over (partitiion by monitorId order by createdAt desc)`,
-  //   })
-  //   .from(historyTable)
-  //   .having(sql`rowNo <= 10`)
-  //   .as('subquery');
-  // const result = await db
-  //   .select({
-  //     ...getTableColumns(monitorTable),
-  //     history: {
-  //       createdAt: subquery.createdAt,
-  //       result: subquery.result,
-  //     },
-  //   })
-  //   .from(monitorTable)
-  //   .leftJoin(subquery, eq(monitorTable.id, subquery.monitorId));
-  // return result;
+}
+
+export async function checkMonitor(id: number) {
+  messageClient.send({ kind: 'action', value: 'run-monitor', id });
 }

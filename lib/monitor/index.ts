@@ -10,7 +10,7 @@ export interface BaseMonitorParams extends MonitorKindTag {}
 
 export interface BaseMonitorResponseUp extends MonitorKindTag {
   ok: true;
-  latencyMs: number;
+  latency: number;
 }
 
 export interface BaseMonitorResponseDown extends MonitorKindTag {

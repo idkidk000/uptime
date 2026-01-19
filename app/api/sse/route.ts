@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import SuperJSON from 'superjson';
-import { MessageClient, type MessageWithId } from '@/lib/messaging';
+import { type InvalidationKinds, MessageClient, type MessageWithId } from '@/lib/messaging';
 
 // TODO: select and send patches for invalidated records
 
@@ -8,12 +8,11 @@ const THROTTLE_MS = 100;
 
 const messageClient = new MessageClient(import.meta.url);
 const streamControllers = new Set<ReadableStreamDefaultController<unknown>>();
-const invalidations = new Map<string, Set<number>>();
+const invalidations = new Map<InvalidationKinds, Set<number>>();
 // biome-ignore lint/correctness/noUnusedVariables: biome bug
 let timeout: NodeJS.Timeout | null = null;
 
-function handleInvalidation(message: MessageWithId) {
-  if (message.kind !== 'invalidation') return;
+function handleInvalidation(message: Extract<MessageWithId, { kind: 'invalidation' }>) {
   if (!streamControllers.size) return;
   if (!invalidations.get(message.value)?.add(message.id)) invalidations.set(message.value, new Set([message.id]));
   timeout ??= setTimeout(() => {
@@ -24,8 +23,9 @@ function handleInvalidation(message: MessageWithId) {
   }, THROTTLE_MS);
 }
 
-messageClient.subscribe({ kind: 'invalidation', value: 'monitor' }, handleInvalidation);
 messageClient.subscribe({ kind: 'invalidation', value: 'group' }, handleInvalidation);
+messageClient.subscribe({ kind: 'invalidation', value: 'monitor' }, handleInvalidation);
+messageClient.subscribe({ kind: 'invalidation', value: 'monitor-history' }, handleInvalidation);
 
 export function GET() {
   const abortController = new AbortController();

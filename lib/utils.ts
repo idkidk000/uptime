@@ -10,3 +10,13 @@ export function roundTo(value: number, digits: number) {
   const multiplier = 10 ** digits;
   return Math.round(value * multiplier) / multiplier;
 }
+
+export const omit = <T extends object, K extends Extract<keyof T, string>, R extends Omit<T, K>>(
+  item: T,
+  keys: K[]
+): R => Object.fromEntries(Object.entries(item).filter(([key]) => !keys.includes(key as K))) as R;
+
+export const pick = <T extends object, K extends Extract<keyof T, string>, R extends Pick<T, K>>(
+  item: T,
+  keys: K[]
+): R => Object.fromEntries(Object.entries(item).filter(([key]) => keys.includes(key as K))) as R;

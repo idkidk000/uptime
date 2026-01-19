@@ -1,7 +1,8 @@
-import { type SQL, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import type { MonitorParams, MonitorResponse } from '@/lib/monitor';
 
+// TODO
 interface NotifierParams {
   kind: 'gotify';
   url: string;
@@ -12,8 +13,17 @@ interface NotifierParams {
   };
 }
 
-export const monitorStates = ['up', 'down', 'pending'] as const;
-export type MonitorState = (typeof monitorStates)[number];
+export enum MonitorState {
+  Up,
+  Down,
+  Pending,
+}
+
+export const monitorStates: Record<number, string> = Object.fromEntries(
+  Object.entries(MonitorState)
+    .filter(([, key]) => typeof key === 'number')
+    .map(([value, key]) => [key, value])
+);
 
 // NotifierTable
 
@@ -88,12 +98,14 @@ export const monitorTable = sqliteTable('monitor', {
 
   checkedAt: integer({ mode: 'timestamp' }),
   successiveFailures: integer().notNull().default(-1),
+
+  /*   ,
   state: text()
     .generatedAlwaysAs(
       (): SQL =>
         sql`iif(${monitorTable.successiveFailures} = 0, 'up',iif(${monitorTable.successiveFailures} >= ${monitorTable.failuresBeforeDown}, 'down', 'pending'))`
     )
-    .$type<MonitorState>(),
+    .$type<MonitorState>(), */
 
   retainCount: integer().notNull().default(10080),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -114,6 +126,7 @@ export const historyTable = sqliteTable('history', {
     .notNull()
     .references(() => monitorTable.id),
   result: text({ mode: 'json' }).notNull().$type<MonitorResponse>(),
+  state: integer({ mode: 'number' }).notNull().$type<MonitorState>(),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
