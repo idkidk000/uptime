@@ -7,20 +7,13 @@
 @theme inline {
   --color-foreground: light-dark(var(--color-gray-950), var(--color-gray-50));
   --color-background: light-dark(var(--color-gray-50), var(--color-gray-950));
-  --color-accent: light-dark(var(--color-pink-400), var(--color-pink-600));
+  --color-background-card: light-dark(var(--color-gray-100), var(--color-gray-900));
+  --color-background-head: light-dark(var(--color-gray-200), var(--color-gray-800));
+  --color-up: light-dark(var(--color-green-400), var(--color-green-600));
+  --color-pending: light-dark(var(--color-orange-400), var(--color-orange-600));
+  --color-down: light-dark(var(--color-red-400), var(--color-red-600));
+  --color-unknown: light-dark(var(--color-gray-400), var(--color-gray-600));
+  --color-paused: light-dark(var(--color-blue-400), var(--color-blue-600));
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-@layer base {
-  body {
-    @apply bg-background text-foreground transition-colors duration-200 accent-accent antialiased;
-  }
 }

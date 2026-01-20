@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
-import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import type { MonitorParams, MonitorResponse } from '@/lib/monitor';
 
-// TODO
+// TODO: notifiers
 interface NotifierParams {
   kind: 'gotify';
   url: string;
@@ -13,17 +13,12 @@ interface NotifierParams {
   };
 }
 
-export enum MonitorState {
+export enum ServiceState {
   Up,
   Down,
   Pending,
+  Paused,
 }
-
-export const monitorStates: Record<number, string> = Object.fromEntries(
-  Object.entries(MonitorState)
-    .filter(([, key]) => typeof key === 'number')
-    .map(([value, key]) => [key, value])
-);
 
 // NotifierTable
 
@@ -51,7 +46,8 @@ export const groupTable = sqliteTable('group', {
   name: text().notNull().unique(),
   active: integer({ mode: 'boolean' }).notNull().default(true),
 
-  parent: integer(), //.references(() => groupTable.id),
+  // TODO: recursion
+  // parent: integer(), //.references(() => groupTable.id),
 
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer({ mode: 'timestamp' })
@@ -82,9 +78,9 @@ export type GroupToNotifierTable = typeof groupToNotifierTable;
 export type GroupToNotifierInsert = GroupToNotifierTable['$inferInsert'];
 export type GroupToNotifierSelect = GroupToNotifierTable['$inferSelect'];
 
-// MonitorTable
+// ServiceTable
 
-export const monitorTable = sqliteTable('monitor', {
+export const serviceTable = sqliteTable('service', {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull().unique(),
   groupId: integer()
@@ -95,18 +91,6 @@ export const monitorTable = sqliteTable('monitor', {
   params: text({ mode: 'json' }).notNull().$type<MonitorParams>(),
   checkSeconds: integer().notNull().default(60),
   failuresBeforeDown: integer().notNull().default(0),
-
-  checkedAt: integer({ mode: 'timestamp' }),
-  successiveFailures: integer().notNull().default(-1),
-
-  /*   ,
-  state: text()
-    .generatedAlwaysAs(
-      (): SQL =>
-        sql`iif(${monitorTable.successiveFailures} = 0, 'up',iif(${monitorTable.successiveFailures} >= ${monitorTable.failuresBeforeDown}, 'down', 'pending'))`
-    )
-    .$type<MonitorState>(), */
-
   retainCount: integer().notNull().default(10080),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer({ mode: 'timestamp' })
@@ -114,22 +98,74 @@ export const monitorTable = sqliteTable('monitor', {
     .$onUpdate(() => sql`(unixepoch())`),
 });
 
-export type MonitorTable = typeof monitorTable;
-export type MonitorInsert = MonitorTable['$inferInsert'];
-export type MonitorSelect = MonitorTable['$inferSelect'];
+export type ServiceTable = typeof serviceTable;
+export type ServiceInsert = ServiceTable['$inferInsert'];
+export type ServiceSelect = ServiceTable['$inferSelect'];
 
 // HistoryTable
 
-export const historyTable = sqliteTable('history', {
-  id: integer().primaryKey({ autoIncrement: true }),
-  monitorId: integer()
-    .notNull()
-    .references(() => monitorTable.id),
-  result: text({ mode: 'json' }).notNull().$type<MonitorResponse>(),
-  state: integer({ mode: 'number' }).notNull().$type<MonitorState>(),
-  createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+// TODO: index over serviceId include createdAt
+export const historyTable = sqliteTable(
+  'history',
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    serviceId: integer()
+      .notNull()
+      .references(() => serviceTable.id),
+    result: text({ mode: 'json' }).notNull().$type<MonitorResponse>(),
+    state: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
+    createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+    // rowNo: integer().generatedAlwaysAs(sql<number>`row_number() over (partition by serviceId order by createdAt desc)`),
+  },
+  (table) => [index('createdAt_ix').on(table.createdAt)]
+);
 
 export type HistoryTable = typeof historyTable;
 export type HistoryInsert = HistoryTable['$inferInsert'];
 export type HistorySelect = HistoryTable['$inferSelect'];
+
+// StateTable
+
+export interface MinifiedHistory {
+  createdAt: Date;
+  state: ServiceState;
+  latency?: number;
+}
+
+export const stateTable = sqliteTable('state', {
+  serviceId: integer()
+    .primaryKey()
+    .notNull()
+    .references(() => serviceTable.id),
+  nextCheckAt: integer({ mode: 'timestamp' }).notNull(),
+  failures: integer().notNull(),
+  current: text({ mode: 'json' }).notNull().$type<MonitorResponse>(),
+  uptime1d: real().notNull(),
+  uptime30d: real().notNull(),
+  latency1d: real(),
+  value: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
+  historySummary: text({ mode: 'json' }).notNull().$type<MinifiedHistory[]>(),
+  createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer({ mode: 'timestamp' })
+    .notNull()
+    .$onUpdate(() => sql`(unixepoch())`),
+});
+
+export type StateTable = typeof stateTable;
+export type StateInsert = StateTable['$inferInsert'];
+export type StateSelect = StateTable['$inferSelect'];
+
+export interface ServiceWithState extends ServiceSelect {
+  state: StateSelect | null;
+}
+
+// KeyValTable (config, etc)
+
+export const keyValTable = sqliteTable('keyVal', {
+  key: text().primaryKey().notNull(),
+  value: text({ mode: 'json' }),
+});
+
+export type KeyValTable = typeof keyValTable;
+export type KeyValInsert = KeyValTable['$inferInsert'];
+export type KeyValSelect = KeyValTable['$inferSelect'];

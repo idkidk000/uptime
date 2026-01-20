@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
-import { db } from '@/lib/db';
-import { groupTable, type MonitorInsert, monitorTable } from '@/lib/db/schema';
+import { db } from '@/lib/drizzle';
+import { groupTable, type ServiceInsert, serviceTable } from '@/lib/drizzle/schema';
 import { Logger } from '@/lib/logger';
 
 const logger = new Logger(import.meta.url);
@@ -11,7 +11,7 @@ const [groupEntry] = await db
   .onConflictDoUpdate({ target: groupTable.name, set: { id: sql`id` } })
   .returning();
 
-const monitors: MonitorInsert[] = [
+const services: ServiceInsert[] = [
   {
     groupId: groupEntry.id,
     name: 'JSONata 1',
@@ -62,10 +62,10 @@ const monitors: MonitorInsert[] = [
   },
 ];
 
-const monitorEntries = await db
-  .insert(monitorTable)
-  .values(monitors)
-  .onConflictDoUpdate({ target: monitorTable.name, set: { id: sql`id` } })
+const serviceEntries = await db
+  .insert(serviceTable)
+  .values(services)
+  .onConflictDoUpdate({ target: serviceTable.name, set: { id: sql`id` } })
   .returning();
 
-logger.success({ groupEntry, monitorEntries });
+logger.success({ groupEntry, serviceEntries });

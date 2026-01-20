@@ -31,6 +31,7 @@
   },
   "linter": {
     "domains": {
+      "next": "recommended",
       "project": "recommended",
       "react": "recommended"
     },

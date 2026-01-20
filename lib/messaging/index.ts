@@ -6,17 +6,18 @@ import { Logger } from '@/lib/logger';
 
 const SOCKET_ADDR = '.messaging.sock';
 
-export type ActionKinds = 'run-monitor';
-export type InvalidationKinds = 'group' | 'monitor' | 'monitor-history';
+// actions which can only be carried out by the backend workers. most tasks should be fine in server actions so long as they send invalidation messages
+export type ActionKind = 'test-service';
+export type InvalidationKind = 'group' | 'service-config' | 'service-history' | 'service-state';
 
 type Message =
   | {
       kind: 'action';
-      value: ActionKinds;
+      value: ActionKind;
     }
   | {
       kind: 'invalidation';
-      value: InvalidationKinds;
+      value: InvalidationKind;
     };
 
 export type MessageWithId = Message & { id: number };
@@ -155,6 +156,7 @@ export class MessageClient {
       value: message,
     });
   }
+  // TODO: accept partial - i.e. {kind:invalidation} should sub to all invalidations
   subscribe<Filter extends Message>(
     filter: Filter,
     callback: (message: Extract<MessageWithId, Filter>) => void | Promise<void>

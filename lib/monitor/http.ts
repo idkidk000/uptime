@@ -91,7 +91,11 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
           }
           case 'xpath': {
             const text = await response.text();
-            const dom = new DOMParser().parseFromString(text);
+            const dom = new DOMParser({
+              errorHandler: () => {
+                /* spams errors to stdout otherwise. i don't care if the source has syntax errors */
+              },
+            }).parseFromString(text);
             const rawResult = xpath.select(this.params.upWhen.query.expression, dom);
             const result =
               typeof rawResult === 'string' || typeof rawResult === 'number' || typeof rawResult === 'boolean'
