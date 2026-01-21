@@ -3,10 +3,13 @@
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/button';
 import { Nav } from '@/components/nav';
 import { ServiceList } from '@/components/service-list';
 import { AppQueriesProvider } from '@/hooks/app-queries';
+import { IntervalProvider } from '@/hooks/interval';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -43,18 +46,24 @@ export default function RootLayout({
     <html lang='en'>
       <QueryClientProvider client={queryClient}>
         <AppQueriesProvider>
-          <body
-            className={`${geistSans.variable} ${geistMono.variable} flex flex-col gap-4 bg-background text-foreground transition-colors duration-200 accent-up antialiased`}
-          >
-            <Nav />
-            <main className='grid grid-cols-[2fr_5fr] p-4 gap-4'>
-              <section className='flex flex-col gap-4'>
-                <Button className='me-auto'>Add New Monitor</Button>
-                <ServiceList />
-              </section>
-              {children}
-            </main>
-          </body>
+          <IntervalProvider>
+            <body
+              className={`${geistSans.variable} ${geistMono.variable} flex flex-col gap-4 bg-background text-foreground transition-colors duration-200 accent-up antialiased`}
+            >
+              <Nav />
+              <main className='grid grid-cols-[2fr_5fr] p-4 gap-4'>
+                <section className='flex flex-col gap-4'>
+                  <Button className='me-auto'>
+                    <Plus />
+                    Add New Monitor
+                  </Button>
+                  <ServiceList />
+                </section>
+                {children}
+              </main>
+              <ReactQueryDevtools />
+            </body>
+          </IntervalProvider>
         </AppQueriesProvider>
       </QueryClientProvider>
     </html>

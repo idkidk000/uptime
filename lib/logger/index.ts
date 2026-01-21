@@ -72,7 +72,7 @@ const console = new Console({
     breakLength: 300,
     compact: true,
     depth: 10,
-    maxStringLength: 150,
+    maxStringLength: 1500,
     numericSeparator: true,
     sorted: false,
   },

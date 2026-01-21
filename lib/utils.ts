@@ -25,14 +25,18 @@ export function pick<Item extends object, Keys extends Extract<keyof Item, strin
   return Object.fromEntries(Object.entries(item).filter(([key]) => keys.includes(key as Keys))) as Return;
 }
 
-export async function concurrently<Return>(promises: (() => Promise<Return>)[], concurrency = 4): Promise<Return[]> {
-  const iterator = promises.values();
+export async function concurrently<Item, Return>(
+  items: Item[],
+  callback: (item: Item) => Promise<Return>,
+  concurrency = 4
+): Promise<Return[]> {
+  const iterator = items.values();
   const results: Return[] = [];
   await Promise.all(
     Array.from({ length: concurrency }).fill(
       (async () => {
         for (let item = iterator.next(); !item.done; item = iterator.next()) {
-          const result = await item.value();
+          const result = await callback(item.value);
           results.push(result);
         }
       })()
@@ -45,13 +49,13 @@ export function mean(values: number[]): number {
   return values.reduce((acc, item) => acc + item, 0) / (values.length || 1);
 }
 
-export function enumEntriesRev<Enum extends Record<string, number | bigint | boolean | string>>(obj: Enum) {
+export function enumToObjectRev<Enum extends Record<string, number | bigint | boolean | string>>(obj: Enum) {
   return Object.fromEntries(Object.entries(obj).filter(([, val]) => typeof val !== 'string')) as {
     [Key in keyof Enum as Key]: `${Enum[Key]}`;
   };
 }
 
-export function enumEntries<Enum extends Record<string, number | bigint | boolean | string>>(obj: Enum) {
+export function enumToObject<Enum extends Record<string, number | bigint | boolean | string>>(obj: Enum) {
   return Object.fromEntries(
     Object.entries(obj)
       .filter(([, val]) => typeof val !== 'string')
@@ -59,4 +63,13 @@ export function enumEntries<Enum extends Record<string, number | bigint | boolea
   ) as {
     [Key in keyof Enum as `${Enum[Key]}`]: Key;
   };
+}
+
+/** use `enumEntries` for enums */
+export function typedEntries<Item extends object>(object: Item) {
+  return Object.entries(object) as [keyof Item, Item[keyof Item]][];
+}
+
+export function enumEntries<Enum extends Record<string, number | bigint | boolean | string>>(obj: Enum) {
+  return Object.entries(obj).filter(([, val]) => typeof val !== 'string') as [keyof Enum, Enum[keyof Enum]][];
 }

@@ -23,7 +23,7 @@ type Message =
 export type MessageWithId = Message & { id: number };
 type Callback = (message: MessageWithId) => void | Promise<void>;
 type Unsubscribe = () => void;
-type SubscriptionKey = `${Message['kind']}.${Message['value']}`;
+type SubscriptionKey = `${Message['kind']}.${Message['value'] | ''}`;
 type InternalMessage =
   | {
       kind: 'subscribe';
@@ -33,7 +33,6 @@ type InternalMessage =
   | { kind: 'message'; value: MessageWithId };
 
 // TODO: startup handling. maybe buffer all kind:message for n seconds until all subsriptions are in
-// TODO: may need a mutex. though createServer is probably older than async so perhaps not
 export class MessageServer {
   #logger = new Logger(import.meta.url, 'MessageServer');
   #subscriptions = new Map<SubscriptionKey, Set<Socket>>();
@@ -58,8 +57,10 @@ export class MessageServer {
       this.#logger.debugLow('received', internalMessage);
       switch (internalMessage.kind) {
         case 'message': {
-          const key: SubscriptionKey = `${internalMessage.value.kind}.${internalMessage.value.value}`;
-          const subscriptions = this.#subscriptions.get(key);
+          const subscriptions = [
+            ...(this.#subscriptions.get(`${internalMessage.value.kind}.`) ?? []),
+            ...(this.#subscriptions.get(`${internalMessage.value.kind}.${internalMessage.value.value}`) ?? []),
+          ];
           if (!subscriptions) return;
           const messageString = `${SuperJSON.stringify(internalMessage.value)}\n`;
           for (const otherClient of subscriptions) otherClient.write(messageString);
@@ -108,7 +109,6 @@ export class MessageServer {
   }
 }
 
-// TODO: maybe use AbortSignal instead of returning unsubscribe fn
 export class MessageClient {
   #socket: Socket | null = null;
   #subscriptions = new Map<SubscriptionKey, Set<Callback>>();
@@ -135,8 +135,11 @@ export class MessageClient {
           this.#logger.debugLow('received', data);
           try {
             const parsed: MessageWithId = SuperJSON.parse(data);
-            const callbacks = this.#subscriptions.get(`${parsed.kind}.${parsed.value}`);
-            if (callbacks) for (const callback of callbacks) callback(parsed);
+            for (const callback of [
+              ...(this.#subscriptions.get(`${parsed.kind}.${parsed.value}`) ?? []),
+              ...(this.#subscriptions.get(`${parsed.kind}.`) ?? []),
+            ])
+              callback(parsed);
           } catch (err) {
             this.#logger.error('could not parse message', err);
           }
@@ -150,18 +153,14 @@ export class MessageClient {
     if (this.#socket) this.#socket.write(messageString);
     else this.#queue.push(messageString);
   }
-  send(message: MessageWithId): void {
-    this.#sendInternalMessage({
-      kind: 'message',
-      value: message,
-    });
+  send(...messages: MessageWithId[]): void {
+    for (const message of messages) this.#sendInternalMessage({ kind: 'message', value: message });
   }
-  // TODO: accept partial - i.e. {kind:invalidation} should sub to all invalidations
-  subscribe<Filter extends Message>(
+  subscribe<Filter extends Message | Pick<Message, 'kind'>>(
     filter: Filter,
     callback: (message: Extract<MessageWithId, Filter>) => void | Promise<void>
   ): Unsubscribe {
-    const key = `${filter.kind}.${filter.value}` satisfies SubscriptionKey;
+    const key = `${filter.kind}.${'value' in filter ? filter.value : ''}` satisfies SubscriptionKey;
     if (!this.#subscriptions.has(key)) {
       this.#sendInternalMessage({
         kind: 'subscribe',

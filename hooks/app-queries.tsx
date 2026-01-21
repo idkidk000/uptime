@@ -4,11 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, type ReactNode, useContext, useEffect, useEffectEvent, useMemo } from 'react';
 import SuperJSON from 'superjson';
 import { getGroups } from '@/actions/group';
-import { getHistorySummary } from '@/actions/history';
+import { getServiceHistory } from '@/actions/history';
 import { getServices } from '@/actions/service';
-import { getStates } from '@/actions/state';
+import { getServiceStates, getStateCounts } from '@/actions/state';
 import type { Invalidations } from '@/app/api/sse/route';
-import type { GroupSelect, HistorySelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/schema';
+import type { GroupSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/schema';
 
 interface Context {
   groups: GroupSelect[];
@@ -35,7 +35,7 @@ export function AppQueriesProvider({ children }: { children: ReactNode }) {
 
   const statesQuery = useQuery({
     queryKey: ['service-state'],
-    queryFn: () => getStates(),
+    queryFn: () => getServiceStates(),
   });
 
   const value: Context = useMemo(
@@ -50,10 +50,6 @@ export function AppQueriesProvider({ children }: { children: ReactNode }) {
   // FIXME: update sse to pass down the record, then patch the queries directly
   const handleInvalidation = useEffectEvent((invalidations: Invalidations) => {
     for (const key of invalidations.keys()) queryClient.invalidateQueries({ queryKey: [key] });
-    // if (invalidations.has('group')) groupsQuery.refetch();
-    // if (invalidations.has('service-config')) servicesQuery.refetch();
-    // if (invalidations.has('service-state')) statesQuery.refetch();
-    //TODO: handle 'service-history' when using it
   });
 
   useEffect(() => {
@@ -93,11 +89,23 @@ export function useServiceWithState(serviceId: number | null | undefined): Servi
   return { ...service, state };
 }
 
-export function useServiceHistory(serviceId: number | null | undefined): HistorySelect[] | null {
+// TODO: this will still need to be invalidated when i switch over to sse patching for core data
+export function useServiceHistory(
+  serviceId: number | null,
+  pageNum?: number
+): Awaited<ReturnType<typeof getServiceHistory>> | null {
   const query = useQuery({
-    queryKey: ['service-history', serviceId ?? null],
-    enabled: typeof serviceId === 'number',
-    queryFn: () => getHistorySummary(serviceId as number),
+    queryKey: ['service-history', serviceId ?? null, { pageNum }],
+    queryFn: () => getServiceHistory(serviceId, { pageNum }),
+  });
+  return query.data ?? null;
+}
+
+// TODO: this will still need to be invalidated when i switch over to sse patching for core data
+export function useStateCounts(): Awaited<ReturnType<typeof getStateCounts>> | null {
+  const query = useQuery({
+    queryKey: ['service-state', 'counts'],
+    queryFn: () => getStateCounts(),
   });
   return query.data ?? null;
 }

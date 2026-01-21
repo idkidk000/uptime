@@ -21,17 +21,17 @@ export function ServiceList() {
           <Button variant='muted'>Tags</Button>
         </div>
       </h3>
-      <ul className='flex flex-col p-4 overflow-y-auto gap-4'>
+      <ul className='grid grid-cols-[auto_auto_1fr] p-4 overflow-y-auto gap-4'>
         {services.map((service) => (
-          <li key={service.id}>
-            <Link href={`/${service.id}`} className='flex gap-2 items-center'>
+          <li key={service.id} className='col-span-3 grid grid-cols-subgrid'>
+            <Link href={`/${service.id}`} className='col-span-3 grid grid-cols-subgrid items-center'>
               <StateBadge
                 size='sm'
                 state={service.state?.value}
-                className='shrink-0'
-              >{`${service.state?.uptime1d ?? '-'} %`}</StateBadge>
+                className='me-auto'
+              >{`${typeof service.state?.uptime1d === 'number' ? Math.round(service.state?.uptime1d) : '0'}%`}</StateBadge>
               <h4 className='shrink-0 me-auto'>{service.name}</h4>
-              <BarGraph history={service.state?.historySummary} />
+              <BarGraph history={service.state?.miniHistory} />
             </Link>
           </li>
         ))}

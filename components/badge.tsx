@@ -1,13 +1,13 @@
 import type { ComponentProps } from 'react';
 
-const base = 'rounded-full shadow transition-colors border-2';
+const base = 'rounded-full shadow transition-colors border-2 font-semibold';
 
 const variants = {
-  up: 'border-transparent bg-up hover:bg-up/75 active:bg-up/50',
-  pending: 'border-transparent bg-pending hover:bg-pending/75 active:bg-pending/50',
+  up: 'border-transparent bg-up hover:bg-up/75 active:bg-up/50 text-background',
+  pending: 'border-transparent bg-pending hover:bg-pending/75 active:bg-pending/50 text-background',
   down: 'border-transparent bg-down hover:bg-down/75 active:bg-down/50',
-  paused: 'border-transparent bg-paused hover:bg-paused/75 active:bg-paused/50',
-  unknown: 'border-transparent bg-unknown hover:bg-unknown/75 active:bg-unknown/50',
+  paused: 'border-transparent bg-paused hover:bg-paused/75 active:bg-paused/50 text-background',
+  unknown: 'border-transparent bg-unknown hover:bg-unknown/75 active:bg-unknown/50 text-background',
   transparent: 'border-foreground/10',
   muted: 'border-foreground/10 bg-background-card hover:bg-background-card/75 active:bg-background-card/50',
 } as const;

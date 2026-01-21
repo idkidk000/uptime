@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, real, sqliteTable, sqliteView, text } from 'drizzle-orm/sqlite-core';
 import type { MonitorParams, MonitorResponse } from '@/lib/monitor';
+import { enumToObject } from '@/lib/utils';
 
 // TODO: notifiers
 interface NotifierParams {
@@ -19,6 +20,9 @@ export enum ServiceState {
   Pending,
   Paused,
 }
+
+export type ServiceStateName = keyof typeof ServiceState;
+export const serviceStates = enumToObject(ServiceState);
 
 // NotifierTable
 
@@ -46,7 +50,7 @@ export const groupTable = sqliteTable('group', {
   name: text().notNull().unique(),
   active: integer({ mode: 'boolean' }).notNull().default(true),
 
-  // TODO: recursion
+  // i don't *think* it's valid to have an fk reference its own table
   // parent: integer(), //.references(() => groupTable.id),
 
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -66,10 +70,10 @@ export const groupToNotifierTable = sqliteTable(
   {
     groupId: integer()
       .notNull()
-      .references(() => groupTable.id),
+      .references(() => groupTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
     notifierId: integer()
       .notNull()
-      .references(() => notifierTable.id),
+      .references(() => notifierTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   },
   (table) => [primaryKey({ columns: [table.groupId, table.notifierId] })]
 );
@@ -83,9 +87,8 @@ export type GroupToNotifierSelect = GroupToNotifierTable['$inferSelect'];
 export const serviceTable = sqliteTable('service', {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull().unique(),
-  groupId: integer()
-    .notNull()
-    .references(() => groupTable.id),
+  // TODO: maybe seed a root group with a known id. then this would be notNull().default(knownId) and have { onDelete: 'set default' }. i think i could make it undeletable with a trigger
+  groupId: integer().references(() => groupTable.id, { onDelete: 'set null', onUpdate: 'cascade' }),
   active: integer({ mode: 'boolean' }).notNull().default(true),
 
   params: text({ mode: 'json' }).notNull().$type<MonitorParams>(),
@@ -104,20 +107,18 @@ export type ServiceSelect = ServiceTable['$inferSelect'];
 
 // HistoryTable
 
-// TODO: index over serviceId include createdAt
 export const historyTable = sqliteTable(
   'history',
   {
     id: integer().primaryKey({ autoIncrement: true }),
     serviceId: integer()
       .notNull()
-      .references(() => serviceTable.id),
-    result: text({ mode: 'json' }).notNull().$type<MonitorResponse>(),
+      .references(() => serviceTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    result: text({ mode: 'json' }).$type<MonitorResponse | null>(),
     state: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
     createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-    // rowNo: integer().generatedAlwaysAs(sql<number>`row_number() over (partition by serviceId order by createdAt desc)`),
   },
-  (table) => [index('createdAt_ix').on(table.createdAt)]
+  (table) => [index('ix_serviceId_createdAt').on(table.serviceId, table.createdAt)]
 );
 
 export type HistoryTable = typeof historyTable;
@@ -127,24 +128,24 @@ export type HistorySelect = HistoryTable['$inferSelect'];
 // StateTable
 
 export interface MinifiedHistory {
-  createdAt: Date;
-  state: ServiceState;
-  latency?: number;
+  from: Date;
+  to: Date;
+  items: { id: number; state: ServiceState; latency?: number }[];
 }
 
 export const stateTable = sqliteTable('state', {
   serviceId: integer()
     .primaryKey()
     .notNull()
-    .references(() => serviceTable.id),
+    .references(() => serviceTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   nextCheckAt: integer({ mode: 'timestamp' }).notNull(),
   failures: integer().notNull(),
-  current: text({ mode: 'json' }).notNull().$type<MonitorResponse>(),
+  current: text({ mode: 'json' }).$type<MonitorResponse | null>(),
   uptime1d: real().notNull(),
   uptime30d: real().notNull(),
   latency1d: real(),
   value: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
-  historySummary: text({ mode: 'json' }).notNull().$type<MinifiedHistory[]>(),
+  miniHistory: text({ mode: 'json' }).notNull().$type<MinifiedHistory>(),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer({ mode: 'timestamp' })
     .notNull()
@@ -169,3 +170,54 @@ export const keyValTable = sqliteTable('keyVal', {
 export type KeyValTable = typeof keyValTable;
 export type KeyValInsert = KeyValTable['$inferInsert'];
 export type KeyValSelect = KeyValTable['$inferSelect'];
+
+// getTableColumns doesn't work here so column defs are copied from above
+// https://sqlite.org/windowfunctions.html
+// https://sqlite.org/json1.html#jex
+// https://orm.drizzle.team/docs/goodies#raw-sql-queries-execution
+// https://orm.drizzle.team/docs/views#declaring-views
+export const historySummaryView = sqliteView('historySummary', {
+  name: text().notNull(),
+  id: integer().primaryKey({ autoIncrement: true }),
+  serviceId: integer()
+    .notNull()
+    .references(() => serviceTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  result: text({ mode: 'json' }).$type<MonitorResponse | null>(),
+  state: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
+  createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}).as(
+  sql`
+    select
+      name,
+      id,
+      serviceId,
+      result,
+      state,
+      createdAt
+    from (
+      select
+        h.*,
+        s.name,
+        lag(state) over win as prevState,
+        lag(result) over win as prevResult
+      from history as h
+      inner join service as s on s.id = h.serviceId
+      window win as (
+        partition by h.serviceId
+        order by h.createdAt
+      )
+    )
+    where prevState is null
+      or state != prevState
+      or (
+        result is not null and prevResult is not null and (
+          json_extract(result, '$.kind') != json_extract(prevResult, '$.kind')
+          or json_extract(result, '$.reason') != json_extract(prevResult, '$.reason')
+        )
+      )
+    order by createdAt desc`
+);
+
+export interface HistorySummarySelect extends HistorySelect {
+  name: string;
+}

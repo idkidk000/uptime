@@ -23,13 +23,5 @@
     "target": "es2024"
   },
   "exclude": ["node_modules"],
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts",
-    "postcss.config.mjs"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "postcss.config.mjs", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"]
 }

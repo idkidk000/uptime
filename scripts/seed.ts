@@ -15,11 +15,13 @@ const services: ServiceInsert[] = [
   {
     groupId: groupEntry.id,
     name: 'JSONata 1',
+    failuresBeforeDown: 3,
     params: {
       kind: 'http',
-      url: 'http://192.168.1.250:8996/api/ping',
+      url: 'http://localhost:3000/api/mock/json',
       upWhen: {
         statusCode: 200,
+        latency: 300,
         query: {
           kind: 'jsonata',
           expression: 'ok',
@@ -31,14 +33,16 @@ const services: ServiceInsert[] = [
   {
     groupId: groupEntry.id,
     name: 'Regex 1',
+    failuresBeforeDown: 3,
     params: {
       kind: 'http',
-      url: 'http://192.168.1.250:8996/api/ping',
+      url: 'http://localhost:3000/api/mock/json',
       upWhen: {
         statusCode: 200,
+        latency: 300,
         query: {
           kind: 'regex',
-          expression: '/\\{"ok":true\\}/u',
+          expression: '/\\b"ok":true\\b/u',
           expected: true,
         },
       },
@@ -47,15 +51,35 @@ const services: ServiceInsert[] = [
   {
     groupId: groupEntry.id,
     name: 'XPath 1',
+    failuresBeforeDown: 3,
     params: {
       kind: 'http',
-      url: 'http://192.168.1.187',
+      url: 'http://localhost:3000/api/mock/xml',
       upWhen: {
         statusCode: 200,
+        latency: 300,
         query: {
           kind: 'xpath',
-          expression: '/html/body/esp-app',
-          expected: '<esp-app/>',
+          expression: '/message/ok',
+          expected: '<ok>true</ok>',
+        },
+      },
+    },
+  },
+  {
+    groupId: groupEntry.id,
+    name: 'Down 1',
+    failuresBeforeDown: 3,
+    params: {
+      kind: 'http',
+      url: 'http://localhost:3000/api/mock/xml',
+      upWhen: {
+        statusCode: 200,
+        latency: 300,
+        query: {
+          kind: 'xpath',
+          expression: '/message/ok',
+          expected: 'somethingElse',
         },
       },
     },

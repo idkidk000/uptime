@@ -1,6 +1,6 @@
 import { type SVGProps, useLayoutEffect, useRef, useState } from 'react';
+import { RelativeDate } from '@/components/relative-date';
 import { config } from '@/lib/config';
-import { toRelative } from '@/lib/date';
 import { type MinifiedHistory, ServiceState } from '@/lib/drizzle/schema';
 
 const defaultBounds = { width: 100, height: 10 };
@@ -12,6 +12,7 @@ const stateClassNames: Record<ServiceState, string> = {
   [ServiceState.Paused]: 'stroke-paused fill-paused/65',
 };
 
+// FIXME: this has pop-in because it has to dynamically resize the svg. try to factor it out
 // FIXME: assign most common state classes to top level and override invididual rects
 export function BarGraph({
   className,
@@ -20,11 +21,13 @@ export function BarGraph({
   strokeWidth = 2,
   showLabels,
   radius = 0.01,
+  barWidth = 0.5,
   ...props
 }: {
-  history: MinifiedHistory[] | undefined;
+  history: MinifiedHistory | undefined;
   showLabels?: boolean;
   radius?: number;
+  barWidth?: number;
 } & Omit<SVGProps<SVGSVGElement>, 'width' | 'height' | 'viewBox'>) {
   const [bounds, setBounds] = useState({ ...defaultBounds });
   const ref = useRef<SVGSVGElement>(null);
@@ -33,10 +36,10 @@ export function BarGraph({
   const innerWidth = bounds.width - numStrokeWidth * 2;
   const innerHeight = bounds.height - numStrokeWidth * 2;
   const cellWidth = innerWidth / config.historySummaryItems;
-  const cellInnerWidth = cellWidth * 0.7;
+  const cellInnerWidth = cellWidth * barWidth;
   const maxLatency =
-    history
-      ?.filter((item): item is Required<MinifiedHistory> => typeof item.latency === 'number')
+    history?.items
+      ?.filter((item): item is Required<MinifiedHistory['items'][number]> => typeof item.latency === 'number')
       .reduce((acc, item) => Math.max(acc, item.latency), 0) ?? 0;
 
   useLayoutEffect(() => {
@@ -60,11 +63,13 @@ export function BarGraph({
         ref={ref}
         {...props}
       >
-        {history?.map((item, i) => (
+        {history?.items.map((item, i) => (
           <rect
-            key={item.createdAt.valueOf()}
+            key={item.id}
             x={Math.round(
-              cellWidth * (config.historySummaryItems - i - 1) + numStrokeWidth + (cellWidth - cellInnerWidth) * 0.5
+              cellWidth * (config.historySummaryItems - history.items.length + i) +
+                numStrokeWidth +
+                (cellWidth - cellInnerWidth) * 0.5
             )}
             width={Math.round(cellInnerWidth)}
             y={Math.round(
@@ -82,8 +87,8 @@ export function BarGraph({
       </svg>
       {showLabels && history && (
         <div className='flex justify-between'>
-          <span>{toRelative(history?.at(-1)?.createdAt)}</span>
-          <span>{toRelative(history?.at(0)?.createdAt)}</span>
+          <RelativeDate date={history.from} />
+          <RelativeDate date={history.to} />
         </div>
       )}
     </div>

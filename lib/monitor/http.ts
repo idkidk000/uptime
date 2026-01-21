@@ -1,11 +1,13 @@
 import { DOMParser } from '@xmldom/xmldom';
 import jsonata from 'jsonata';
 import xpath from 'xpath';
+import { config } from '@/lib/config';
 import {
   type BaseMonitorParams,
   type BaseMonitorResponseDown,
   type BaseMonitorResponseUp,
   Monitor,
+  MonitorDownReason,
 } from '@/lib/monitor';
 import { parseRegex, roundTo } from '@/lib/utils';
 
@@ -15,6 +17,7 @@ export interface HttpMonitorParams extends BaseMonitorParams {
   headers?: Record<string, string>;
   upWhen: {
     statusCode?: number;
+    latency?: number;
     query?:
       | {
           kind: 'jsonata' | 'xpath';
@@ -29,20 +32,12 @@ export interface HttpMonitorParams extends BaseMonitorParams {
   };
 }
 
-export enum HttpMonitorDownReason {
-  IncorrectStatus,
-  QueryNotSatisfied,
-  Error,
-}
-
 interface HttpMonitorResponseUp extends BaseMonitorResponseUp {
   kind: 'http';
 }
 
 interface HttpMonitorResponseDown extends BaseMonitorResponseDown {
   kind: 'http';
-  reason: HttpMonitorDownReason;
-  result: unknown;
 }
 
 export type HttpMonitorResponse = HttpMonitorResponseUp | HttpMonitorResponseDown;
@@ -50,15 +45,38 @@ export type HttpMonitorResponse = HttpMonitorResponseUp | HttpMonitorResponseDow
 export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse> {
   async check(): Promise<HttpMonitorResponse> {
     try {
+      const controller = new AbortController();
+      // getting timeouts to work reliably with fetch is a nuisance
+      const { promise, reject, resolve } = Promise.withResolvers<never>();
+      const timeout = setTimeout(
+        () => {
+          controller.abort();
+          reject('timeout');
+        },
+        (this.params.upWhen.latency ?? config.defaultMonitorTimeout) + 100
+      );
       const started = performance.now();
-      const response = await fetch(this.params.url, { headers: this.params.headers });
+      const response = await Promise.race([
+        // fetch will throw on abort signal. outer try/catch will catch it
+        fetch(this.params.url, { headers: this.params.headers, signal: controller.signal }),
+        promise,
+      ]);
       const latency = roundTo(performance.now() - started, 3);
+      clearTimeout(timeout);
+      resolve(null as never);
       if (typeof this.params.upWhen.statusCode === 'number' && response.status !== this.params.upWhen.statusCode)
         return {
           kind: 'http',
           ok: false,
-          reason: HttpMonitorDownReason.IncorrectStatus,
+          reason: MonitorDownReason.InvalidStatus,
           result: response.status,
+        };
+      if (typeof this.params.upWhen.latency === 'number' && latency > this.params.upWhen.latency)
+        return {
+          kind: 'http',
+          ok: false,
+          reason: MonitorDownReason.Timeout,
+          result: latency,
         };
       if (this.params.upWhen.query) {
         switch (this.params.upWhen.query.kind) {
@@ -70,7 +88,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
               return {
                 kind: 'http',
                 ok: false,
-                reason: HttpMonitorDownReason.QueryNotSatisfied,
+                reason: MonitorDownReason.QueryNotSatisfied,
                 result,
               };
             }
@@ -84,7 +102,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
               return {
                 kind: 'http',
                 ok: false,
-                reason: HttpMonitorDownReason.QueryNotSatisfied,
+                reason: MonitorDownReason.QueryNotSatisfied,
                 result: rawResult,
               };
             break;
@@ -105,7 +123,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
               return {
                 kind: 'http',
                 ok: false,
-                reason: HttpMonitorDownReason.QueryNotSatisfied,
+                reason: MonitorDownReason.QueryNotSatisfied,
                 result,
               };
             }
@@ -122,7 +140,9 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
         latency,
       };
     } catch (err) {
-      return { kind: 'http', ok: false, reason: HttpMonitorDownReason.Error, result: String(err) };
+      if (Error.isError(err) && err.name === 'AbortError')
+        return { kind: 'http', ok: false, reason: MonitorDownReason.Timeout, result: err.message };
+      return { kind: 'http', ok: false, reason: MonitorDownReason.Error, result: String(err) };
     }
   }
 }
