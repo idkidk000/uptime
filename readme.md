@@ -1,6 +1,6 @@
-I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd try to build my own. Currently there's only a `http` monitor and you have to add your services to the database via [script](scripts/seed.ts) or `sqlite3`. The code is littered with `TODO`s and `FIXME`s and there are a lot of missing features.
+I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd try to build my own. Currently there's only a `http` monitor and you have to add your services to the database via [script](scripts/seed.ts) or `sqlite3`. The code is littered with `TODO`s and `FIXME`s (I have an extension, it's fine) and there are a lot of missing features.
 
-Built on NextJS, Drizzle, and Tanstack Query. I'm abusing instrumentation to run my backend workers and run a [small unix socket server](lib/messaging/index.ts) to shuffle messages around.
+Built on NextJS, Drizzle, and Tanstack Query. I'm abusing instrumentation to run my backend workers and run a [small unix socket server](lib/messaging/index.ts) to shuffle messages around the backend. Backend to frontend messaging is over [SSE](app/api/sse/route.ts).
 
 To test:
 - `git clone ...`

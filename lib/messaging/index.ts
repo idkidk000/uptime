@@ -2,46 +2,70 @@ import { rmSync } from 'node:fs';
 import { createConnection, createServer, type Socket } from 'node:net';
 import { createInterface } from 'node:readline';
 import SuperJSON from 'superjson';
+import type { ServiceState } from '@/lib/drizzle/schema';
 import { Logger } from '@/lib/logger';
 
 const SOCKET_ADDR = '.messaging.sock';
+// only needs to be this high in dev
+const STARTUP_CACHE_MILLIS = 15_000;
 
-// actions which can only be carried out by the backend workers. most tasks should be fine in server actions so long as they send invalidation messages
+// actions which can only be carried out by the backend workers. most tasks should be fine in server actions
 export type ActionKind = 'test-service';
 export type InvalidationKind = 'group' | 'service-config' | 'service-history' | 'service-state';
-
 type Message =
   | {
-      kind: 'action';
-      value: ActionKind;
+      cat: 'action';
+      kind: ActionKind;
+      id: number;
     }
   | {
-      kind: 'invalidation';
-      value: InvalidationKind;
+      cat: 'invalidation';
+      kind: InvalidationKind;
+      id: number;
+    }
+  | {
+      cat: 'toast';
+      kind: 'state';
+      id: number;
+      state: ServiceState;
+      message: string;
+    }
+  | {
+      cat: 'toast';
+      kind: 'message';
+      message: string;
     };
-
-export type MessageWithId = Message & { id: number };
-type Callback = (message: MessageWithId) => void | Promise<void>;
+// FIXME: the generated type is correct but the def is horrible and keys have to be asserted, which defeats the point of this. may need to refactor Message
+type SubscriptionKey = Message extends infer M
+  ? M extends { cat: infer C extends string }
+    ? M extends { kind: infer K extends string }
+      ? `${C}.${K}` | `${C}.`
+      : never
+    : never
+  : never;
+type Callback = (message: Message) => void | Promise<void>;
 type Unsubscribe = () => void;
-type SubscriptionKey = `${Message['kind']}.${Message['value'] | ''}`;
 type InternalMessage =
   | {
       kind: 'subscribe';
-      value: SubscriptionKey;
+      key: SubscriptionKey;
     }
-  | { kind: 'unsubscribe'; value: SubscriptionKey }
-  | { kind: 'message'; value: MessageWithId };
+  | { kind: 'unsubscribe'; key: SubscriptionKey }
+  | { kind: 'message'; msg: Message };
 
-// TODO: startup handling. maybe buffer all kind:message for n seconds until all subsriptions are in
+// TODO: startup handling. maybe buffer all kind:message for n seconds until all subscriptions are in
 export class MessageServer {
   #logger = new Logger(import.meta.url, 'MessageServer');
   #subscriptions = new Map<SubscriptionKey, Set<Socket>>();
+  #cache: Message[] = [];
+  /** cache is in use while this is not null */
+  #cacheTimeout: NodeJS.Timeout | null;
   #parseMessage(data: string): InternalMessage | null {
     try {
       const parsed: InternalMessage = SuperJSON.parse(data);
       return parsed;
     } catch {
-      this.#logger.warn('unparseable message', data);
+      this.#logger.warn('unparsable message', data);
       return null;
     }
   }
@@ -57,24 +81,34 @@ export class MessageServer {
       this.#logger.debugLow('received', internalMessage);
       switch (internalMessage.kind) {
         case 'message': {
+          if (this.#cacheTimeout !== null) this.#cache.push(internalMessage.msg);
           const subscriptions = [
-            ...(this.#subscriptions.get(`${internalMessage.value.kind}.`) ?? []),
-            ...(this.#subscriptions.get(`${internalMessage.value.kind}.${internalMessage.value.value}`) ?? []),
+            ...(this.#subscriptions.get(`${internalMessage.msg.cat}.`) ?? []),
+            ...(this.#subscriptions.get(`${internalMessage.msg.cat}.${internalMessage.msg.kind}` as SubscriptionKey) ??
+              []),
           ];
           if (!subscriptions) return;
-          const messageString = `${SuperJSON.stringify(internalMessage.value)}\n`;
+          const messageString = `${SuperJSON.stringify(internalMessage.msg)}\n`;
           for (const otherClient of subscriptions) otherClient.write(messageString);
           return;
         }
         case 'subscribe': {
-          if (!this.#subscriptions.get(internalMessage.value)?.add(client))
-            this.#subscriptions.set(internalMessage.value, new Set([client]));
+          if (!this.#subscriptions.get(internalMessage.key)?.add(client))
+            this.#subscriptions.set(internalMessage.key, new Set([client]));
+          if (this.#cacheTimeout === null) return;
+          for (const cachedMessage of this.#cache) {
+            if (
+              internalMessage.key === `${cachedMessage.cat}.` ||
+              internalMessage.key === `${cachedMessage.cat}.${cachedMessage.kind}`
+            )
+              client.write(`${SuperJSON.stringify(cachedMessage)}\n`);
+          }
           return;
         }
         case 'unsubscribe': {
-          const set = this.#subscriptions.get(internalMessage.value);
+          const set = this.#subscriptions.get(internalMessage.key);
           set?.delete(client);
-          if (set?.size === 0) this.#subscriptions.delete(internalMessage.value);
+          if (set?.size === 0) this.#subscriptions.delete(internalMessage.key);
           return;
         }
         default: {
@@ -95,12 +129,16 @@ export class MessageServer {
     } catch {
       /* empty */
     }
-    this.#server.addListener('listening', () => this.#logger.success('MessageServer listenining on', SOCKET_ADDR));
+    this.#cacheTimeout = setTimeout(() => {
+      this.#cache = [];
+    }, STARTUP_CACHE_MILLIS);
+    this.#server.addListener('listening', () => this.#logger.success('MessageServer listening on', SOCKET_ADDR));
     this.#server.addListener('error', (err) => this.#logger.error('MessageServer error', err));
     this.#server.listen(SOCKET_ADDR);
   }
   stop() {
     this.#server.close();
+    if (this.#cacheTimeout !== null) clearTimeout(this.#cacheTimeout);
     try {
       rmSync(SOCKET_ADDR, { force: true });
     } catch {
@@ -134,10 +172,10 @@ export class MessageClient {
         readline.addListener('line', (data) => {
           this.#logger.debugLow('received', data);
           try {
-            const parsed: MessageWithId = SuperJSON.parse(data);
+            const parsed: Message = SuperJSON.parse(data);
             for (const callback of [
-              ...(this.#subscriptions.get(`${parsed.kind}.${parsed.value}`) ?? []),
-              ...(this.#subscriptions.get(`${parsed.kind}.`) ?? []),
+              ...(this.#subscriptions.get(`${parsed.cat}.${parsed.kind}` as SubscriptionKey) ?? []),
+              ...(this.#subscriptions.get(`${parsed.cat}.`) ?? []),
             ])
               callback(parsed);
           } catch (err) {
@@ -153,18 +191,18 @@ export class MessageClient {
     if (this.#socket) this.#socket.write(messageString);
     else this.#queue.push(messageString);
   }
-  send(...messages: MessageWithId[]): void {
-    for (const message of messages) this.#sendInternalMessage({ kind: 'message', value: message });
+  send(...messages: Message[]): void {
+    for (const message of messages) this.#sendInternalMessage({ kind: 'message', msg: message });
   }
-  subscribe<Filter extends Message | Pick<Message, 'kind'>>(
+  subscribe<Filter extends Pick<Message, 'cat' | 'kind'> | Pick<Message, 'cat'>>(
     filter: Filter,
-    callback: (message: Extract<MessageWithId, Filter>) => void | Promise<void>
+    callback: (message: Extract<Message, Filter>) => void | Promise<void>
   ): Unsubscribe {
-    const key = `${filter.kind}.${'value' in filter ? filter.value : ''}` satisfies SubscriptionKey;
+    const key = `${filter.cat}.${'kind' in filter ? filter.kind : ''}` as SubscriptionKey;
     if (!this.#subscriptions.has(key)) {
       this.#sendInternalMessage({
         kind: 'subscribe',
-        value: key,
+        key: key,
       });
       this.#subscriptions.set(key, new Set([callback as Callback]));
     } else this.#subscriptions.get(key)?.add(callback as Callback);
@@ -174,7 +212,7 @@ export class MessageClient {
       if (set?.size === 0) {
         this.#sendInternalMessage({
           kind: 'unsubscribe',
-          value: key,
+          key: key,
         });
         this.#subscriptions.delete(key);
       }

@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import { cn } from '@/lib/utils';
 
 const base = 'rounded-full shadow transition-colors border-2 font-semibold';
 
@@ -18,7 +19,7 @@ const sizes = {
   sm: 'px-2 text-sm',
   md: 'px-4 py-2',
   lg: 'px-6 py-3',
-};
+} as const;
 
 export type BadgeSize = keyof typeof sizes;
 
@@ -30,7 +31,7 @@ export function Badge({
   ...props
 }: ComponentProps<'span'> & { size?: BadgeSize; variant?: BadgeVariant }) {
   return (
-    <span className={`${base} ${sizes[size]} ${variants[variant]} ${className ?? ''}`} {...props}>
+    <span className={cn(base, sizes[size], variants[variant], className)} {...props}>
       {children}
     </span>
   );

@@ -1,4 +1,5 @@
 import type { ComponentProps, ComponentPropsWithoutRef, ElementType, RefObject } from 'react';
+import { cn } from '@/lib/utils';
 
 const base = 'rounded-full shadow-md transition-colors border-2 inline-flex gap-1 items-center font-semibold';
 
@@ -12,7 +13,7 @@ const variants = {
   unknown:
     'border-transparent bg-unknown hover:bg-unknown/75 active:bg-unknown/50 disabled:bg-unknown/25 disabled:text-foreground/75 text-background',
   muted:
-    'border-foreground/10 bg-background-card hover:bg-background-card/75 active:bg-background-card/50 disabled:bg-background-card/25  disabled:text-foreground/75',
+    'border-foreground/10 bg-background-card hover:bg-background-card/75 active:bg-background-card/50 disabled:bg-background-card/25 disabled:text-foreground/75',
   transparent: 'border-foreground/10',
 } as const;
 
@@ -21,8 +22,8 @@ export type ButtonVariant = keyof typeof variants;
 const sizes = {
   sm: 'px-2 text-sm *:[svg]:size-4',
   md: 'px-4 py-2 *:[svg]:size-4',
-  lg: 'px-6 py-3 *:[svg]:size-6',
-};
+  lg: 'px-4 py-2 *:[svg]:size-6',
+} as const;
 
 export type ButtonSize = keyof typeof sizes;
 
@@ -36,7 +37,7 @@ export function Button<T extends ElementType = 'button'>({
 }: ComponentPropsWithoutRef<T> & { size?: ButtonSize; variant?: ButtonVariant; as?: T; ref?: RefObject<T> }) {
   const Component = as ?? 'button';
   return (
-    <Component className={`${base} ${sizes[size]} ${variants[variant]} ${className ?? ''}`} {...props}>
+    <Component className={cn(base, sizes[size], variants[variant], className)} {...props}>
       {children}
     </Component>
   );
@@ -45,7 +46,10 @@ export function Button<T extends ElementType = 'button'>({
 export function ButtonGroup({ className, children, ...props }: ComponentProps<'div'>) {
   return (
     <div
-      className={`*:rounded-none *:first:rounded-s-full *:last:rounded-e-full *:border-s-0 *:first:border-s-2 ${className ?? ''}`}
+      className={cn(
+        '*:not-first:border-s *:not-last:border-e *:rounded-none *:first:rounded-s-full *:last:rounded-e-full',
+        className
+      )}
       {...props}
     >
       {children}

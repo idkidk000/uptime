@@ -1,9 +1,10 @@
-import { type SVGProps, useLayoutEffect, useRef, useState } from 'react';
-import { RelativeDate } from '@/components/relative-date';
-import { config } from '@/lib/config';
-import { type MinifiedHistory, ServiceState } from '@/lib/drizzle/schema';
+/** biome-ignore-all lint/a11y/noSvgWithoutTitle: later */
 
-const defaultBounds = { width: 100, height: 10 };
+import { useLayoutEffect, useRef, useState } from 'react';
+import { RelativeDate } from '@/components/relative-date';
+import { type MinifiedHistory, ServiceState } from '@/lib/drizzle/schema';
+import { settings } from '@/lib/settings';
+import { cn } from '@/lib/utils';
 
 const stateClassNames: Record<ServiceState, string> = {
   [ServiceState.Up]: 'stroke-up fill-up/65',
@@ -12,80 +13,79 @@ const stateClassNames: Record<ServiceState, string> = {
   [ServiceState.Paused]: 'stroke-paused fill-paused/65',
 };
 
-// FIXME: this has pop-in because it has to dynamically resize the svg. try to factor it out
-// FIXME: assign most common state classes to top level and override invididual rects
+const viewboxWidth = 40 * settings.historySummaryItems;
+const viewboxHeight = 100;
+const radius = 10;
+
 export function BarGraph({
-  className,
   history,
-  role = 'img',
-  strokeWidth = 2,
-  showLabels,
-  radius = 0.01,
   barWidth = 0.5,
-  ...props
+  stokeWidth = 2,
+  className,
+  withLabels,
 }: {
   history: MinifiedHistory | undefined;
-  showLabels?: boolean;
-  radius?: number;
   barWidth?: number;
-} & Omit<SVGProps<SVGSVGElement>, 'width' | 'height' | 'viewBox'>) {
-  const [bounds, setBounds] = useState({ ...defaultBounds });
+  stokeWidth?: number;
+  className?: string;
+  withLabels?: boolean;
+}) {
   const ref = useRef<SVGSVGElement>(null);
-
-  const numStrokeWidth = Number(strokeWidth);
-  const innerWidth = bounds.width - numStrokeWidth * 2;
-  const innerHeight = bounds.height - numStrokeWidth * 2;
-  const cellWidth = innerWidth / config.historySummaryItems;
-  const cellInnerWidth = cellWidth * barWidth;
+  const [boundsHeight, setBoundsHeight] = useState(viewboxHeight);
   const maxLatency =
     history?.items
       ?.filter((item): item is Required<MinifiedHistory['items'][number]> => typeof item.latency === 'number')
       .reduce((acc, item) => Math.max(acc, item.latency), 0) ?? 0;
+  const mappedStrokeWidth = (stokeWidth * viewboxHeight) / boundsHeight;
+  const mostCommonState = (history?.items
+    .reduce<number[]>((acc, item) => {
+      acc[item.state] = (acc[item.state] ?? 0) + 1;
+      return acc;
+    }, [])
+    .map((count, state) => ({ count, state }))
+    .toSorted((a, b) => b.count - a.count)
+    .at(0)?.state ?? ServiceState.Up) as ServiceState;
 
+  // need to calculate stroke width from the client size
+  //FIXME: test whether there's pop-in. the mapped stroke width is used in the viewBox ...but mapped stroke width is from a layout effect ...but it probably needs to render before boundingClientRect is correct
   useLayoutEffect(() => {
     if (!ref.current) return;
     function update() {
       if (!ref.current) return;
-      const rect = ref.current.getBoundingClientRect();
-      setBounds({ width: rect.width, height: rect.height });
+      setBoundsHeight(ref.current.getBoundingClientRect().height);
     }
     const observer = new ResizeObserver(update);
     observer.observe(ref.current);
+    update();
     return () => observer.disconnect();
   }, []);
 
   return (
-    <div className={`flex flex-col ${className ?? 'w-full'}`}>
+    <div className={cn('flex flex-col w-full', className)}>
       <svg
-        viewBox={`0 0 ${Math.round(bounds.width)} ${Math.round(bounds.height)}`}
-        role={role}
-        strokeWidth={strokeWidth}
+        viewBox={`${-mappedStrokeWidth} ${-mappedStrokeWidth} ${viewboxWidth + mappedStrokeWidth * 2} ${viewboxHeight + mappedStrokeWidth * 2}`}
+        preserveAspectRatio='xMidYMid meet'
+        strokeWidth={mappedStrokeWidth}
         ref={ref}
-        {...props}
+        className={stateClassNames[mostCommonState]}
       >
         {history?.items.map((item, i) => (
           <rect
             key={item.id}
-            x={Math.round(
-              cellWidth * (config.historySummaryItems - history.items.length + i) +
-                numStrokeWidth +
-                (cellWidth - cellInnerWidth) * 0.5
-            )}
-            width={Math.round(cellInnerWidth)}
-            y={Math.round(
-              innerHeight -
-                (typeof item.latency === 'number' ? (item.latency / maxLatency) * innerHeight : innerHeight) +
-                numStrokeWidth
-            )}
+            width={Math.round((viewboxWidth / settings.historySummaryItems) * barWidth)}
             height={Math.round(
-              typeof item.latency === 'number' ? (item.latency / maxLatency) * innerHeight : innerHeight
+              typeof item.latency === 'undefined' ? viewboxHeight : (viewboxHeight / maxLatency) * item.latency
             )}
-            rx={Math.round(innerWidth * radius)}
-            className={stateClassNames[item.state]}
-          ></rect>
+            x={Math.round((viewboxWidth / settings.historySummaryItems) * i)}
+            y={Math.round(
+              typeof item.latency === 'undefined' ? 0 : viewboxHeight - (viewboxHeight / maxLatency) * item.latency
+            )}
+            rx={radius}
+            className={item.state === mostCommonState ? undefined : stateClassNames[item.state]}
+          />
         ))}
       </svg>
-      {showLabels && history && (
+      {withLabels && history && (
         <div className='flex justify-between'>
           <RelativeDate date={history.from} />
           <RelativeDate date={history.to} />

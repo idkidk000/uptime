@@ -1,57 +1,64 @@
 'use client';
 
 import { Copy, Pause, Play, ShieldQuestion, SquarePen, Trash } from 'lucide-react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback } from 'react';
 import { clearServiceHistory } from '@/actions/history';
-import { checkService, togglePaused } from '@/actions/service';
+import { checkService, deleteService, togglePaused } from '@/actions/service';
 import { BarGraph } from '@/components/bar-graph';
 import { Button, ButtonGroup } from '@/components/button';
 import { Card } from '@/components/card';
+import { ConfirmModal, ConfirmModalTrigger } from '@/components/confirm-modal';
 import { HistoryCard } from '@/components/history-card';
+import { PageWrapper } from '@/components/page-wrapper';
 import { StateBadge } from '@/components/state-badge';
 import { useServiceWithState } from '@/hooks/app-queries';
 
-export default function Home() {
+export default function DetailPage() {
   const { id } = useParams();
-  const service = useServiceWithState(Number(id));
+  const numId = Number(id);
+  const service = useServiceWithState(numId);
 
-  const handlePausedClick = useCallback(() => togglePaused(Number(id)), [id]);
-  const handleClearHistoryClick = useCallback(() => clearServiceHistory(Number(id)), [id]);
+  const handlePausedClick = useCallback(() => togglePaused(numId), [numId]);
+  const handleClearHistoryClick = useCallback(() => clearServiceHistory(numId), [numId]);
+  const handleCheckClick = useCallback(() => checkService(numId), [numId]);
+  const handleDeleteClick = useCallback(() => deleteService(numId), [numId]);
 
   if (!service) return <div className='text-down text-2xl'>Could not find a service with id {JSON.stringify(id)}</div>;
 
   return (
-    <section className='flex flex-col gap-4'>
-      <h2 className='text-2xl font-semibold'>{service.name}</h2>
+    <PageWrapper pageTitle={service.name}>
       <a className='font-semibold text-up' href={service.params.url} target='_blank'>
         {service.params.url}
       </a>
-      <ButtonGroup>
-        <Button variant='muted' onClick={handlePausedClick}>
-          {service.active ? <Pause /> : <Play />}
-          {service.active ? 'Pause' : 'Resume'}
-        </Button>
-        <Button variant='muted'>
-          <SquarePen />
-          Edit
-        </Button>
-        <Button variant='muted'>
-          <Copy />
-          Clone
-        </Button>
-        <Button variant='down'>
-          <Trash />
-          Delete
-        </Button>
-        <Button variant='muted' onClick={() => checkService(service.id)}>
-          <ShieldQuestion />
-          Check
-        </Button>
-      </ButtonGroup>
+      <ConfirmModal message={`Are you sure you want to delete ${service.name}?`} onConfirm={handleDeleteClick}>
+        <ButtonGroup>
+          <Button variant='up' onClick={handleCheckClick}>
+            <ShieldQuestion />
+            Check
+          </Button>
+          <Button variant='muted' onClick={handlePausedClick}>
+            {service.active ? <Pause /> : <Play />}
+            {service.active ? 'Pause' : 'Resume'}
+          </Button>
+          <Button variant='muted' as={Link} href={`/edit/${id}`}>
+            <SquarePen />
+            Edit
+          </Button>
+          <Button variant='muted' as={Link} href={`/clone/${id}`}>
+            <Copy />
+            Clone
+          </Button>
+          <ConfirmModalTrigger variant='down'>
+            <Trash />
+            Delete
+          </ConfirmModalTrigger>
+        </ButtonGroup>
+      </ConfirmModal>
       <Card className='flex flex-col gap-2'>
         <div className='flex gap-4 justify-between items-start'>
-          <BarGraph history={service.state?.miniHistory} showLabels />
+          <BarGraph history={service.state?.miniHistory} withLabels />
           <StateBadge state={service.state?.value} />
         </div>
         <span className='text-foreground/75'>{`Check every ${service.checkSeconds} seconds`}</span>
@@ -78,12 +85,17 @@ export default function Home() {
           <span>{`${service.state?.uptime30d ?? '-'} %`}</span>
         </div>
       </Card>
-      <HistoryCard serviceId={Number(id)}>
-        <Button variant='down' className='ms-auto' onClick={handleClearHistoryClick}>
-          <Trash />
-          Clear Data
-        </Button>
+      <HistoryCard serviceId={numId}>
+        <ConfirmModal
+          message={`Are you sure you want to delete history for ${service.name}?`}
+          onConfirm={handleClearHistoryClick}
+        >
+          <ConfirmModalTrigger variant='down' className='ms-auto'>
+            <Trash />
+            Clear Data
+          </ConfirmModalTrigger>
+        </ConfirmModal>
       </HistoryCard>
-    </section>
+    </PageWrapper>
   );
 }

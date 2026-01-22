@@ -1,7 +1,6 @@
 import { DOMParser } from '@xmldom/xmldom';
 import jsonata from 'jsonata';
 import xpath from 'xpath';
-import { config } from '@/lib/config';
 import {
   type BaseMonitorParams,
   type BaseMonitorResponseDown,
@@ -9,7 +8,9 @@ import {
   Monitor,
   MonitorDownReason,
 } from '@/lib/monitor';
+import { settings } from '@/lib/settings';
 import { parseRegex, roundTo } from '@/lib/utils';
+import { name, version } from '@/package.json';
 
 export interface HttpMonitorParams extends BaseMonitorParams {
   kind: 'http';
@@ -46,19 +47,23 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
   async check(): Promise<HttpMonitorResponse> {
     try {
       const controller = new AbortController();
-      // getting timeouts to work reliably with fetch is a nuisance
       const { promise, reject, resolve } = Promise.withResolvers<never>();
       const timeout = setTimeout(
         () => {
           controller.abort();
           reject('timeout');
         },
-        (this.params.upWhen.latency ?? config.defaultMonitorTimeout) + 100
+        (this.params.upWhen.latency ?? settings.defaultMonitorTimeout) + 100
       );
       const started = performance.now();
+      // fetch will throw on abort signal, though it may not be immediate (i.e. if the remote does not respond at all)
+      // Promise.race works around this and leaves the fetch dangling until it hits some unknown timeout
       const response = await Promise.race([
-        // fetch will throw on abort signal. outer try/catch will catch it
-        fetch(this.params.url, { headers: this.params.headers, signal: controller.signal }),
+        fetch(this.params.url, {
+          headers: { 'User-Agent': `${name} ${version}`, ...this.params.headers },
+          signal: controller.signal,
+          keepalive: false,
+        }),
         promise,
       ]);
       const latency = roundTo(performance.now() - started, 3);

@@ -134,7 +134,7 @@ export interface MinifiedHistory {
 }
 
 export const stateTable = sqliteTable('state', {
-  serviceId: integer()
+  id: integer()
     .primaryKey()
     .notNull()
     .references(() => serviceTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),

@@ -16,10 +16,19 @@ export async function getServices(serviceIds?: number[]): Promise<ServiceSelect[
 }
 
 export async function checkService(id: number): Promise<void> {
-  messageClient.send({ kind: 'action', value: 'test-service', id });
+  messageClient.send({ cat: 'action', kind: 'test-service', id });
 }
 
 export async function togglePaused(id: number): Promise<void> {
   await db.update(serviceTable).set({ active: sql`iif(active, 0, 1)` }).where(eq(serviceTable.id, id));
-  messageClient.send({ kind: 'invalidation', value: 'service-config', id });
+  messageClient.send({ cat: 'invalidation', kind: 'service-config', id });
+}
+
+export async function deleteService(id: number): Promise<void> {
+  await db.delete(serviceTable).where(eq(serviceTable.id, id));
+  messageClient.send(
+    { cat: 'invalidation', kind: 'service-config', id },
+    { cat: 'invalidation', kind: 'service-history', id },
+    { cat: 'invalidation', kind: 'service-state', id }
+  );
 }

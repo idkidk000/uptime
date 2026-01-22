@@ -10,15 +10,17 @@ export async function getServiceStates(serviceIds?: number[]): Promise<StateSele
   return await db
     .select()
     .from(stateTable)
-    .where(serviceIds ? inArray(stateTable.serviceId, serviceIds) : undefined);
+    .where(serviceIds ? inArray(stateTable.id, serviceIds) : undefined);
 }
 
+export type StateCounts = Record<ServiceState | -1, number>;
+
 // FIXME: this is horrendous
-export async function getStateCounts(): Promise<Record<ServiceState | -1, number>> {
+export async function getStateCounts(): Promise<StateCounts> {
   const counts = await db
     .select({ ...pick(getTableColumns(stateTable), ['value']), count: count() })
     .from(serviceTable)
-    .leftJoin(stateTable, eq(stateTable.serviceId, serviceTable.id))
+    .leftJoin(stateTable, eq(stateTable.id, serviceTable.id))
     .groupBy(stateTable.value);
   const result = Object.fromEntries([...enumEntries(ServiceState).map(([, val]) => [val, 0]), [-1, 0]]) as Record<
     ServiceState | -1,

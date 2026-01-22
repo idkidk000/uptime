@@ -1,4 +1,11 @@
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
 const RE_PARSE = /\/(?<expression>.*)\/(?<flags>[a-z]+)?/;
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export function parseRegex(value: string): RegExp {
   const parsed = RE_PARSE.exec(value);
@@ -72,4 +79,19 @@ export function typedEntries<Item extends object>(object: Item) {
 
 export function enumEntries<Enum extends Record<string, number | bigint | boolean | string>>(obj: Enum) {
   return Object.entries(obj).filter(([, val]) => typeof val !== 'string') as [keyof Enum, Enum[keyof Enum]][];
+}
+
+export function pascalToSentenceCase(value: string): string {
+  return value
+    .split(/([A-Z][^A-Z]+)/)
+    .filter((token) => token.length)
+    .map((token, i) => (i > 0 && !/[A-Z]/.exec(token[token.length - 1]) ? token.toLocaleLowerCase() : token))
+    .join(' ');
+}
+
+export function pascalToTitleCase(value: string): string {
+  return value
+    .split(/([A-Z][^A-Z]+)/)
+    .filter((token) => token.length)
+    .join(' ');
 }

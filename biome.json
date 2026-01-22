@@ -14,7 +14,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build", "!samples"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!samples"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -37,14 +44,6 @@
     },
     "enabled": true,
     "rules": {
-      "a11y": {
-        "noStaticElementInteractions": "off",
-        "useFocusableInteractive": "off",
-        "useKeyWithClickEvents": "off"
-      },
-      "complexity": {
-        "noStaticOnlyClass": "off"
-      },
       "correctness": {
         "noUnusedImports": {
           "fix": "safe",
@@ -54,9 +53,18 @@
         "useExhaustiveDependencies": {
           "level": "warn",
           "options": {
+            "hooks": [
+              {
+                "name": "useModal",
+                "stableResult": true
+              }
+            ],
             "reportMissingDependenciesArray": true
           }
         }
+      },
+      "performance": {
+        "noImgElement": "off"
       },
       "recommended": true,
       "suspicious": {
