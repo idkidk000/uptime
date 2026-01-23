@@ -4,6 +4,7 @@ import { createInterface } from 'node:readline';
 import SuperJSON from 'superjson';
 import type { ServiceState } from '@/lib/drizzle/schema';
 import { Logger } from '@/lib/logger';
+import type { MonitorDownReason } from '@/lib/monitor';
 
 const SOCKET_ADDR = '.messaging.sock';
 // only needs to be this high in dev
@@ -34,11 +35,20 @@ type Message =
       cat: 'toast';
       kind: 'message';
       message: string;
+    }
+  | {
+      cat: 'state';
+      kind: ServiceState;
+      id: number;
+      name: string;
+      reason?: MonitorDownReason;
+      message: string;
     };
+
 // FIXME: the generated type is correct but the def is horrible and keys have to be asserted, which defeats the point of this. may need to refactor Message
 type SubscriptionKey = Message extends infer M
   ? M extends { cat: infer C extends string }
-    ? M extends { kind: infer K extends string }
+    ? M extends { kind: infer K extends string | number }
       ? `${C}.${K}` | `${C}.`
       : never
     : never

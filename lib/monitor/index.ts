@@ -1,10 +1,12 @@
+import type { DnsMonitorParams, DnsMonitorResponse } from '@/lib/monitor/dns';
 import type { HttpMonitorParams, HttpMonitorResponse } from '@/lib/monitor/http';
-
-// TODO: this may have to be a plain string
-export type MonitorKind = 'http';
+import type { PingMonitorParams, PingMonitorResponse } from '@/lib/monitor/ping';
+import type { SslMonitorParams, SslMonitorResponse } from '@/lib/monitor/ssl';
+import type { TcpMonitorParams, TcpMonitorResponse } from '@/lib/monitor/tcp';
+import { enumToObject } from '@/lib/utils';
 
 interface MonitorKindTag {
-  kind: MonitorKind;
+  kind: string;
 }
 
 export interface BaseMonitorUpWhen {
@@ -13,25 +15,33 @@ export interface BaseMonitorUpWhen {
   };
 }
 
-export interface BaseMonitorParams extends MonitorKindTag, BaseMonitorUpWhen {}
+export interface BaseMonitorParams extends MonitorKindTag, BaseMonitorUpWhen {
+  address: string;
+}
 
 export interface BaseMonitorResponseUp extends MonitorKindTag {
   ok: true;
   latency: number;
+  message: string;
 }
 
 export enum MonitorDownReason {
   Timeout,
   InvalidStatus,
   QueryNotSatisfied,
+  InvalidParams,
+  InvalidResponse,
+  PacketLoss,
   // other unhandled
   Error = 63,
 }
 
+export const monitorDownReasons = enumToObject(MonitorDownReason);
+
 export interface BaseMonitorResponseDown extends MonitorKindTag {
   ok: false;
   reason: MonitorDownReason;
-  result: unknown;
+  message: string;
 }
 
 export type BaseMonitorResponse = BaseMonitorResponseUp | BaseMonitorResponseDown;
@@ -45,6 +55,15 @@ export abstract class Monitor<
   abstract check(): Promise<Response>;
 }
 
-export type MonitorParams = HttpMonitorParams;
-
-export type MonitorResponse = HttpMonitorResponse;
+export type MonitorParams =
+  | HttpMonitorParams
+  | DnsMonitorParams
+  | PingMonitorParams
+  | TcpMonitorParams
+  | SslMonitorParams;
+export type MonitorResponse =
+  | HttpMonitorResponse
+  | DnsMonitorResponse
+  | PingMonitorResponse
+  | TcpMonitorResponse
+  | SslMonitorResponse;

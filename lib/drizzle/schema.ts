@@ -1,18 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, real, sqliteTable, sqliteView, text } from 'drizzle-orm/sqlite-core';
 import type { MonitorParams, MonitorResponse } from '@/lib/monitor';
+import type { NotifierParams } from '@/lib/notifier';
 import { enumToObject } from '@/lib/utils';
-
-// TODO: notifiers
-interface NotifierParams {
-  kind: 'gotify';
-  url: string;
-  token: string;
-  priority?: {
-    up: number;
-    down: number;
-  };
-}
 
 export enum ServiceState {
   Up,
@@ -65,6 +55,7 @@ export type GroupSelect = GroupTable['$inferSelect'];
 
 // GroupToNotifierTable
 
+// TODO: may want to enable this per service instead
 export const groupToNotifierTable = sqliteTable(
   'groupToNotifier',
   {
@@ -198,8 +189,8 @@ export const historySummaryView = sqliteView('historySummary', {
       select
         h.*,
         s.name,
-        lag(state) over win as prevState,
-        lag(result) over win as prevResult
+        lag(h.state) over win as prevState,
+        lag(h.result) over win as prevResult
       from history as h
       inner join service as s on s.id = h.serviceId
       window win as (
@@ -213,6 +204,7 @@ export const historySummaryView = sqliteView('historySummary', {
         result is not null and prevResult is not null and (
           json_extract(result, '$.kind') != json_extract(prevResult, '$.kind')
           or json_extract(result, '$.reason') != json_extract(prevResult, '$.reason')
+          or json_extract(result, '$.message') != json_extract(prevResult, '$.message')
         )
       )
     order by createdAt desc`

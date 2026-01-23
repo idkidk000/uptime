@@ -1,20 +1,13 @@
 import { DOMParser } from '@xmldom/xmldom';
 import jsonata from 'jsonata';
 import xpath from 'xpath';
-import {
-  type BaseMonitorParams,
-  type BaseMonitorResponseDown,
-  type BaseMonitorResponseUp,
-  Monitor,
-  MonitorDownReason,
-} from '@/lib/monitor';
+import { type BaseMonitorParams, type BaseMonitorResponse, Monitor, MonitorDownReason } from '@/lib/monitor';
 import { settings } from '@/lib/settings';
 import { parseRegex, roundTo } from '@/lib/utils';
 import { name, version } from '@/package.json';
 
 export interface HttpMonitorParams extends BaseMonitorParams {
   kind: 'http';
-  url: string;
   headers?: Record<string, string>;
   upWhen: {
     statusCode?: number;
@@ -33,15 +26,9 @@ export interface HttpMonitorParams extends BaseMonitorParams {
   };
 }
 
-interface HttpMonitorResponseUp extends BaseMonitorResponseUp {
+export type HttpMonitorResponse = BaseMonitorResponse & {
   kind: 'http';
-}
-
-interface HttpMonitorResponseDown extends BaseMonitorResponseDown {
-  kind: 'http';
-}
-
-export type HttpMonitorResponse = HttpMonitorResponseUp | HttpMonitorResponseDown;
+};
 
 export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse> {
   async check(): Promise<HttpMonitorResponse> {
@@ -59,7 +46,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
       // fetch will throw on abort signal, though it may not be immediate (i.e. if the remote does not respond at all)
       // Promise.race works around this and leaves the fetch dangling until it hits some unknown timeout
       const response = await Promise.race([
-        fetch(this.params.url, {
+        fetch(this.params.address, {
           headers: { 'User-Agent': `${name} ${version}`, ...this.params.headers },
           signal: controller.signal,
           keepalive: false,
@@ -74,14 +61,14 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
           kind: 'http',
           ok: false,
           reason: MonitorDownReason.InvalidStatus,
-          result: response.status,
+          message: `HTTP status ${response.status}`,
         };
       if (typeof this.params.upWhen.latency === 'number' && latency > this.params.upWhen.latency)
         return {
           kind: 'http',
           ok: false,
           reason: MonitorDownReason.Timeout,
-          result: latency,
+          message: `Connected in ${latency}ms`,
         };
       if (this.params.upWhen.query) {
         switch (this.params.upWhen.query.kind) {
@@ -94,7 +81,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
                 kind: 'http',
                 ok: false,
                 reason: MonitorDownReason.QueryNotSatisfied,
-                result,
+                message: `Expected ${this.params.upWhen.query.expected} but found ${result}`,
               };
             }
             break;
@@ -108,7 +95,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
                 kind: 'http',
                 ok: false,
                 reason: MonitorDownReason.QueryNotSatisfied,
-                result: rawResult,
+                message: `Expected ${this.params.upWhen.query.expected} but found ${rawResult}`,
               };
             break;
           }
@@ -129,7 +116,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
                 kind: 'http',
                 ok: false,
                 reason: MonitorDownReason.QueryNotSatisfied,
-                result,
+                message: `Expected ${this.params.upWhen.query.expected} but found ${result}`,
               };
             }
             break;
@@ -143,11 +130,12 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
         kind: 'http',
         ok: true,
         latency,
+        message: 'All checks were successful',
       };
     } catch (err) {
       if (Error.isError(err) && err.name === 'AbortError')
-        return { kind: 'http', ok: false, reason: MonitorDownReason.Timeout, result: err.message };
-      return { kind: 'http', ok: false, reason: MonitorDownReason.Error, result: String(err) };
+        return { kind: 'http', ok: false, reason: MonitorDownReason.Timeout, message: err.message };
+      return { kind: 'http', ok: false, reason: MonitorDownReason.Error, message: String(err) };
     }
   }
 }

@@ -8,10 +8,8 @@ import { Card } from '@/components/card';
 import { StateBadge } from '@/components/state-badge';
 import { useServiceHistory } from '@/hooks/app-queries';
 import { toLocalIso } from '@/lib/date';
-import { MonitorDownReason } from '@/lib/monitor';
-import { cn, enumToObject, pascalToSentenceCase } from '@/lib/utils';
-
-const reasonNames = enumToObject(MonitorDownReason);
+import { monitorDownReasons } from '@/lib/monitor';
+import { cn, pascalToSentenceCase } from '@/lib/utils';
 
 export function HistoryCard({
   serviceId,
@@ -34,7 +32,7 @@ export function HistoryCard({
     <Card className={cn('flex flex-col gap-4', className)} {...props}>
       {children}
       <div
-        className={`grid gap-4 ${serviceId === null ? 'grid-cols-[auto_auto_auto_1fr]' : 'grid-cols-[auto_auto_1fr]'}`}
+        className={`grid gap-4 items-start ${serviceId === null ? 'grid-cols-[auto_auto_auto_1fr]' : 'grid-cols-[auto_auto_1fr]'}`}
       >
         <div className='contents font-semibold'>
           {serviceId === null && <h4>Name</h4>}
@@ -52,7 +50,7 @@ export function HistoryCard({
                 ? 'Paused'
                 : item.result.ok
                   ? 'OK'
-                  : `${pascalToSentenceCase(reasonNames[item.result.reason])}: ${item.result.result}`}
+                  : `${pascalToSentenceCase(monitorDownReasons[item.result.reason])}: ${item.result.message}`}
             </span>
           </div>
         ))}

@@ -23,6 +23,7 @@ export const metadata: Metadata = {
   description,
 };
 
+// TODO: validate that next definitely doesn't compile the data into the source. it seems like something next would do
 const groups = await getGroups();
 const services = await getServices();
 const states = await getServiceStates();

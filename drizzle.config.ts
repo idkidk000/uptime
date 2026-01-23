@@ -1,7 +1,8 @@
 import 'dotenv/config';
+import { env } from 'node:process';
 import { defineConfig } from 'drizzle-kit';
 
-const url = process.env.DB_FILE_NAME;
+const url = env.DB_FILE_NAME;
 
 if (typeof url === 'undefined') throw new Error('DB_FILE_NAME env var is undefined');
 

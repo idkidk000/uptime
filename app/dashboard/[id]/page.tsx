@@ -29,9 +29,11 @@ export default function DetailPage() {
 
   return (
     <PageWrapper pageTitle={service.name}>
-      <a className='font-semibold text-up' href={service.params.url} target='_blank'>
-        {service.params.url}
-      </a>
+      {(service.params.kind === 'http' && (
+        <a className='font-semibold text-up' href={service.params.address} target='_blank'>
+          {service.params.address}
+        </a>
+      )) || <span className='font-semibold text-up'>{`${service.params.kind}: ${service.params.address}`}</span>}
       <ConfirmModal message={`Are you sure you want to delete ${service.name}?`} onConfirm={handleDeleteClick}>
         <ButtonGroup>
           <Button variant='up' onClick={handleCheckClick}>
@@ -63,7 +65,7 @@ export default function DetailPage() {
         </div>
         <span className='text-foreground/75'>{`Check every ${service.checkSeconds} seconds`}</span>
       </Card>
-      <Card className='grid grid-cols-4 text-center'>
+      <Card className='grid grid-cols-4 text-center gap-2'>
         <div className='flex flex-col gap-2'>
           <h4 className='text-xl'>Response</h4>
           <span className='text-xs text-foreground/50'>(Current)</span>

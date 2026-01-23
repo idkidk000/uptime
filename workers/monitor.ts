@@ -15,7 +15,11 @@ import {
 import { Logger } from '@/lib/logger';
 import { MessageClient } from '@/lib/messaging';
 import type { BaseMonitorParams, Monitor, MonitorResponse } from '@/lib/monitor';
+import { DnsMonitor } from '@/lib/monitor/dns';
 import { HttpMonitor } from '@/lib/monitor/http';
+import { PingMonitor } from '@/lib/monitor/ping';
+import { SslMonitor } from '@/lib/monitor/ssl';
+import { TcpMonitor } from '@/lib/monitor/tcp';
 import { settings } from '@/lib/settings';
 import { concurrently, pick, roundTo } from '@/lib/utils';
 
@@ -61,9 +65,20 @@ async function getUptime(
 }
 
 function getMonitor(service: ServiceWithState): Monitor<BaseMonitorParams, MonitorResponse> {
-  const monitor = service.params.kind === 'http' ? new HttpMonitor(service.params) : null;
-  if (monitor === null) throw new Error(`unhandled monitor kind ${service.params.kind} with id ${service.id}`);
-  return monitor;
+  switch (service.params.kind) {
+    case 'http':
+      return new HttpMonitor(service.params);
+    case 'dns':
+      return new DnsMonitor(service.params);
+    case 'ping':
+      return new PingMonitor(service.params);
+    case 'ssl':
+      return new SslMonitor(service.params);
+    case 'tcp':
+      return new TcpMonitor(service.params);
+    default:
+      throw new Error(`unhandled monitor kind ${(service.params as { kind: string }).kind} with id ${service.id}`);
+  }
 }
 
 async function checkService(service: ServiceWithState): Promise<void> {
@@ -157,6 +172,16 @@ async function checkService(service: ServiceWithState): Promise<void> {
       (service.state.current && 'reason' in service.state.current && service.state.current.reason)
   )
     messageClient.send({ cat: 'invalidation', kind: 'service-history', id: service.id });
+  if (updated.value !== service.state?.value)
+    messageClient.send({
+      cat: 'state',
+      kind: updated.value,
+      id: service.id,
+      name: service.name,
+      // FIXME: kind of jank
+      message: updated.current?.message ?? 'Monitor is paused',
+      ...(updated.current && 'reason' in updated.current ? { reason: updated.current.reason } : {}),
+    });
 }
 
 export async function checkServices() {

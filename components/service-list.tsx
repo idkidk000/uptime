@@ -103,10 +103,12 @@ export function ServiceList() {
               State
               <ChevronDown />
             </PopoverTrigger>
-            <PopoverContent className='flex flex-col gap-2'>
-              {enumEntries(ServiceState).map(([label, state]) => (
-                <FilterStateButton key={state} filter={filter} label={label} setFilter={setFilter} state={state} />
-              ))}
+            <PopoverContent>
+              <div className='flex flex-col gap-2'>
+                {enumEntries(ServiceState).map(([label, state]) => (
+                  <FilterStateButton key={state} filter={filter} label={label} setFilter={setFilter} state={state} />
+                ))}
+              </div>
             </PopoverContent>
           </Popover>
           <Popover>
@@ -114,10 +116,12 @@ export function ServiceList() {
               Active
               <ChevronDown />
             </PopoverTrigger>
-            <PopoverContent className='flex flex-col gap-2'>
-              {[true, false].map((active) => (
-                <FilterActiveButton key={Number(active)} active={active} filter={filter} setFilter={setFilter} />
-              ))}
+            <PopoverContent>
+              <div className='flex flex-col gap-2'>
+                {[true, false].map((active) => (
+                  <FilterActiveButton key={Number(active)} active={active} filter={filter} setFilter={setFilter} />
+                ))}
+              </div>
             </PopoverContent>
           </Popover>
           <Button variant='muted'>Tags</Button>
