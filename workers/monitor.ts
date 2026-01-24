@@ -1,88 +1,60 @@
-import type { ResultSet } from '@libsql/client';
-import { desc, eq, getTableColumns, isNull, lte, or, sql, type TableRelationalConfig } from 'drizzle-orm';
-import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
+import { eq, getTableColumns, isNull, lte, or } from 'drizzle-orm';
 import { dateAdd, dateDiff } from '@/lib/date';
 import { db } from '@/lib/drizzle';
 import {
+  getLatencySql,
+  getMiniHistory,
+  getUptimeSql,
+  type LatencySelect,
+  type UptimeSelect,
+} from '@/lib/drizzle/queries';
+import {
   historyTable,
-  type MinifiedHistory,
   ServiceState,
   type ServiceWithState,
   type StateInsert,
   serviceTable,
   stateTable,
 } from '@/lib/drizzle/schema';
-import { Logger } from '@/lib/logger';
+import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 import type { BaseMonitorParams, Monitor, MonitorResponse } from '@/lib/monitor';
 import { DnsMonitor } from '@/lib/monitor/dns';
+import { DomainMonitor } from '@/lib/monitor/domain';
 import { HttpMonitor } from '@/lib/monitor/http';
 import { PingMonitor } from '@/lib/monitor/ping';
 import { SslMonitor } from '@/lib/monitor/ssl';
 import { TcpMonitor } from '@/lib/monitor/tcp';
-import { settings } from '@/lib/settings';
-import { concurrently, pick, roundTo } from '@/lib/utils';
+import { SettingsClient } from '@/lib/settings';
+import { concurrently } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
-const logger = new Logger(import.meta.url);
+const settingsClient = new SettingsClient(import.meta.url, await SettingsClient.getSettings(), messageClient);
+const logger = new ServerLogger(import.meta.url);
 let interval: NodeJS.Timeout | null = null;
 const POLL_MILLIS = 60_000;
 const STARTUP_DELAY_MILLIS = 5_000;
 
-// i'm sure this generic definitely won't break on every drizzle update
-async function getUptime(
-  tx: SQLiteTransaction<'async', ResultSet, Record<string, unknown>, Record<string, TableRelationalConfig>>,
-  serviceId: number,
-  days: number
-): Promise<number> {
-  // parametrisation breaks `unixepoch('now', '${-days} day')`
-  const daysParam = `-${days} day`;
-  const raw: { state: ServiceState; seconds: number }[] = await tx.all(
-    sql`
-    select
-      state,
-      sum(nextCreatedAt - createdAt) as seconds
-      from (
-        select
-          createdAt,
-          state,
-          coalesce(lead(createdAt) over win, unixepoch()) as nextCreatedAt
-        from history
-        where
-          serviceId = ${serviceId}
-          and createdAt >= unixepoch('now', ${daysParam})
-        window win as (
-          partition by serviceId
-          order by createdAt
-        )
-      )
-      group by state`
-  );
-  return (
-    (100 * (raw.find((item) => item.state === ServiceState.Up)?.seconds ?? 0)) /
-    (raw.filter((item) => item.state !== ServiceState.Paused).reduce((acc, item) => acc + item.seconds, 0) || 1)
-  );
-}
-
 function getMonitor(service: ServiceWithState): Monitor<BaseMonitorParams, MonitorResponse> {
   switch (service.params.kind) {
     case 'http':
-      return new HttpMonitor(service.params);
+      return new HttpMonitor(service.params, settingsClient);
     case 'dns':
-      return new DnsMonitor(service.params);
+      return new DnsMonitor(service.params, settingsClient);
     case 'ping':
-      return new PingMonitor(service.params);
+      return new PingMonitor(service.params, settingsClient);
     case 'ssl':
-      return new SslMonitor(service.params);
+      return new SslMonitor(service.params, settingsClient);
     case 'tcp':
-      return new TcpMonitor(service.params);
+      return new TcpMonitor(service.params, settingsClient);
+    case 'domain':
+      return new DomainMonitor(service.params, settingsClient);
     default:
       throw new Error(`unhandled monitor kind ${(service.params as { kind: string }).kind} with id ${service.id}`);
   }
 }
 
 async function checkService(service: ServiceWithState): Promise<void> {
-  // logger.debugLow('checkService', service);
   const current = service.active ? await getMonitor(service).check() : null;
   const failures = current?.ok ? 0 : (service.state?.failures ?? 0) + (current === null ? 0 : 1);
   const value =
@@ -104,56 +76,24 @@ async function checkService(service: ServiceWithState): Promise<void> {
       )
     : dateAdd({ seconds: service.checkSeconds });
   logger.debugLow('nextCheckAt', { prev: service.state?.nextCheckAt, sec: service.checkSeconds, next: nextCheckAt });
+  const isStateChange = value !== service.state?.value;
   const [updated] = await db.transaction(async (tx) => {
     await tx.insert(historyTable).values({ serviceId: service.id, result: current, state: value });
 
-    const miniHistoryRaw = (
-      await tx
-        .select({
-          ...pick(getTableColumns(historyTable), ['id', 'createdAt', 'state']),
-          latency: sql<number | null>`json_extract(result, '$.latency')`,
-        })
-        .from(historyTable)
-        .where(eq(historyTable.serviceId, service.id))
-        .orderBy(desc(historyTable.createdAt))
-        .limit(settings.historySummaryItems)
-    ).toReversed();
-
-    const miniHistory: MinifiedHistory = {
-      from: miniHistoryRaw[0].createdAt,
-      to: miniHistoryRaw[miniHistoryRaw.length - 1].createdAt,
-      items: miniHistoryRaw.map(({ createdAt: _createdAt, latency, ...rest }) => ({
-        ...rest,
-        ...(typeof latency === 'number' ? { latency } : {}),
-      })),
-    };
-
-    const uptime1d = await getUptime(tx, service.id, 1);
-    const uptime30d = await getUptime(tx, service.id, 30);
-    const [{ latency1d }] = (await tx.all(sql`
-      select
-        coalesce(sum(latency), 0) / iif(count(1) > 0, count(1), 1) as latency1d
-      from (
-        select json_extract(result, '$.latency') as latency
-        from history
-        where
-          serviceId = ${service.id}
-        and createdAt >= unixepoch('now', '-1 day')
-        and latency is not null
-      )
-    `)) as [{ latency1d: number }];
-
-    logger.info('id', service.id, { uptime1d, uptime30d, latency1d });
+    const miniHistory = await getMiniHistory(service.id, settingsClient.current.historySummaryItems, tx);
+    const { uptime1d, uptime30d }: UptimeSelect = await tx.get(getUptimeSql(service.id));
+    const { latency1d }: LatencySelect = await tx.get(getLatencySql(service.id));
 
     const row: Omit<StateInsert, 'id'> = {
       current,
       failures,
       miniHistory,
       nextCheckAt,
-      latency1d: roundTo(latency1d, 3),
-      uptime1d: roundTo(uptime1d, 3),
-      uptime30d: roundTo(uptime30d, 3),
+      latency1d,
+      uptime1d,
+      uptime30d,
       value,
+      ...(isStateChange ? { changedAt: new Date() } : {}),
     };
 
     return await tx
@@ -162,17 +102,27 @@ async function checkService(service: ServiceWithState): Promise<void> {
       .onConflictDoUpdate({ target: stateTable.id, set: row })
       .returning();
   });
-  // logger.debugMed({ service, current, updated });
   messageClient.send({ cat: 'invalidation', kind: 'service-state', id: service.id });
-  // only invalidate history on MonitorState, MonitorResult.kind, MonitorDownResult.reason change
+  // more aggressive than isStateChange becuase we show history summary rows for each change of state, kind, and reason
   if (
-    updated.value !== service.state?.value ||
-    updated.current?.kind !== service.state.current?.kind ||
+    isStateChange ||
+    updated.current?.kind !== service.state?.current?.kind ||
     (updated.current && 'reason' in updated.current && updated.current.reason) !==
-      (service.state.current && 'reason' in service.state.current && service.state.current.reason)
+      (service.state?.current && 'reason' in service.state.current && service.state.current.reason)
   )
-    messageClient.send({ cat: 'invalidation', kind: 'service-history', id: service.id });
-  if (updated.value !== service.state?.value)
+    messageClient.send(
+      { cat: 'invalidation', kind: 'service-history', id: service.id },
+      // FIXME: this is redundant. sse route can just send toasts to clients from service-history invalidations
+      {
+        cat: 'toast',
+        kind: 'state',
+        id: service.id,
+        state: updated.value,
+        message: updated.current?.message ?? 'Monitor is paused',
+        name: service.name,
+      }
+    );
+  if (isStateChange)
     messageClient.send({
       cat: 'state',
       kind: updated.value,
@@ -194,7 +144,7 @@ export async function checkServices() {
     'checking services',
     services.map(({ id, name, state }) => ({ id, name, lastCheck: state?.updatedAt, nextCheck: state?.nextCheckAt }))
   );
-  await concurrently(services, checkService, settings.monitorConcurrency);
+  await concurrently(services, checkService, settingsClient.current.monitorConcurrency);
 }
 
 function checkServiceById(id: number): void {

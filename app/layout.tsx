@@ -4,8 +4,11 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { getGroups } from '@/actions/group';
 import { getServices } from '@/actions/service';
+import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStateCounts } from '@/actions/state';
 import RootLayoutClient from '@/app/layout-client';
+import { SseProvider } from '@/hooks/sse';
+import { ToastProvider } from '@/hooks/toast';
 import { description, displayName } from '@/package.json';
 
 const geistSans = Geist({
@@ -23,25 +26,34 @@ export const metadata: Metadata = {
   description,
 };
 
-// TODO: validate that next definitely doesn't compile the data into the source. it seems like something next would do
-const groups = await getGroups();
-const services = await getServices();
-const states = await getServiceStates();
-const stateCounts = await getStateCounts();
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const groups = await getGroups();
+  const services = await getServices();
+  const states = await getServiceStates();
+  const stateCounts = await getStateCounts();
+  const settings = await getSettings();
   return (
     <html lang='en'>
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex flex-col gap-4 bg-background text-foreground transition-colors duration-200 accent-up antialiased`}
       >
-        <RootLayoutClient groups={groups} services={services} states={states} stateCounts={stateCounts}>
-          {children}
-        </RootLayoutClient>
+        <SseProvider>
+          <ToastProvider>
+            <RootLayoutClient
+              groups={groups}
+              services={services}
+              states={states}
+              stateCounts={stateCounts}
+              settings={settings}
+            >
+              {children}
+            </RootLayoutClient>
+          </ToastProvider>
+        </SseProvider>
       </body>
     </html>
   );

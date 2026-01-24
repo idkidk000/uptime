@@ -2,14 +2,13 @@ import { DOMParser } from '@xmldom/xmldom';
 import jsonata from 'jsonata';
 import xpath from 'xpath';
 import { type BaseMonitorParams, type BaseMonitorResponse, Monitor, MonitorDownReason } from '@/lib/monitor';
-import { settings } from '@/lib/settings';
 import { parseRegex, roundTo } from '@/lib/utils';
 import { name, version } from '@/package.json';
 
 export interface HttpMonitorParams extends BaseMonitorParams {
   kind: 'http';
   headers?: Record<string, string>;
-  upWhen: {
+  upWhen?: {
     statusCode?: number;
     latency?: number;
     query?:
@@ -40,7 +39,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
           controller.abort();
           reject('timeout');
         },
-        (this.params.upWhen.latency ?? settings.defaultMonitorTimeout) + 100
+        (this.params.upWhen?.latency ?? this.settingsClient.current.defaultMonitorTimeout) + 100
       );
       const started = performance.now();
       // fetch will throw on abort signal, though it may not be immediate (i.e. if the remote does not respond at all)
@@ -56,21 +55,21 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
       const latency = roundTo(performance.now() - started, 3);
       clearTimeout(timeout);
       resolve(null as never);
-      if (typeof this.params.upWhen.statusCode === 'number' && response.status !== this.params.upWhen.statusCode)
+      if (typeof this.params.upWhen?.statusCode === 'number' && response.status !== this.params.upWhen.statusCode)
         return {
           kind: 'http',
           ok: false,
           reason: MonitorDownReason.InvalidStatus,
           message: `HTTP status ${response.status}`,
         };
-      if (typeof this.params.upWhen.latency === 'number' && latency > this.params.upWhen.latency)
+      if (typeof this.params.upWhen?.latency === 'number' && latency > this.params.upWhen.latency)
         return {
           kind: 'http',
           ok: false,
           reason: MonitorDownReason.Timeout,
           message: `Connected in ${latency}ms`,
         };
-      if (this.params.upWhen.query) {
+      if (this.params.upWhen?.query) {
         switch (this.params.upWhen.query.kind) {
           case 'jsonata': {
             const json = await response.json();
@@ -126,11 +125,19 @@ export class HttpMonitor extends Monitor<HttpMonitorParams, HttpMonitorResponse>
           }
         }
       }
+      const message =
+        [
+          `Status code ${response.status}`,
+          typeof this.params.upWhen?.latency === 'number' && 'Latency below threshold',
+          typeof this.params.upWhen?.query === 'object' && 'Query result correct',
+        ]
+          .filter((item) => item !== false)
+          .join('. ') || 'URL fetched successfully';
       return {
         kind: 'http',
         ok: true,
         latency,
-        message: 'All checks were successful',
+        message,
       };
     } catch (err) {
       if (Error.isError(err) && err.name === 'AbortError')

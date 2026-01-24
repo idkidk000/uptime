@@ -48,9 +48,7 @@ export function HistoryCard({
             <span>
               {item.result === null
                 ? 'Paused'
-                : item.result.ok
-                  ? 'OK'
-                  : `${pascalToSentenceCase(monitorDownReasons[item.result.reason])}: ${item.result.message}`}
+                : `${'reason' in item.result ? `${pascalToSentenceCase(monitorDownReasons[item.result.reason])}: ` : ''}${item.result.message}`}
             </span>
           </div>
         ))}

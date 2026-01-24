@@ -3,7 +3,7 @@ import { createConnection, createServer, type Socket } from 'node:net';
 import { createInterface } from 'node:readline';
 import SuperJSON from 'superjson';
 import type { ServiceState } from '@/lib/drizzle/schema';
-import { Logger } from '@/lib/logger';
+import { ServerLogger } from '@/lib/logger/server';
 import type { MonitorDownReason } from '@/lib/monitor';
 
 const SOCKET_ADDR = '.messaging.sock';
@@ -12,8 +12,8 @@ const STARTUP_CACHE_MILLIS = 15_000;
 
 // actions which can only be carried out by the backend workers. most tasks should be fine in server actions
 export type ActionKind = 'test-service';
-export type InvalidationKind = 'group' | 'service-config' | 'service-history' | 'service-state';
-type Message =
+export type InvalidationKind = 'group' | 'service-config' | 'service-history' | 'service-state' | 'settings';
+export type Message =
   | {
       cat: 'action';
       kind: ActionKind;
@@ -28,12 +28,14 @@ type Message =
       cat: 'toast';
       kind: 'state';
       id: number;
+      name: string;
       state: ServiceState;
       message: string;
     }
   | {
       cat: 'toast';
       kind: 'message';
+      title: string;
       message: string;
     }
   | {
@@ -63,9 +65,8 @@ type InternalMessage =
   | { kind: 'unsubscribe'; key: SubscriptionKey }
   | { kind: 'message'; msg: Message };
 
-// TODO: startup handling. maybe buffer all kind:message for n seconds until all subscriptions are in
 export class MessageServer {
-  #logger = new Logger(import.meta.url, 'MessageServer');
+  #logger = new ServerLogger(import.meta.url, 'MessageServer');
   #subscriptions = new Map<SubscriptionKey, Set<Socket>>();
   #cache: Message[] = [];
   /** cache is in use while this is not null */
@@ -161,9 +162,9 @@ export class MessageClient {
   #socket: Socket | null = null;
   #subscriptions = new Map<SubscriptionKey, Set<Callback>>();
   #queue: string[] = [];
-  #logger: Logger;
+  #logger: ServerLogger;
   constructor(public readonly importMetaUrl: string) {
-    this.#logger = new Logger(importMetaUrl, 'MessageClient');
+    this.#logger = new ServerLogger(importMetaUrl, 'MessageClient');
     const interval = setInterval(() => {
       const socket = createConnection(SOCKET_ADDR);
       socket.addListener('error', (err) => {

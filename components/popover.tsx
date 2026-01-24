@@ -11,7 +11,7 @@ import { Button } from '@/components/button';
 import { cn } from '@/lib/utils';
 
 const RE_DISPLAY =
-  /(?<![:-])(table-column-group|table-footer-group|table-header-group|table-row-group|table-caption|inline-block|inline-table|table-column|inline-flex|inline-grid|not-sr-only|table-cell|flow-root|list-item|table-row|contents|sr-only|hidden|inline|block|table|flex|grid)/gm;
+  /(?<![:-])(table-column-group|table-footer-group|table-header-group|table-row-group|table-caption|inline-block|inline-table|table-column|inline-flex|inline-grid|not-sr-only|table-cell|flow-root|list-item|table-row|contents|sr-only|hidden|inline|block|table|flex|grid)( |$)/gm;
 
 interface Context {
   popoverId: string;

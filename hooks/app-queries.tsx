@@ -1,20 +1,24 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, type ReactNode, useContext, useEffect, useEffectEvent, useMemo } from 'react';
-import SuperJSON from 'superjson';
+import { createContext, type ReactNode, type RefObject, useContext, useEffect, useMemo, useRef } from 'react';
 import { getGroups } from '@/actions/group';
 import { getServiceHistory } from '@/actions/history';
 import { getServices } from '@/actions/service';
+import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStateCounts, type StateCounts } from '@/actions/state';
-import type { Invalidation, Update } from '@/app/api/sse/route';
+import { useLogger } from '@/hooks/logger';
+import { useSse } from '@/hooks/sse';
 import type { GroupSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/schema';
+import type { Settings } from '@/lib/settings';
 
 interface Context {
   groups: GroupSelect[];
   services: ServiceSelect[];
   states: StateSelect[];
   stateCounts: StateCounts;
+  settings: Settings;
+  settingsRef: RefObject<Settings>;
 }
 
 /*
@@ -36,21 +40,24 @@ const Context = createContext<Context | null>(null);
 
 // named this way to prevent confusion with react-query
 
-// TODO: move SSE to a separate hook so that toasts can also use it
 export function AppQueriesProvider({
   children,
   groups,
   services,
   states,
   stateCounts,
+  settings,
 }: {
   children: ReactNode;
   groups: GroupSelect[];
   services: ServiceSelect[];
   states: StateSelect[];
   stateCounts: StateCounts;
+  settings: Settings;
 }) {
   const queryClient = useQueryClient();
+  const logger = useLogger(import.meta.url);
+  const { subscribe } = useSse();
 
   const groupsQuery = useQuery({
     queryKey: ['group'],
@@ -76,41 +83,51 @@ export function AppQueriesProvider({
     initialData: stateCounts,
   });
 
+  const settingsQuery = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => getSettings(),
+    initialData: settings,
+  });
+
+  const settingsRef = useRef(settingsQuery.data);
+
+  useEffect(() => {
+    settingsRef.current = settingsQuery.data;
+  }, [settingsQuery.data]);
+
   const value: Context = useMemo(
     () => ({
       groups: groupsQuery.data,
       services: servicesQuery.data,
       states: statesQuery.data,
       stateCounts: stateCountsQuery.data,
+      settings: settingsQuery.data,
+      settingsRef,
     }),
-    [groupsQuery, servicesQuery, statesQuery, stateCountsQuery.data]
+    [groupsQuery.data, servicesQuery.data, statesQuery.data, stateCountsQuery.data, settingsQuery.data]
   );
 
-  const handleInvalidation = useEffectEvent((invalidation: Invalidation) => {
-    console.debug('sse invalidate', invalidation);
-    for (const subkey of ['meta', ...invalidation.ids])
-      queryClient.invalidateQueries({ queryKey: [invalidation.kind, subkey] });
-  });
-
-  const handleUpdate = useEffectEvent((update: Update) => {
-    console.debug('sse update', update);
-    queryClient.invalidateQueries({ queryKey: [update.kind, 'meta'] });
-    // https://tanstack.com/query/latest/docs/framework/react/guides/query-invalidation#query-matching-with-invalidatequeries
-    // if prev is undefined, query is unfetched (should only happen in dev while i'm actively changing the source). trigger a refetch and return undefined to prevent setting data
-    queryClient.setQueryData([update.kind], (prev: { id: number }[] | undefined) => {
-      if (Array.isArray(prev)) return [...prev.filter((item) => !update.ids.includes(item.id)), ...update.data];
-      queryClient.refetchQueries({ queryKey: [update.kind] });
-    });
-  });
-
   useEffect(() => {
-    const eventSource = new EventSource('/api/sse');
-    eventSource.addEventListener('error', (err) => console.error('sse error', err));
-    eventSource.addEventListener('open', (event) => console.debug('sse open', event));
-    eventSource.addEventListener('invalidate', (event) => handleInvalidation(SuperJSON.parse(event.data)));
-    eventSource.addEventListener('update', (event) => handleUpdate(SuperJSON.parse(event.data)));
-    eventSource.addEventListener('message', (event) => console.debug('sse message', event));
-    return () => eventSource.close();
+    const unsubscribers = [
+      subscribe('invalidate', (message) => {
+        logger.debugLow('sse invalidate', message);
+        for (const subkey of ['meta', ...message.ids])
+          queryClient.invalidateQueries({ queryKey: [message.kind, subkey] });
+      }),
+      subscribe('update', (message) => {
+        logger.debugLow('sse update', message);
+        queryClient.invalidateQueries({ queryKey: [message.kind, 'meta'] });
+        // https://tanstack.com/query/latest/docs/framework/react/guides/query-invalidation#query-matching-with-invalidatequeries
+        // if prev is undefined, query is unfetched (should only happen in dev while i'm actively changing the source). trigger a refetch and return undefined to prevent setting data
+        if (message.kind === 'settings') queryClient.setQueryData([message.kind], message.data);
+        else
+          queryClient.setQueryData([message.kind], (prev: { id: number }[] | undefined) => {
+            if (Array.isArray(prev)) return [...prev.filter((item) => !message.ids.includes(item.id)), ...message.data];
+            queryClient.refetchQueries({ queryKey: [message.kind] });
+          });
+      }),
+    ];
+    return () => void unsubscribers.map((fn) => fn());
   }, []);
 
   return <Context value={value}>{children}</Context>;

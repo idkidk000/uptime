@@ -1,8 +1,8 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: later */
 
 import { RelativeDate } from '@/components/relative-date';
-import { type MinifiedHistory, ServiceState } from '@/lib/drizzle/schema';
-import { settings } from '@/lib/settings';
+import { useAppQueries } from '@/hooks/app-queries';
+import { type MiniHistory, ServiceState } from '@/lib/drizzle/schema';
 import { cn } from '@/lib/utils';
 
 const stateClassNames: Record<ServiceState, string> = {
@@ -12,9 +12,9 @@ const stateClassNames: Record<ServiceState, string> = {
   [ServiceState.Paused]: 'fill-paused',
 };
 
-const viewboxWidth = 40 * settings.historySummaryItems;
 const viewboxHeight = 100;
 const radius = 10;
+const itemViewboxWidth = 40;
 
 export function BarGraph({
   history,
@@ -22,15 +22,16 @@ export function BarGraph({
   className,
   withLabels,
 }: {
-  history: MinifiedHistory | undefined;
+  history: MiniHistory | undefined;
   barWidth?: number;
-  stokeWidth?: number;
   className?: string;
   withLabels?: boolean;
 }) {
+  const { settings } = useAppQueries();
+  const viewboxWidth = itemViewboxWidth * settings.historySummaryItems;
   const maxLatency =
     history?.items
-      ?.filter((item): item is Required<MinifiedHistory['items'][number]> => typeof item.latency === 'number')
+      ?.filter((item): item is Required<MiniHistory['items'][number]> => typeof item.latency === 'number')
       .reduce((acc, item) => Math.max(acc, item.latency), 0) ?? 0;
   const mostCommonState = (history?.items
     .reduce<number[]>((acc, item) => {
@@ -47,6 +48,7 @@ export function BarGraph({
         viewBox={`0 0 ${viewboxWidth} ${viewboxHeight}`}
         preserveAspectRatio='xMidYMid meet'
         className={stateClassNames[mostCommonState]}
+        suppressHydrationWarning
       >
         {history?.items.map((item, i) => (
           <rect

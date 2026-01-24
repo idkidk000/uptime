@@ -8,7 +8,7 @@ import {
   serviceStates,
   serviceTable,
 } from '@/lib/drizzle/schema';
-import { Logger } from '@/lib/logger';
+import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 import { monitorDownReasons } from '@/lib/monitor';
 import type { BaseNotifierParams, Notifier, NotifierParams } from '@/lib/notifier';
@@ -16,7 +16,7 @@ import { GotifyNotifier } from '@/lib/notifier/gotify';
 import { pascalToSentenceCase, pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
-const logger = new Logger(import.meta.url);
+const logger = new ServerLogger(import.meta.url);
 
 function getNotifier(params: NotifierParams): Notifier<BaseNotifierParams> {
   switch (params.kind) {

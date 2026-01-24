@@ -17,7 +17,7 @@ export function RelativeDate<T extends ElementType = 'span'>({
   const value = toRelative(date);
   // now is used as a key to maybe stop react compiler from optimising it out
   return (
-    <Component {...props} key={now.getTime()}>
+    <Component {...props} key={now.getTime()} suppressHydrationWarning>
       {value}
     </Component>
   );

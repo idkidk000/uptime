@@ -2,18 +2,20 @@ import { NextResponse } from 'next/server';
 import SuperJSON from 'superjson';
 import { getGroups } from '@/actions/group';
 import { getServices } from '@/actions/service';
+import { getSettings } from '@/actions/setting';
 import { getServiceStates } from '@/actions/state';
 import type { GroupSelect, ServiceSelect, StateSelect } from '@/lib/drizzle/schema';
-import { Logger } from '@/lib/logger';
+import { ServerLogger } from '@/lib/logger/server';
 import { type InvalidationKind, MessageClient } from '@/lib/messaging';
+import type { Settings } from '@/lib/settings';
 
 const THROTTLE_MILLIS = 100;
 
-// TODO: type this better
 export type Update = { ids: number[] } & (
   | { kind: 'group'; data: GroupSelect[] }
   | { kind: 'service-config'; data: ServiceSelect[] }
   | { kind: 'service-state'; data: StateSelect[] }
+  | { kind: 'settings'; data: Settings }
 );
 
 export interface Invalidation {
@@ -21,7 +23,7 @@ export interface Invalidation {
   ids: number[];
 }
 
-const logger = new Logger(import.meta.url);
+const logger = new ServerLogger(import.meta.url);
 const messageClient = new MessageClient(import.meta.url);
 const streamControllers = new Set<ReadableStreamDefaultController<unknown>>();
 /** only used in sync code */
@@ -50,6 +52,7 @@ async function sendClientUpdates(destructuredInvalidations: { kind: Invalidation
       else if (kind === 'service-config') messages.push(['update', { kind, ids, data: await getServices(ids) }]);
       else if (kind === 'service-state') messages.push(['update', { kind, ids, data: await getServiceStates(ids) }]);
       else if (kind === 'service-history') messages.push(['invalidate', { kind, ids }]);
+      else if (kind === 'settings') messages.push(['update', { kind, ids, data: await getSettings() }]);
       else throw new Error(`unhandled invalidation kind: ${kind}`);
     }
     const messageString = messages
@@ -77,7 +80,7 @@ messageClient.subscribe({ cat: 'invalidation' }, (message) => {
 // toasts are sent immediately
 messageClient.subscribe({ cat: 'toast' }, (message) => {
   if (!streamControllers.size) return;
-  const messageString = `${SuperJSON.stringify(`event: toast\ndata: ${SuperJSON.stringify(message)}\n\n`)}`;
+  const messageString = `event: toast\ndata: ${SuperJSON.stringify(message)}\n\n`;
   for (const controller of streamControllers) controller.enqueue(messageString);
 });
 

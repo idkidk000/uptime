@@ -118,7 +118,7 @@ export type HistorySelect = HistoryTable['$inferSelect'];
 
 // StateTable
 
-export interface MinifiedHistory {
+export interface MiniHistory {
   from: Date;
   to: Date;
   items: { id: number; state: ServiceState; latency?: number }[];
@@ -135,8 +135,11 @@ export const stateTable = sqliteTable('state', {
   uptime1d: real().notNull(),
   uptime30d: real().notNull(),
   latency1d: real(),
+  // FIXME: rename this and the enum to status
   value: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
-  miniHistory: text({ mode: 'json' }).notNull().$type<MinifiedHistory>(),
+  miniHistory: text({ mode: 'json' }).notNull().$type<MiniHistory>(),
+  /** when the status changed rather than when the last check was performed */
+  changedAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer({ mode: 'timestamp' })
     .notNull()
@@ -170,9 +173,7 @@ export type KeyValSelect = KeyValTable['$inferSelect'];
 export const historySummaryView = sqliteView('historySummary', {
   name: text().notNull(),
   id: integer().primaryKey({ autoIncrement: true }),
-  serviceId: integer()
-    .notNull()
-    .references(() => serviceTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  serviceId: integer().notNull(),
   result: text({ mode: 'json' }).$type<MonitorResponse | null>(),
   state: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),

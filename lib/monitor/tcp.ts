@@ -1,12 +1,11 @@
 import { Socket } from 'node:net';
 import { type BaseMonitorParams, type BaseMonitorResponse, Monitor, MonitorDownReason } from '@/lib/monitor';
-import { settings } from '@/lib/settings';
 import { roundTo } from '@/lib/utils';
 
 export interface TcpMonitorParams extends BaseMonitorParams {
   kind: 'tcp';
   port: number;
-  upWhen: {
+  upWhen?: {
     latency?: number;
   };
 }
@@ -26,10 +25,10 @@ export class TcpMonitor extends Monitor<TcpMonitorParams, TcpMonitorResponse> {
             kind: 'tcp',
             ok: false,
             reason: MonitorDownReason.Timeout,
-            message: `Could not connect in ${settings.defaultMonitorTimeout}ms`,
+            message: `Could not connect in ${this.settingsClient.current.defaultMonitorTimeout}ms`,
           });
           socket.destroy();
-        }, settings.defaultMonitorTimeout);
+        }, this.settingsClient.current.defaultMonitorTimeout);
         socket.addListener('error', (err) => {
           resolve({
             kind: 'tcp',
@@ -41,7 +40,7 @@ export class TcpMonitor extends Monitor<TcpMonitorParams, TcpMonitorResponse> {
         });
         socket.addListener('connect', () => {
           const latency = roundTo(performance.now() - started, 3);
-          if (typeof this.params.upWhen.latency === 'number' && latency > this.params.upWhen.latency)
+          if (typeof this.params.upWhen?.latency === 'number' && latency > this.params.upWhen.latency)
             resolve({
               kind: 'tcp',
               ok: false,
@@ -53,7 +52,10 @@ export class TcpMonitor extends Monitor<TcpMonitorParams, TcpMonitorResponse> {
               kind: 'tcp',
               ok: true,
               latency,
-              message: 'All checks were successful',
+              message:
+                typeof this.params.upWhen?.latency === 'number'
+                  ? 'Latency below threshold'
+                  : 'Connection opened successfully',
             });
 
           clearTimeout(timeout);

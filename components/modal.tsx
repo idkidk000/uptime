@@ -81,7 +81,7 @@ export function ModalContent({
     <dialog
       ref={modalRef}
       className={cn(
-        'fixed inset-0 m-auto p-4 rounded-xl shadow border-foreground/10 bg-background-card border-2 opacity-0 -translate-y-1/2 scale-90 open:opacity-100 open:translate-y-0 open:scale-100 starting:open:opacity-0 starting:open:-translate-y-1/2 starting:open:scale-90 transition-all duration-200 backdrop:bg-black/33',
+        'fixed inset-0 m-auto p-4 rounded-xl shadow border-foreground/10 bg-background-card border-2 opacity-0 -translate-y-1/2 scale-90 open:opacity-100 open:translate-y-0 open:scale-100 starting:open:opacity-0 starting:open:-translate-y-1/2 starting:open:scale-90 transition-[opacity,translate,scale] duration-200 backdrop:bg-transparent open:backdrop:bg-black/33 starting:open:backdrop:bg-transparent backdrop:transition-[background-color] backdrop:duration-200',
         className
       )}
       closedby={closedBy}

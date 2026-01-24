@@ -1,7 +1,6 @@
 import { spawn } from 'node:child_process';
 import { text } from 'node:stream/consumers';
 import { type BaseMonitorParams, type BaseMonitorResponse, Monitor, MonitorDownReason } from '@/lib/monitor';
-import { settings } from '@/lib/settings';
 
 const RE_SAFE = /^[a-zA-Z0-9._-]+$/;
 const RE_LOSS = /\b(?<loss>[\d.]+)% packet loss\b/;
@@ -9,7 +8,7 @@ const RE_RTT = /= (?<min>[\d.]+)\/(?<avg>[\d.]+)\/(?<max>[\d.]+)\/(?<mdev>[\d.]+
 
 export interface PingMonitorParams extends BaseMonitorParams {
   kind: 'ping';
-  upWhen: {
+  upWhen?: {
     latency?: number;
     successPercent?: number;
   };
@@ -32,7 +31,7 @@ export class PingMonitor extends Monitor<PingMonitorParams, PingMonitorResponse>
           message: `Address ${this.params.address} contains unsafe characters`,
         };
       const process = spawn('ping', ['-c', 5, '-A', this.params.address].map(String), {
-        timeout: settings.defaultMonitorTimeout,
+        timeout: this.settingsClient.current.defaultMonitorTimeout,
       });
       // legacy apis are very cool and good and normal
       process.addListener('error', (err) => {
@@ -61,25 +60,32 @@ export class PingMonitor extends Monitor<PingMonitorParams, PingMonitorResponse>
         };
       const packetLoss = Number(lossMatch.groups.loss);
       const latency = Number(rttMatch.groups.avg);
-      if (typeof this.params.upWhen.latency === 'number' && latency > this.params.upWhen.latency)
+      if (typeof this.params.upWhen?.latency === 'number' && latency > this.params.upWhen.latency)
         return {
           kind: 'ping',
           ok: false,
           reason: MonitorDownReason.Timeout,
           message: `Avg response is ${latency} ms`,
         };
-      if (typeof this.params.upWhen.successPercent === 'number' && packetLoss > 100 - this.params.upWhen.successPercent)
+      if (
+        typeof this.params.upWhen?.successPercent === 'number' &&
+        packetLoss > 100 - this.params.upWhen.successPercent
+      )
         return {
           kind: 'ping',
           ok: false,
           reason: MonitorDownReason.PacketLoss,
           message: `Packet loss is ${packetLoss}%`,
         };
+      const message =
+        [typeof this.params.upWhen?.latency === 'number' && 'Latency below threshold', `Packet loss is ${packetLoss}%`]
+          .filter((item) => item !== false)
+          .join('. ') || 'Host pinged successfully';
       return {
         kind: 'ping',
         ok: true,
         latency,
-        message: 'All checks were successful',
+        message,
       };
     } catch (err) {
       return { kind: 'ping', ok: false, reason: MonitorDownReason.Error, message: String(err) };

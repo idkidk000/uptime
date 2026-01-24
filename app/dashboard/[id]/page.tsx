@@ -14,6 +14,7 @@ import { HistoryCard } from '@/components/history-card';
 import { PageWrapper } from '@/components/page-wrapper';
 import { StateBadge } from '@/components/state-badge';
 import { useServiceWithState } from '@/hooks/app-queries';
+import { toDuration, toLocalIso } from '@/lib/date';
 
 export default function DetailPage() {
   const { id } = useParams();
@@ -33,7 +34,9 @@ export default function DetailPage() {
         <a className='font-semibold text-up' href={service.params.address} target='_blank'>
           {service.params.address}
         </a>
-      )) || <span className='font-semibold text-up'>{`${service.params.kind}: ${service.params.address}`}</span>}
+      )) || (
+        <span className='font-semibold text-up'>{`${service.params.kind}: ${'recordType' in service.params ? `${service.params.recordType}: ` : ''}${service.params.address}${'port' in service.params ? `:${service.params.port}` : ''}`}</span>
+      )}
       <ConfirmModal message={`Are you sure you want to delete ${service.name}?`} onConfirm={handleDeleteClick}>
         <ButtonGroup>
           <Button variant='up' onClick={handleCheckClick}>
@@ -63,7 +66,10 @@ export default function DetailPage() {
           <BarGraph history={service.state?.miniHistory} withLabels />
           <StateBadge state={service.state?.value} />
         </div>
-        <span className='text-foreground/75'>{`Check every ${service.checkSeconds} seconds`}</span>
+        <div className='flex gap-4 justify-between'>
+          <span className='text-foreground/75'>{`Check every ${toDuration(service.checkSeconds * 1000)}`}</span>
+          <span className='text-foreground/75'>{`Since ${toLocalIso(service.state?.changedAt, { endAt: 's' })}`}</span>
+        </div>
       </Card>
       <Card className='grid grid-cols-4 text-center gap-2'>
         <div className='flex flex-col gap-2'>

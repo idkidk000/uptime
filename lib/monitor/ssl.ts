@@ -1,19 +1,15 @@
 import { connect } from 'node:tls';
 import { dateDiff, toLocalIso } from '@/lib/date';
-import { Logger } from '@/lib/logger';
 import { type BaseMonitorParams, type BaseMonitorResponse, Monitor, MonitorDownReason } from '@/lib/monitor';
-import { settings } from '@/lib/settings';
 import { roundTo } from '@/lib/utils';
 
 // don't enable global on a top-level regex - it persists some state between execs and behaves strangely
 const RE_BARE_HOST = /^(?:.*:\/\/)?(?<host>[a-z\d.]+)(:(?<port>\d+))?/;
 
-const logger = new Logger(import.meta.url);
-
 export interface SslMonitorParams extends BaseMonitorParams {
   kind: 'ssl';
   port?: number;
-  upWhen: {
+  upWhen?: {
     latency?: number;
     days?: number;
     trusted?: boolean;
@@ -27,10 +23,6 @@ export type SslMonitorResponse = BaseMonitorResponse & {
 export class SslMonitor extends Monitor<SslMonitorParams, SslMonitorResponse> {
   async check(): Promise<SslMonitorResponse> {
     const match = RE_BARE_HOST.exec(this.params.address);
-
-    logger.info('parsing', this.params.address);
-    logger.info('result', match);
-
     if (!match?.groups)
       return {
         kind: 'ssl',
@@ -46,7 +38,7 @@ export class SslMonitor extends Monitor<SslMonitorParams, SslMonitorResponse> {
         host,
         port,
         rejectUnauthorized: false,
-        timeout: settings.defaultMonitorTimeout,
+        timeout: this.settingsClient.current.defaultMonitorTimeout,
       });
       try {
         const { promise, resolve, reject } = Promise.withResolvers();
@@ -56,7 +48,7 @@ export class SslMonitor extends Monitor<SslMonitorParams, SslMonitorResponse> {
         await promise;
         const cert = socket.getPeerCertificate();
         const latency = roundTo(performance.now() - started, 3);
-        if (typeof this.params.upWhen.latency === 'number' && latency > this.params.upWhen.latency)
+        if (typeof this.params.upWhen?.latency === 'number' && latency > this.params.upWhen.latency)
           return {
             kind: 'ssl',
             ok: false,
@@ -71,11 +63,11 @@ export class SslMonitor extends Monitor<SslMonitorParams, SslMonitorResponse> {
             message: 'Server did not send a certificate',
           };
         const trusted = socket.authorized;
-        if (typeof this.params.upWhen.trusted !== 'undefined' && trusted !== this.params.upWhen.trusted)
+        if (typeof this.params.upWhen?.trusted !== 'undefined' && trusted !== this.params.upWhen.trusted)
           return {
             kind: 'ssl',
             ok: false,
-            reason: MonitorDownReason.InvalidResponse,
+            reason: MonitorDownReason.QueryNotSatisfied,
             message: `Expected ${this.params.upWhen.trusted ? '' : 'un'}trusted but found ${trusted ? '' : 'un'}trusted`,
           };
         const validFrom = new Date(cert.valid_from);
@@ -86,28 +78,35 @@ export class SslMonitor extends Monitor<SslMonitorParams, SslMonitorResponse> {
             kind: 'ssl',
             ok: false,
             reason: MonitorDownReason.InvalidResponse,
-            message: `Certificate is not valid until ${toLocalIso(validFrom)}`,
+            message: `Not valid until ${toLocalIso(validFrom, { endAt: 's' })}`,
           };
         if (validTo < now)
           return {
             kind: 'ssl',
             ok: false,
-            reason: MonitorDownReason.InvalidResponse,
-            message: `Certificate expired at ${toLocalIso(validTo)}`,
+            reason: MonitorDownReason.Expired,
+            message: `Expired at ${toLocalIso(validTo, { endAt: 's' })}`,
           };
         const daysUntilExpiry = Math.floor(dateDiff(validTo, now) / 86_400_000);
-        if (typeof this.params.upWhen.days === 'number' && daysUntilExpiry < this.params.upWhen.days)
+        if (typeof this.params.upWhen?.days === 'number' && daysUntilExpiry < this.params.upWhen.days)
           return {
             kind: 'ssl',
             ok: false,
             reason: MonitorDownReason.QueryNotSatisfied,
-            message: `Certificate will expire at ${toLocalIso(validTo)}`,
+            message: `Will expire at ${toLocalIso(validTo, { endAt: 's' })}`,
           };
+        const message = [
+          typeof this.params.upWhen?.latency === 'number' && 'Latency below threshold',
+          `Valid until ${toLocalIso(validTo, { endAt: 's' })}`,
+          `Certificate is ${trusted ? '' : 'un'}trusted`,
+        ]
+          .filter((item) => item !== false)
+          .join('. ');
         return {
           kind: 'ssl',
           ok: true,
           latency,
-          message: `Certificate is valid until ${toLocalIso(validTo)}`,
+          message,
         };
         // no catch - the outer will get the thrown promise rejection
       } finally {

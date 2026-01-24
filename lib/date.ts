@@ -16,6 +16,16 @@ export const YEAR_DAYS = 365;
 export const YEAR_MILLIS = YEAR_DAYS * DAY_MILLIS;
 export const SECOND_MICROS = 1_000_000;
 
+export const toDuration = (millis: number) => {
+  if (Math.abs(millis) > YEAR_MILLIS * 3) return `${Math.round(millis / YEAR_MILLIS)} years`;
+  if (Math.abs(millis) > MONTH_MILLIS * 3) return `${Math.round(millis / MONTH_MILLIS)} months`;
+  if (Math.abs(millis) > WEEK_MILLIS * 3) return `${Math.round(millis / WEEK_MILLIS)} weeks`;
+  if (Math.abs(millis) > DAY_MILLIS * 3) return `${Math.round(millis / DAY_MILLIS)} days`;
+  if (Math.abs(millis) > HOUR_MILLIS * 3) return `${Math.round(millis / HOUR_MILLIS)} hours`;
+  if (Math.abs(millis) > MINUTE_MILLIS * 3) return `${Math.round(millis / MINUTE_MILLIS)} minutes`;
+  return `${Math.round(millis / SECOND_MILLIS)} seconds`;
+};
+
 export const dateAdd = (
   {
     days,
@@ -47,7 +57,7 @@ export const dateAdd = (
   return dt;
 };
 
-/** difference in ms */
+/** a-b. difference in ms */
 export const dateDiff = (a: Date | number | string, b: Date | number | string = Date.now()) => {
   const dtA = new Date(a);
   const dtB = new Date(b);
@@ -90,48 +100,6 @@ export const toLocalIso = (
 
   if (timeParts.length) return `${localShowDate ? `${datePart} ` : ''}${timeParts.join(':')}`;
   return datePart;
-};
-
-/** this doesn't account for dst but it's close enough */
-export const toSeasonEpisode = (date: Date | number) => {
-  const dt = new Date(date);
-  const dayOfWeek = (dt.getDay() || 7) - 1;
-  const yearWeekStart = new Date(dt);
-  yearWeekStart.setMonth(0, 1);
-  yearWeekStart.setHours(0, 0, 0, 0);
-  yearWeekStart.setDate(yearWeekStart.getDate() - ((yearWeekStart.getDay() || 7) - 1));
-  const dayOfYearWeek = Math.floor((dt.getTime() - yearWeekStart.getTime()) / 86_400_000);
-  const week = Math.floor(dayOfYearWeek / 7)
-    .toString()
-    .padStart(2, '0');
-  const season = `${dt.getFullYear().toString().slice(-2)}${week.slice(0, 1)}`;
-  const episode = `${week.slice(1)}${dayOfWeek}`;
-  return {
-    season,
-    episode,
-  };
-};
-
-export const toWeekNumber = (date: Date | number) => {
-  const dt = new Date(date);
-  const yearWeekStart = new Date(dt);
-  yearWeekStart.setMonth(0, 1);
-  yearWeekStart.setHours(0, 0, 0, 0);
-  yearWeekStart.setDate(yearWeekStart.getDate() - ((yearWeekStart.getDay() || 7) - 1));
-  const dayOfYearWeek = Math.floor((dt.getTime() - yearWeekStart.getTime()) / 86_400_000);
-  const week = Math.floor(dayOfYearWeek / 7);
-  const year = yearWeekStart.getFullYear();
-  return {
-    year,
-    week,
-  };
-};
-
-export const toWeekStart = (date: Date | number) => {
-  const dt = new Date(date);
-  dt.setHours(0, 0, 0, 0);
-  dt.setDate(dt.getDate() - ((dt.getDay() || 7) - 1));
-  return dt;
 };
 
 export const toRelative = (date: Date | number | string | undefined) => {

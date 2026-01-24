@@ -8,10 +8,10 @@ import {
   type ServiceInsert,
   serviceTable,
 } from '@/lib/drizzle/schema';
-import { Logger } from '@/lib/logger';
 import 'dotenv/config';
+import { ServerLogger } from '@/lib/logger/server';
 
-const logger = new Logger(import.meta.url);
+const logger = new ServerLogger(import.meta.url);
 
 const [gotifyUrl, gotifyToken] = [env.GOTIFY_URL, env.GOTIFY_TOKEN];
 
@@ -106,7 +106,6 @@ const services: ServiceInsert[] = [
       recordType: 'A',
       upWhen: {
         includes: ['52.142.124.215'],
-        latency: 300,
       },
     },
   },
@@ -118,7 +117,7 @@ const services: ServiceInsert[] = [
       kind: 'ping',
       address: 'localhost',
       upWhen: {
-        latency: 300,
+        latency: 5,
       },
     },
   },
@@ -131,7 +130,7 @@ const services: ServiceInsert[] = [
       address: 'localhost',
       port: 3000,
       upWhen: {
-        latency: 300,
+        latency: 5,
       },
     },
   },
@@ -148,16 +147,14 @@ const services: ServiceInsert[] = [
   ).map(({ host, port }, i) => ({
     groupId: groupEntry.id,
     name: `SSL${i + 1}`,
-    failuresBeforeDown: 3,
-    checkSeconds: 86400000,
+    failuresBeforeDown: 0,
+    checkSeconds: 86400,
     params: {
       kind: 'ssl',
       address: host,
       port,
       upWhen: {
-        latency: 300,
         days: 30,
-        trusted: true,
       },
     },
   })) satisfies ServiceInsert[]),
@@ -171,19 +168,13 @@ const services: ServiceInsert[] = [
   ).map((domain, i) => ({
     groupId: groupEntry.id,
     name: `Domain${i + 1}`,
-    failuresBeforeDown: 3,
-    checkSeconds: 86400000,
+    failuresBeforeDown: 0,
+    checkSeconds: 86400,
     params: {
-      kind: 'http',
-      address: `https://rdap.nominet.uk/uk/domain/${domain}`,
+      kind: 'domain',
+      address: domain,
       upWhen: {
-        latency: 300,
-        query: {
-          kind: 'jsonata',
-          expression:
-            '($toMillis(events[eventAction="expiration"].eventDate) - $toMillis($now())) <= (1000 * 86400 * 28)',
-          expected: false,
-        },
+        days: 30,
       },
     },
   })) satisfies ServiceInsert[]),

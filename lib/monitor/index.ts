@@ -1,8 +1,10 @@
 import type { DnsMonitorParams, DnsMonitorResponse } from '@/lib/monitor/dns';
+import type { DomainMonitorParams, DomainMonitorResponse } from '@/lib/monitor/domain';
 import type { HttpMonitorParams, HttpMonitorResponse } from '@/lib/monitor/http';
 import type { PingMonitorParams, PingMonitorResponse } from '@/lib/monitor/ping';
 import type { SslMonitorParams, SslMonitorResponse } from '@/lib/monitor/ssl';
 import type { TcpMonitorParams, TcpMonitorResponse } from '@/lib/monitor/tcp';
+import type { SettingsClient } from '@/lib/settings';
 import { enumToObject } from '@/lib/utils';
 
 interface MonitorKindTag {
@@ -10,7 +12,7 @@ interface MonitorKindTag {
 }
 
 export interface BaseMonitorUpWhen {
-  upWhen: {
+  upWhen?: {
     latency?: number;
   };
 }
@@ -32,6 +34,7 @@ export enum MonitorDownReason {
   InvalidParams,
   InvalidResponse,
   PacketLoss,
+  Expired,
   // other unhandled
   Error = 63,
 }
@@ -51,19 +54,26 @@ export abstract class Monitor<
   Params extends BaseMonitorParams = BaseMonitorParams,
   Response extends BaseMonitorResponse = BaseMonitorResponse,
 > {
-  constructor(public readonly params: Params) {}
+  constructor(
+    public readonly params: Params,
+    public readonly settingsClient: SettingsClient
+  ) {}
   abstract check(): Promise<Response>;
 }
+
+// FIXME: response is the same for all monitors, just with a different kind. It can go. rename Monitor to BaseMonitor and use it only in this directory. export a class type with Kind as the generic use that to narrow Params
 
 export type MonitorParams =
   | HttpMonitorParams
   | DnsMonitorParams
   | PingMonitorParams
   | TcpMonitorParams
-  | SslMonitorParams;
+  | SslMonitorParams
+  | DomainMonitorParams;
 export type MonitorResponse =
   | HttpMonitorResponse
   | DnsMonitorResponse
   | PingMonitorResponse
   | TcpMonitorResponse
-  | SslMonitorResponse;
+  | SslMonitorResponse
+  | DomainMonitorResponse;

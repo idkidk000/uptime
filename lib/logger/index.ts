@@ -1,12 +1,4 @@
-// TODO: level and source filtering once i have a config source
-
-import { Console } from 'node:console';
-import { relative, sep } from 'node:path';
-import { cwd, stderr, stdout } from 'node:process';
-import { fileURLToPath } from 'node:url';
 import { toLocalIso } from '@/lib/date';
-
-const MAX_PATH_DEPTH = 3;
 
 export const ansiStyles = {
   fg: {
@@ -66,31 +58,18 @@ const levels = {
 } as const;
 type LevelName = keyof typeof levels;
 
-const console = new Console({
-  colorMode: true,
-  inspectOptions: {
-    breakLength: 300,
-    compact: true,
-    depth: 10,
-    maxStringLength: 1500,
-    numericSeparator: true,
-    sorted: false,
-  },
-  stderr,
-  stdout,
-});
-
 export enum LogDate {
   None,
   Time,
   DateTime,
 }
 
-export class Logger {
+// TODO: require an object matching { current: Settings} (i.e. settingsRef on the client and an instantiated SettingsClient on the server). add log filters to the settings schema. implement them here
+export abstract class BaseLogger {
   #name: string;
-  #levelValue: number;
   #showDate: LogDate;
-  #showLevel: boolean;
+  #console: typeof globalThis.console;
+  #colour: boolean;
   #makePrefix(levelName: LevelName, colour: string) {
     const parts = [
       this.#showDate === LogDate.DateTime
@@ -98,42 +77,35 @@ export class Logger {
         : this.#showDate === LogDate.Time
           ? toLocalIso(Date.now(), { endAt: 's', showDate: false })
           : null,
-      this.#showLevel ? levelName : null,
-      this.#name || null,
+      levelName,
+      this.#name,
     ].filter((item) => item !== null);
-    if (parts.length) return `${ansiStyles.bold}${colour}[${parts.join(' ')}]${ansiStyles.reset}`;
+    if (parts.length && this.#colour) return `${ansiStyles.bold}${colour}[${parts.join(' ')}]${ansiStyles.reset}`;
+    if (parts.length) return `[${parts.join(' ')}]`;
     return '';
   }
   #log(levelName: LevelName | null, ...message: unknown[]) {
-    if (levelName === null) console.log(...message);
+    if (levelName === null) this.#console.log(...message);
     else {
-      const { colour, method, value: level } = levels[levelName];
-      if (level < this.#levelValue) return;
+      const { colour, method } = levels[levelName];
       const prefix = this.#makePrefix(levelName, colour);
-      console[method](prefix, ...message);
+      this.#console[method](prefix, ...message);
     }
   }
   constructor(
-    importMetaUrl: string,
-    name?: string,
+    name: string,
+    console: typeof globalThis.console,
+    colour: boolean,
     {
-      logLevel = 'Debug:High',
       showDate = LogDate.None,
-      showLevel = true,
-      showPath = true,
     }: {
-      logLevel?: LevelName | number;
       showDate?: LogDate;
-      showPath?: boolean;
-      showLevel?: boolean;
     } = {}
   ) {
-    this.#name = `${showPath ? relative(cwd(), fileURLToPath(importMetaUrl)).split(sep).slice(-MAX_PATH_DEPTH).join(sep) : ''}${showPath && name ? ':' : ''}${
-      name ?? ''
-    }`;
-    this.#levelValue = typeof logLevel === 'number' ? logLevel : levels[logLevel].value;
+    this.#name = name;
+    this.#console = console;
+    this.#colour = colour;
     this.#showDate = showDate;
-    this.#showLevel = showLevel;
   }
   debugHigh(...message: unknown[]) {
     this.#log('Debug:High', ...message);
@@ -156,21 +128,10 @@ export class Logger {
   error(...message: unknown[]) {
     this.#log('Error', ...message);
   }
-  setLevel(logLevel: LevelName | number) {
-    this.#levelValue = typeof logLevel === 'number' ? logLevel : levels[logLevel].value;
-  }
   plain(...message: unknown[]) {
     this.#log(null, ...message);
   }
-  makeChild(name: string): Logger {
-    const logger = new Logger(import.meta.url);
-    logger.#levelValue = this.#levelValue;
-    logger.#name = `${this.#name}:${name}`;
-    logger.#showDate = this.#showDate;
-    logger.#showLevel = this.#showLevel;
-    return logger;
-  }
   clear(): void {
-    console.clear();
+    this.#console.clear();
   }
 }
