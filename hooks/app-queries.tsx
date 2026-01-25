@@ -6,7 +6,7 @@ import { getGroups } from '@/actions/group';
 import { getServiceHistory } from '@/actions/history';
 import { getServices } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
-import { getServiceStates, getStateCounts, type StateCounts } from '@/actions/state';
+import { getServiceStates, getStatusCounts, type StatusCounts } from '@/actions/state';
 import { useLogger } from '@/hooks/logger';
 import { useSse } from '@/hooks/sse';
 import type { GroupSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/schema';
@@ -16,7 +16,7 @@ interface Context {
   groups: GroupSelect[];
   services: ServiceSelect[];
   states: StateSelect[];
-  stateCounts: StateCounts;
+  statusCounts: StatusCounts;
   settings: Settings;
   settingsRef: RefObject<Settings>;
 }
@@ -29,7 +29,7 @@ interface Context {
 
   sse sends type `Update` for 'group', 'service-config', and 'service-state' kinds. this includes the new data, which is patched into the Tanstack Query cache by `handleUpdate`. the `meta` subkeys are invalidated and will then be refetched by Tanstack Query when needed
 
-  'service-history' is a special case since it is never fully fetched - it's selected by service id or all, filtered server-side for only state changes, and paginated. so for these, sse sends down an `Invalidation` type and the entire query key is invalidated. Tanstack Query will then refetch data when it's needed
+  'service-history' is a special case since it is never fully fetched - it's selected by service id or all, filtered server-side for only state (stauts, result kind, result message) changes, and paginated. so for these, sse sends down an `Invalidation` type and the entire query key is invalidated. Tanstack Query will then refetch data when it's needed
 
   query defaults to prevent auto refetching etc are set on the `QueryClientProvider` in `layout-client.tsx`
 
@@ -45,14 +45,14 @@ export function AppQueriesProvider({
   groups,
   services,
   states,
-  stateCounts,
+  statusCounts,
   settings,
 }: {
   children: ReactNode;
   groups: GroupSelect[];
   services: ServiceSelect[];
   states: StateSelect[];
-  stateCounts: StateCounts;
+  statusCounts: StatusCounts;
   settings: Settings;
 }) {
   const queryClient = useQueryClient();
@@ -77,10 +77,10 @@ export function AppQueriesProvider({
     initialData: states,
   });
 
-  const stateCountsQuery = useQuery({
+  const statusCountsQuery = useQuery({
     queryKey: ['service-state', 'meta', 'counts'],
-    queryFn: () => getStateCounts(),
-    initialData: stateCounts,
+    queryFn: () => getStatusCounts(),
+    initialData: statusCounts,
   });
 
   const settingsQuery = useQuery({
@@ -100,11 +100,11 @@ export function AppQueriesProvider({
       groups: groupsQuery.data,
       services: servicesQuery.data,
       states: statesQuery.data,
-      stateCounts: stateCountsQuery.data,
+      statusCounts: statusCountsQuery.data,
       settings: settingsQuery.data,
       settingsRef,
     }),
-    [groupsQuery.data, servicesQuery.data, statesQuery.data, stateCountsQuery.data, settingsQuery.data]
+    [groupsQuery.data, servicesQuery.data, statesQuery.data, statusCountsQuery.data, settingsQuery.data]
   );
 
   useEffect(() => {
@@ -141,16 +141,39 @@ export function useAppQueries(): Context {
 
 export function useServicesWithState(): ServiceWithState[] {
   const { services, states } = useAppQueries();
+  // const query = useQuery({
+  //   //TODO: this key is not ideal
+  //   queryKey: ['service-state', 'meta', 'service-config'],
+  //   queryFn: () => {
+  //     if (!services) return [];
+  //     const statesMap = new Map((states ?? []).map((item) => [item.id, item]));
+  //     return services.map((item) => ({ ...item, state: statesMap.get(item.id) ?? null }));
+  //   },
+  // });
+  // return query.data ?? [];
   if (!services) return [];
   const statesMap = new Map((states ?? []).map((item) => [item.id, item]));
   return services.map((item) => ({ ...item, state: statesMap.get(item.id) ?? null }));
 }
 
-export function useServiceWithState(id: number | null | undefined): ServiceWithState | null {
+export function useServiceWithState(id: number | null | undefined): ServiceWithState | undefined {
   const { services, states } = useAppQueries();
-  if (typeof id !== 'number') return null;
+  // const query = useQuery({
+  //   //TODO: this key is not ideal
+  //   queryKey: ['service-state', id, 'service-config'],
+  //   queryFn: () => {
+  //     if (typeof id !== 'number') return;
+  //     const service = services.find((item) => item.id === id);
+  //     if (!service) return;
+  //     const state = states.find((item) => item.id === id) ?? null;
+  //     return { ...service, state };
+  //   },
+  //   enabled: typeof id === 'number',
+  // });
+  // return query.data;
+  if (typeof id !== 'number') return;
   const service = services.find((item) => item.id === id);
-  if (!service) return null;
+  if (!service) return;
   const state = states.find((item) => item.id === id) ?? null;
   return { ...service, state };
 }

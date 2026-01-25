@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { getGroups } from '@/actions/group';
 import { getServices } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
-import { getServiceStates, getStateCounts } from '@/actions/state';
+import { getServiceStates, getStatusCounts } from '@/actions/state';
 import RootLayoutClient from '@/app/layout-client';
 import { SseProvider } from '@/hooks/sse';
 import { ToastProvider } from '@/hooks/toast';
@@ -34,7 +34,7 @@ export default async function RootLayout({
   const groups = await getGroups();
   const services = await getServices();
   const states = await getServiceStates();
-  const stateCounts = await getStateCounts();
+  const stateCounts = await getStatusCounts();
   const settings = await getSettings();
   return (
     <html lang='en'>
@@ -47,7 +47,7 @@ export default async function RootLayout({
               groups={groups}
               services={services}
               states={states}
-              stateCounts={stateCounts}
+              statusCounts={stateCounts}
               settings={settings}
             >
               {children}

@@ -7,12 +7,12 @@ import { useCallback } from 'react';
 import { clearServiceHistory } from '@/actions/history';
 import { checkService, deleteService, togglePaused } from '@/actions/service';
 import { BarGraph } from '@/components/bar-graph';
-import { Button, ButtonGroup } from '@/components/button';
-import { Card } from '@/components/card';
+import { Button, ButtonGroup } from '@/components/base/button';
+import { Card } from '@/components/base/card';
+import { PageWrapper } from '@/components/base/page-wrapper';
 import { ConfirmModal, ConfirmModalTrigger } from '@/components/confirm-modal';
 import { HistoryCard } from '@/components/history-card';
-import { PageWrapper } from '@/components/page-wrapper';
-import { StateBadge } from '@/components/state-badge';
+import { StatusBadge } from '@/components/status-badge';
 import { useServiceWithState } from '@/hooks/app-queries';
 import { toDuration, toLocalIso } from '@/lib/date';
 
@@ -64,7 +64,7 @@ export default function DetailPage() {
       <Card className='flex flex-col gap-2'>
         <div className='flex gap-4 justify-between items-start'>
           <BarGraph history={service.state?.miniHistory} withLabels />
-          <StateBadge state={service.state?.value} />
+          <StatusBadge status={service.state?.status} />
         </div>
         <div className='flex gap-4 justify-between'>
           <span className='text-foreground/75'>{`Check every ${toDuration(service.checkSeconds * 1000)}`}</span>

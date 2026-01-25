@@ -17,7 +17,7 @@ const [gotifyUrl, gotifyToken] = [env.GOTIFY_URL, env.GOTIFY_TOKEN];
 
 const [groupEntry] = await db
   .insert(groupTable)
-  .values({ name: 'Group' })
+  .values({ name: 'Group', active: true })
   .onConflictDoUpdate({ target: groupTable.name, set: { id: sql`id` } })
   .returning();
 
@@ -26,6 +26,7 @@ if (gotifyUrl && gotifyToken) {
     .insert(notifierTable)
     .values({
       name: 'Gotify',
+      active: true,
       params: {
         kind: 'gotify',
         address: gotifyUrl,
@@ -46,6 +47,9 @@ const services: ServiceInsert[] = [
     groupId: groupEntry.id,
     name: 'JSONata',
     failuresBeforeDown: 3,
+    active: true,
+    checkSeconds: 60,
+    retainCount: 1000,
     params: {
       kind: 'http',
       address: 'http://localhost:3000/api/mock/json',
@@ -64,6 +68,9 @@ const services: ServiceInsert[] = [
     groupId: groupEntry.id,
     name: 'Regex',
     failuresBeforeDown: 3,
+    active: true,
+    checkSeconds: 60,
+    retainCount: 1000,
     params: {
       kind: 'http',
       address: 'http://localhost:3000/api/mock/json',
@@ -82,6 +89,9 @@ const services: ServiceInsert[] = [
     groupId: groupEntry.id,
     name: 'XPath',
     failuresBeforeDown: 3,
+    active: true,
+    checkSeconds: 60,
+    retainCount: 1000,
     params: {
       kind: 'http',
       address: 'http://localhost:3000/api/mock/xml',
@@ -100,6 +110,9 @@ const services: ServiceInsert[] = [
     groupId: groupEntry.id,
     name: 'DNS',
     failuresBeforeDown: 3,
+    active: true,
+    checkSeconds: 60,
+    retainCount: 1000,
     params: {
       kind: 'dns',
       address: 'duckduckgo.com',
@@ -113,6 +126,9 @@ const services: ServiceInsert[] = [
     groupId: groupEntry.id,
     name: 'Ping',
     failuresBeforeDown: 3,
+    active: true,
+    checkSeconds: 60,
+    retainCount: 1000,
     params: {
       kind: 'ping',
       address: 'localhost',
@@ -125,6 +141,9 @@ const services: ServiceInsert[] = [
     groupId: groupEntry.id,
     name: 'TCP',
     failuresBeforeDown: 3,
+    active: true,
+    checkSeconds: 60,
+    retainCount: 1000,
     params: {
       kind: 'tcp',
       address: 'localhost',
@@ -149,6 +168,8 @@ const services: ServiceInsert[] = [
     name: `SSL${i + 1}`,
     failuresBeforeDown: 0,
     checkSeconds: 86400,
+    active: true,
+    retainCount: 90,
     params: {
       kind: 'ssl',
       address: host,
@@ -170,6 +191,8 @@ const services: ServiceInsert[] = [
     name: `Domain${i + 1}`,
     failuresBeforeDown: 0,
     checkSeconds: 86400,
+    active: true,
+    retainCount: 90,
     params: {
       kind: 'domain',
       address: domain,

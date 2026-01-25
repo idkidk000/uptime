@@ -2,7 +2,7 @@ import type { ResultSet } from '@libsql/client';
 import { type SQL, sql, type TableRelationalConfig } from 'drizzle-orm';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
 import { db } from '@/lib/drizzle';
-import { type MiniHistory, ServiceState } from '@/lib/drizzle/schema';
+import { type MiniHistory, ServiceStatus } from '@/lib/drizzle/schema';
 
 // passing a typed query to (db|tx).(all|get) returns unknown. seems like a drizzle bug
 
@@ -17,13 +17,13 @@ export function getUptimeSql(serviceId: number): SQL<UptimeSelect> {
     select
       round(
         100.0
-        * cast(coalesce(sum(seconds) filter(where state = ${ServiceState.Up}), 0) as real)
+        * cast(coalesce(sum(seconds) filter(where status = ${ServiceStatus.Up}), 0) as real)
         / cast(coalesce(nullif(sum(seconds), 0), 1) as real),
         3
       ) as uptime30d,
       round(
         100.0
-        * cast(coalesce(sum(seconds) filter(where state = ${ServiceState.Up} and is1d), 0) as real)
+        * cast(coalesce(sum(seconds) filter(where status = ${ServiceStatus.Up} and is1d), 0) as real)
         / cast(coalesce(nullif(sum(seconds) filter(where is1d), 0), 1) as real),
         3
       )
@@ -31,14 +31,14 @@ export function getUptimeSql(serviceId: number): SQL<UptimeSelect> {
     from (
       select
         createdAt,
-        state,
+        status,
         coalesce(lead(createdAt) over win, unixepoch()) - createdAt as seconds,
         iif(createdAt >= unixepoch('now', '-1 day'), 1, 0) as is1d
       from history
       where
         serviceId = ${serviceId}
         and createdAt >= unixepoch('now', '-30 day')
-        and state != ${ServiceState.Paused}
+        and status != ${ServiceStatus.Paused}
       window win as (
         order by createdAt
       )
@@ -67,46 +67,6 @@ export function getLatencySql(serviceId: number): SQL<LatencySelect> {
         and latency is not null
     )`;
 }
-
-// // BUG: (db|tx).get(sql...) does not perform mappings. (db|tx).select().from(sql...) selects no columns. specifying columns manually with select({items:sql`items`}) does not perform mappings
-// /** use with (db|tx).get. the return type is `MinifiedHistory` */
-// export function getMiniHistorySql(serviceId: number, limit: number): SQL<MiniHistory> {
-//   return sql<MiniHistory>`
-//     (
-//       select
-//         min(createdAt) as 'from',
-//         max(createdAt) as 'to',
-//         json_group_array(json(obj)) as items
-//       from (
-//         select
-//           createdAt,
-//           iif(latency is null, obj, json_patch(obj, json_object('latency', latency))) as obj
-//         from (
-//           select
-//             createdAt,
-//             json_extract(result, '$.latency') as latency,
-//             json_object(
-//               'id', id,
-//               'state', state
-//             ) as obj
-//           from history
-//           where serviceId = ${serviceId}
-//           order by createdAt desc
-//           limit ${limit}
-//         )
-//         order by createdAt asc
-//       )
-//     )`.mapWith({
-//     mapFromDriverValue(value) {
-//       const { from, to, items } = value as { from: number; to: number; items: string };
-//       return {
-//         from: new Date(from * 1000),
-//         to: new Date(to * 100),
-//         items: JSON.parse(items),
-//       };
-//     },
-//   });
-// }
 
 const epochSecondsMapper = {
   mapFromDriverValue(value: number) {
@@ -143,7 +103,7 @@ export function getMiniHistory(
             json_extract(result, '$.latency') as latency,
             json_object(
               'id', id,
-              'state', state
+              'status', status
             ) as obj
           from history
           where serviceId = ${serviceId}

@@ -4,8 +4,9 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
 import { type ServiceSelect, serviceTable } from '@/lib/drizzle/schema';
-import { type Message, MessageClient } from '@/lib/messaging';
+import { type BusMessage, MessageClient } from '@/lib/messaging';
 
+// TODO: validate that this is only getting reinstantiated every minute in dev mode.
 const messageClient = new MessageClient(import.meta.url);
 
 export async function getServices(serviceIds?: number[]): Promise<ServiceSelect[]> {
@@ -16,7 +17,7 @@ export async function getServices(serviceIds?: number[]): Promise<ServiceSelect[
 }
 
 export async function checkService(id: number): Promise<void> {
-  messageClient.send({ cat: 'action', kind: 'test-service', id });
+  messageClient.send({ cat: 'action', kind: 'check-service', id });
 }
 
 export async function togglePaused(id: number, force?: boolean): Promise<void> {
@@ -29,7 +30,7 @@ export async function togglePaused(id: number, force?: boolean): Promise<void> {
 
 export async function setPausedMulti(ids: number[], pause: boolean): Promise<void> {
   await db.update(serviceTable).set({ active: !pause }).where(inArray(serviceTable.id, ids));
-  messageClient.send(...ids.map((id) => ({ cat: 'invalidation', kind: 'service-config', id }) satisfies Message));
+  messageClient.send(...ids.map((id) => ({ cat: 'invalidation', kind: 'service-config', id }) satisfies BusMessage));
 }
 
 export async function deleteService(id: number): Promise<void> {

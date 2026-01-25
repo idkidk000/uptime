@@ -1,7 +1,8 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-const RE_PARSE = /\/(?<expression>.*)\/(?<flags>[a-z]+)?/;
+const RE_PARSE = /^\/(?<expression>.*)\/(?<flags>[a-z]+)?$/;
+const RE_UPPER = /[A-Z]/;
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -85,7 +86,7 @@ export function pascalToSentenceCase(value: string): string {
   return value
     .split(/([A-Z][^A-Z]+)/)
     .filter((token) => token.length)
-    .map((token, i) => (i > 0 && !/[A-Z]/.exec(token[token.length - 1]) ? token.toLocaleLowerCase() : token))
+    .map((token, i) => (i > 0 && !RE_UPPER.exec(token[token.length - 1]) ? token.toLocaleLowerCase() : token))
     .join(' ');
 }
 

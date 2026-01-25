@@ -7,7 +7,7 @@ import {
   useId,
   useMemo,
 } from 'react';
-import { Button } from '@/components/button';
+import { Button } from '@/components/base/button';
 import { cn } from '@/lib/utils';
 
 const RE_DISPLAY =
@@ -60,8 +60,8 @@ export function PopoverTrigger({
 // TODO: deal with this nonsense
 /** The 'gotchas' of `popover` and anchor positioning (which i have wasted so much time on):
  * - the implicit anchor gets immediately removed on close before the animation has completed. transitioning all properties, including discrete makes no difference. defining the anchor relationship in css is a workaround
- * - firefox does not move implicity anchor positioned popovers with their anchor, i.e. on scroll. defining the anchor relationship in css is a workaround
- * - firefox does not animate popover close. fixing this needs code to swap out classNames. onBeforeToggle only allows you to cancel opening. so i'd have to set `popover='manual'`, have an open|closing|closed state, add an onClick to the trigger to toggle open|closing, add native onClick and onTouchStart to the popover with useEffect so i can catch the bubbled ::backdrop events, add an onMouseDown to the popover to catch 'esc', use a timeout to switch from closing to closed, use a ternary in classNames, and probably more
+ * - firefox does not move implicitly anchor positioned popovers with their anchor, i.e. on scroll. defining the anchor relationship in css is a workaround
+ * - firefox does not animate popover close. fixing this needs code to swap out classNames. onBeforeToggle only allows you to cancel opening. so i'd have to set `popover='manual'`, have an open|closing|closed state, add an onClick to the trigger to toggle open|closing, add native onClick and onTouchStart to the popover with useEffect so i can catch the bubbled ::backdrop events, add an onKeyDown to the popover to catch 'esc', use a timeout to switch from closing to closed, use a ternary in classNames, and probably more
  * - setting `display` to any value overrides the implicit `display:none` when closed. prefix display classes with an `open:` selector
  */
 // https://developer.mozilla.org/en-US/docs/Web/API/Popover_API/Using
@@ -84,6 +84,7 @@ export function PopoverContent({ children, className, popover = 'auto' }: Compon
     throw new Error(
       `You cannot assign display classNames to a popover. Prefix them with 'open:' or remove them. Found: ${match.slice(1).join(', ')}`
     );
+
   return (
     <div id={popoverId} popover={popover} className={merged} style={style}>
       {children}

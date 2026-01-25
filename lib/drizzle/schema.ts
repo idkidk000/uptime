@@ -1,25 +1,26 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, real, sqliteTable, sqliteView, text } from 'drizzle-orm/sqlite-core';
+import { createInsertSchema } from 'drizzle-zod';
 import type { MonitorParams, MonitorResponse } from '@/lib/monitor';
 import type { NotifierParams } from '@/lib/notifier';
 import { enumToObject } from '@/lib/utils';
 
-export enum ServiceState {
+export enum ServiceStatus {
   Up,
   Down,
   Pending,
   Paused,
 }
 
-export type ServiceStateName = keyof typeof ServiceState;
-export const serviceStates = enumToObject(ServiceState);
+export type ServiceStatusName = keyof typeof ServiceStatus;
+export const serviceStatuses = enumToObject(ServiceStatus);
 
 // NotifierTable
 
 export const notifierTable = sqliteTable('notifier', {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull().unique(),
-  active: integer({ mode: 'boolean' }).notNull().default(true),
+  active: integer({ mode: 'boolean' }).notNull(),
 
   params: text({ mode: 'json' }).notNull().$type<NotifierParams>(),
 
@@ -29,7 +30,13 @@ export const notifierTable = sqliteTable('notifier', {
     .$onUpdate(() => sql`(unixepoch())`),
 });
 
-export type NotifierTable = typeof notifierTable;
+export const notifierInsertSchema = createInsertSchema(notifierTable).omit({
+  createdAt: true,
+  updatedAt: true,
+  id: true,
+});
+
+type NotifierTable = typeof notifierTable;
 export type NotifierInsert = NotifierTable['$inferInsert'];
 export type NotifierSelect = NotifierTable['$inferSelect'];
 
@@ -38,10 +45,10 @@ export type NotifierSelect = NotifierTable['$inferSelect'];
 export const groupTable = sqliteTable('group', {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull().unique(),
-  active: integer({ mode: 'boolean' }).notNull().default(true),
+  active: integer({ mode: 'boolean' }).notNull(),
 
-  // i don't *think* it's valid to have an fk reference its own table
-  // parent: integer(), //.references(() => groupTable.id),
+  /** references self.id but that's not valid in sql */
+  parentId: integer(),
 
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer({ mode: 'timestamp' })
@@ -49,27 +56,26 @@ export const groupTable = sqliteTable('group', {
     .$onUpdate(() => sql`(unixepoch())`),
 });
 
-export type GroupTable = typeof groupTable;
+export const groupInsertSchema = createInsertSchema(groupTable).omit({ createdAt: true, updatedAt: true, id: true });
+
+type GroupTable = typeof groupTable;
 export type GroupInsert = GroupTable['$inferInsert'];
 export type GroupSelect = GroupTable['$inferSelect'];
 
 // GroupToNotifierTable
 
 // TODO: may want to enable this per service instead
-export const groupToNotifierTable = sqliteTable(
-  'groupToNotifier',
-  {
-    groupId: integer()
-      .notNull()
-      .references(() => groupTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
-    notifierId: integer()
-      .notNull()
-      .references(() => notifierTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
-  },
-  (table) => [primaryKey({ columns: [table.groupId, table.notifierId] })]
-);
+// biome-ignore format: why are you like this
+export const groupToNotifierTable = sqliteTable('groupToNotifier', {
+  groupId: integer()
+    .notNull()
+    .references(() => groupTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  notifierId: integer()
+    .notNull()
+    .references(() => notifierTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+}, (table) => [primaryKey({ columns: [table.groupId, table.notifierId] })]);
 
-export type GroupToNotifierTable = typeof groupToNotifierTable;
+type GroupToNotifierTable = typeof groupToNotifierTable;
 export type GroupToNotifierInsert = GroupToNotifierTable['$inferInsert'];
 export type GroupToNotifierSelect = GroupToNotifierTable['$inferSelect'];
 
@@ -80,19 +86,25 @@ export const serviceTable = sqliteTable('service', {
   name: text().notNull().unique(),
   // TODO: maybe seed a root group with a known id. then this would be notNull().default(knownId) and have { onDelete: 'set default' }. i think i could make it undeletable with a trigger
   groupId: integer().references(() => groupTable.id, { onDelete: 'set null', onUpdate: 'cascade' }),
-  active: integer({ mode: 'boolean' }).notNull().default(true),
+  active: integer({ mode: 'boolean' }).notNull(),
 
   params: text({ mode: 'json' }).notNull().$type<MonitorParams>(),
-  checkSeconds: integer().notNull().default(60),
-  failuresBeforeDown: integer().notNull().default(0),
-  retainCount: integer().notNull().default(10080),
+  checkSeconds: integer().notNull(),
+  failuresBeforeDown: integer().notNull(),
+  retainCount: integer().notNull(),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer({ mode: 'timestamp' })
     .notNull()
     .$onUpdate(() => sql`(unixepoch())`),
 });
 
-export type ServiceTable = typeof serviceTable;
+export const serviceInsertSchema = createInsertSchema(serviceTable).omit({
+  createdAt: true,
+  updatedAt: true,
+  id: true,
+});
+
+type ServiceTable = typeof serviceTable;
 export type ServiceInsert = ServiceTable['$inferInsert'];
 export type ServiceSelect = ServiceTable['$inferSelect'];
 
@@ -106,23 +118,24 @@ export const historyTable = sqliteTable(
       .notNull()
       .references(() => serviceTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
     result: text({ mode: 'json' }).$type<MonitorResponse | null>(),
-    state: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
+    status: integer({ mode: 'number' }).notNull().$type<ServiceStatus>(),
     createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   },
   (table) => [index('ix_serviceId_createdAt').on(table.serviceId, table.createdAt)]
 );
 
-export type HistoryTable = typeof historyTable;
+type HistoryTable = typeof historyTable;
 export type HistoryInsert = HistoryTable['$inferInsert'];
 export type HistorySelect = HistoryTable['$inferSelect'];
-
-// StateTable
-
+export interface HistorySummarySelect extends HistorySelect {
+  name: string;
+}
 export interface MiniHistory {
   from: Date;
   to: Date;
-  items: { id: number; state: ServiceState; latency?: number }[];
+  items: { id: number; status: ServiceStatus; latency?: number }[];
 }
+// StateTable
 
 export const stateTable = sqliteTable('state', {
   id: integer()
@@ -135,8 +148,7 @@ export const stateTable = sqliteTable('state', {
   uptime1d: real().notNull(),
   uptime30d: real().notNull(),
   latency1d: real(),
-  // FIXME: rename this and the enum to status
-  value: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
+  status: integer({ mode: 'number' }).notNull().$type<ServiceStatus>(),
   miniHistory: text({ mode: 'json' }).notNull().$type<MiniHistory>(),
   /** when the status changed rather than when the last check was performed */
   changedAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -146,7 +158,7 @@ export const stateTable = sqliteTable('state', {
     .$onUpdate(() => sql`(unixepoch())`),
 });
 
-export type StateTable = typeof stateTable;
+type StateTable = typeof stateTable;
 export type StateInsert = StateTable['$inferInsert'];
 export type StateSelect = StateTable['$inferSelect'];
 
@@ -161,7 +173,7 @@ export const keyValTable = sqliteTable('keyVal', {
   value: text({ mode: 'json' }),
 });
 
-export type KeyValTable = typeof keyValTable;
+type KeyValTable = typeof keyValTable;
 export type KeyValInsert = KeyValTable['$inferInsert'];
 export type KeyValSelect = KeyValTable['$inferSelect'];
 
@@ -175,7 +187,7 @@ export const historySummaryView = sqliteView('historySummary', {
   id: integer().primaryKey({ autoIncrement: true }),
   serviceId: integer().notNull(),
   result: text({ mode: 'json' }).$type<MonitorResponse | null>(),
-  state: integer({ mode: 'number' }).notNull().$type<ServiceState>(),
+  status: integer({ mode: 'number' }).notNull().$type<ServiceStatus>(),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }).as(
   sql`
@@ -184,13 +196,13 @@ export const historySummaryView = sqliteView('historySummary', {
       id,
       serviceId,
       result,
-      state,
+      status,
       createdAt
     from (
       select
         h.*,
         s.name,
-        lag(h.state) over win as prevState,
+        lag(h.status) over win as prevStatus,
         lag(h.result) over win as prevResult
       from history as h
       inner join service as s on s.id = h.serviceId
@@ -199,8 +211,8 @@ export const historySummaryView = sqliteView('historySummary', {
         order by h.createdAt
       )
     )
-    where prevState is null
-      or state != prevState
+    where prevStatus is null
+      or status != prevStatus
       or (
         result is not null and prevResult is not null and (
           json_extract(result, '$.kind') != json_extract(prevResult, '$.kind')
@@ -210,7 +222,3 @@ export const historySummaryView = sqliteView('historySummary', {
       )
     order by createdAt desc`
 );
-
-export interface HistorySummarySelect extends HistorySelect {
-  name: string;
-}

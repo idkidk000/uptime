@@ -10,7 +10,7 @@ import {
 } from '@/lib/drizzle/queries';
 import {
   historyTable,
-  ServiceState,
+  ServiceStatus,
   type ServiceWithState,
   type StateInsert,
   serviceTable,
@@ -29,7 +29,7 @@ import { SettingsClient } from '@/lib/settings';
 import { concurrently } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
-const settingsClient = new SettingsClient(import.meta.url, await SettingsClient.getSettings(), messageClient);
+const settingsClient = new SettingsClient(import.meta.url, messageClient);
 const logger = new ServerLogger(import.meta.url);
 let interval: NodeJS.Timeout | null = null;
 const POLL_MILLIS = 60_000;
@@ -57,14 +57,14 @@ function getMonitor(service: ServiceWithState): Monitor<BaseMonitorParams, Monit
 async function checkService(service: ServiceWithState): Promise<void> {
   const current = service.active ? await getMonitor(service).check() : null;
   const failures = current?.ok ? 0 : (service.state?.failures ?? 0) + (current === null ? 0 : 1);
-  const value =
+  const status =
     current === null
-      ? ServiceState.Paused
+      ? ServiceStatus.Paused
       : current.ok
-        ? ServiceState.Up
+        ? ServiceStatus.Up
         : failures >= service.failuresBeforeDown
-          ? ServiceState.Down
-          : ServiceState.Pending;
+          ? ServiceStatus.Down
+          : ServiceStatus.Pending;
 
   const nextCheckAt = service.state?.nextCheckAt
     ? dateAdd(
@@ -76,9 +76,9 @@ async function checkService(service: ServiceWithState): Promise<void> {
       )
     : dateAdd({ seconds: service.checkSeconds });
   logger.debugLow('nextCheckAt', { prev: service.state?.nextCheckAt, sec: service.checkSeconds, next: nextCheckAt });
-  const isStateChange = value !== service.state?.value;
+  const isStateChange = status !== service.state?.status;
   const [updated] = await db.transaction(async (tx) => {
-    await tx.insert(historyTable).values({ serviceId: service.id, result: current, state: value });
+    await tx.insert(historyTable).values({ serviceId: service.id, result: current, status });
 
     const miniHistory = await getMiniHistory(service.id, settingsClient.current.historySummaryItems, tx);
     const { uptime1d, uptime30d }: UptimeSelect = await tx.get(getUptimeSql(service.id));
@@ -92,7 +92,7 @@ async function checkService(service: ServiceWithState): Promise<void> {
       latency1d,
       uptime1d,
       uptime30d,
-      value,
+      status,
       ...(isStateChange ? { changedAt: new Date() } : {}),
     };
 
@@ -103,7 +103,7 @@ async function checkService(service: ServiceWithState): Promise<void> {
       .returning();
   });
   messageClient.send({ cat: 'invalidation', kind: 'service-state', id: service.id });
-  // more aggressive than isStateChange becuase we show history summary rows for each change of state, kind, and reason
+  // more aggressive than isStateChange because we show history summary rows for each change of state, kind, and reason
   if (
     isStateChange ||
     updated.current?.kind !== service.state?.current?.kind ||
@@ -115,17 +115,17 @@ async function checkService(service: ServiceWithState): Promise<void> {
       // FIXME: this is redundant. sse route can just send toasts to clients from service-history invalidations
       {
         cat: 'toast',
-        kind: 'state',
+        kind: 'status',
         id: service.id,
-        state: updated.value,
+        status: updated.status,
         message: updated.current?.message ?? 'Monitor is paused',
         name: service.name,
       }
     );
   if (isStateChange)
     messageClient.send({
-      cat: 'state',
-      kind: updated.value,
+      cat: 'status',
+      kind: updated.status,
       id: service.id,
       name: service.name,
       // FIXME: kind of jank
@@ -155,13 +155,14 @@ function checkServiceById(id: number): void {
     .then(([service]) => checkService(service));
 }
 
-export function start(): void {
+export async function start(): Promise<void> {
+  await settingsClient.init();
   setTimeout(() => {
     void checkServices();
     interval = setInterval(checkServices, POLL_MILLIS);
   }, STARTUP_DELAY_MILLIS);
 
-  messageClient.subscribe({ cat: 'action', kind: 'test-service' }, ({ id }) => checkServiceById(id));
+  messageClient.subscribe({ cat: 'action', kind: 'check-service' }, ({ id }) => checkServiceById(id));
 }
 
 export function stop(): void {

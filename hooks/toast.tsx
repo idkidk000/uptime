@@ -13,10 +13,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Button } from '@/components/button';
+import { Button } from '@/components/base/button';
 import { useSse } from '@/hooks/sse';
 import { dateAdd, dateDiff, toLocalIso } from '@/lib/date';
-import { ServiceState, serviceStates } from '@/lib/drizzle/schema';
+import { ServiceStatus, serviceStatuses } from '@/lib/drizzle/schema';
 import { cn } from '@/lib/utils';
 
 const MAX_TOASTS = 3;
@@ -31,7 +31,7 @@ enum ToastState {
 }
 
 interface ToastData {
-  variant?: ServiceState;
+  variant?: ServiceStatus;
   message: string;
   title: string;
   closeAt: Date;
@@ -41,7 +41,7 @@ interface ToastData {
 }
 
 interface Context {
-  showToast: (title: string, message: string, variant?: ServiceState) => string;
+  showToast: (title: string, message: string, variant?: ServiceStatus) => string;
   toasts: ToastData[];
   setToasts: Dispatch<SetStateAction<ToastData[]>>;
 }
@@ -80,12 +80,13 @@ function Toast({ id, message, title, state, closeAt, held, variant }: ToastData)
   return (
     <div
       className={cn(
-        'w-96 max-w-dvw p-4 rounded-xl shadow-lg border-2 border-unknown/25 bg-background text-foreground gap-2 starting:opacity-0 starting:-translate-x-1/2 starting:scale-50 opacity-100 translate-x-0 scale-100 transtion-[opacity,translate,scale] duration-200 origin-center pointer-events-auto select-none grid grid-cols-[1fr_auto_auto]',
+        'w-96 max-w-dvw p-4 rounded-xl shadow-lg border-2 border-unknown/25 bg-background text-foreground gap-2 pointer-events-auto select-none grid grid-cols-[1fr_auto_auto] transition-in-right',
+        // ' starting:opacity-0 starting:-translate-x-1/2 starting:scale-50 opacity-100 translate-x-0 scale-100 transtion-[opacity,translate,scale] duration-200 origin-center'
         state === ToastState.Closing && 'opacity-0 translate-x-1/2 scale-50',
-        variant === ServiceState.Down && 'bg-down',
-        variant === ServiceState.Paused && 'bg-paused text-background',
-        variant === ServiceState.Pending && 'bg-pending text-background',
-        variant === ServiceState.Up && 'bg-up text-background'
+        variant === ServiceStatus.Down && 'bg-down text-light',
+        variant === ServiceStatus.Paused && 'bg-paused text-dark',
+        variant === ServiceStatus.Pending && 'bg-pending text-dark',
+        variant === ServiceStatus.Up && 'bg-up text-dark'
       )}
       role='alertdialog'
     >
@@ -121,7 +122,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const { subscribe } = useSse();
 
-  const showToast = useCallback((title: string, message: string, variant?: ServiceState) => {
+  const showToast = useCallback((title: string, message: string, variant?: ServiceStatus) => {
     const id = self.crypto.randomUUID();
     const closeAt = dateAdd({ millis: CLOSE_MILLIS });
     setToasts((prev) => [
@@ -142,11 +143,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   // biome-ignore format: no
   useEffect(() =>
     subscribe('toast', (message) => {
-      if (message.kind === 'state')
+      if (message.kind === 'status')
         showToast(
-          `${message.name} is ${serviceStates[message.state].toLocaleLowerCase()}`,
+          `${message.name} is ${serviceStatuses[message.status].toLocaleLowerCase()}`,
           message.message,
-          message.state
+          message.status
         );
       else if (message.kind === 'message') showToast(message.title, message.message);
       else throw new Error(`Unhandled toast kind ${(message as { kind: string }).kind}`);

@@ -1,19 +1,23 @@
 import { rmSync } from 'node:fs';
 import { createConnection, createServer, type Socket } from 'node:net';
+import { sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import SuperJSON from 'superjson';
-import type { ServiceState } from '@/lib/drizzle/schema';
+import type { ServiceStatus } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import type { MonitorDownReason } from '@/lib/monitor';
 
+// use a unix socket on systems which support it. fallback to tcp/ip and hope we don't have a port collision
 const SOCKET_ADDR = '.messaging.sock';
+const SOCKET_FALLBACK_PORT = 33625;
+const SOCKET_FALLBACK_ADDR = '127.0.0.1';
 // only needs to be this high in dev
 const STARTUP_CACHE_MILLIS = 15_000;
 
 // actions which can only be carried out by the backend workers. most tasks should be fine in server actions
-export type ActionKind = 'test-service';
+export type ActionKind = 'check-service';
 export type InvalidationKind = 'group' | 'service-config' | 'service-history' | 'service-state' | 'settings';
-export type Message =
+export type BusMessage =
   | {
       cat: 'action';
       kind: ActionKind;
@@ -26,10 +30,10 @@ export type Message =
     }
   | {
       cat: 'toast';
-      kind: 'state';
+      kind: 'status';
       id: number;
       name: string;
-      state: ServiceState;
+      status: ServiceStatus;
       message: string;
     }
   | {
@@ -39,8 +43,8 @@ export type Message =
       message: string;
     }
   | {
-      cat: 'state';
-      kind: ServiceState;
+      cat: 'status';
+      kind: ServiceStatus;
       id: number;
       name: string;
       reason?: MonitorDownReason;
@@ -48,14 +52,14 @@ export type Message =
     };
 
 // FIXME: the generated type is correct but the def is horrible and keys have to be asserted, which defeats the point of this. may need to refactor Message
-type SubscriptionKey = Message extends infer M
+type SubscriptionKey = BusMessage extends infer M
   ? M extends { cat: infer C extends string }
     ? M extends { kind: infer K extends string | number }
       ? `${C}.${K}` | `${C}.`
       : never
     : never
   : never;
-type Callback = (message: Message) => void | Promise<void>;
+type Callback = (message: BusMessage) => void | Promise<void>;
 type Unsubscribe = () => void;
 type InternalMessage =
   | {
@@ -63,12 +67,16 @@ type InternalMessage =
       key: SubscriptionKey;
     }
   | { kind: 'unsubscribe'; key: SubscriptionKey }
-  | { kind: 'message'; msg: Message };
+  | { kind: 'message'; msg: BusMessage };
+
+function isUnixLike() {
+  return sep === '/';
+}
 
 export class MessageServer {
   #logger = new ServerLogger(import.meta.url, 'MessageServer');
   #subscriptions = new Map<SubscriptionKey, Set<Socket>>();
-  #cache: Message[] = [];
+  #cache: BusMessage[] = [];
   /** cache is in use while this is not null */
   #cacheTimeout: NodeJS.Timeout | null;
   #parseMessage(data: string): InternalMessage | null {
@@ -98,7 +106,7 @@ export class MessageServer {
             ...(this.#subscriptions.get(`${internalMessage.msg.cat}.${internalMessage.msg.kind}` as SubscriptionKey) ??
               []),
           ];
-          if (!subscriptions) return;
+          if (!subscriptions.length) return;
           const messageString = `${SuperJSON.stringify(internalMessage.msg)}\n`;
           for (const otherClient of subscriptions) otherClient.write(messageString);
           return;
@@ -143,9 +151,15 @@ export class MessageServer {
     this.#cacheTimeout = setTimeout(() => {
       this.#cache = [];
     }, STARTUP_CACHE_MILLIS);
-    this.#server.addListener('listening', () => this.#logger.success('MessageServer listening on', SOCKET_ADDR));
+    this.#server.addListener('listening', () =>
+      this.#logger.success(
+        'MessageServer listening on',
+        isUnixLike() ? SOCKET_ADDR : `${SOCKET_FALLBACK_ADDR}:${SOCKET_FALLBACK_PORT}`
+      )
+    );
     this.#server.addListener('error', (err) => this.#logger.error('MessageServer error', err));
-    this.#server.listen(SOCKET_ADDR);
+    if (isUnixLike()) this.#server.listen(SOCKET_ADDR);
+    else this.#server.listen(SOCKET_FALLBACK_PORT, SOCKET_FALLBACK_ADDR);
   }
   stop() {
     this.#server.close();
@@ -165,8 +179,11 @@ export class MessageClient {
   #logger: ServerLogger;
   constructor(public readonly importMetaUrl: string) {
     this.#logger = new ServerLogger(importMetaUrl, 'MessageClient');
+    // FIXME: dispose of failed sockets properly
     const interval = setInterval(() => {
-      const socket = createConnection(SOCKET_ADDR);
+      const socket = isUnixLike()
+        ? createConnection(SOCKET_ADDR)
+        : createConnection(SOCKET_FALLBACK_PORT, SOCKET_FALLBACK_ADDR);
       socket.addListener('error', (err) => {
         this.#logger.debugLow('MessageClient error', err);
       });
@@ -183,7 +200,7 @@ export class MessageClient {
         readline.addListener('line', (data) => {
           this.#logger.debugLow('received', data);
           try {
-            const parsed: Message = SuperJSON.parse(data);
+            const parsed: BusMessage = SuperJSON.parse(data);
             for (const callback of [
               ...(this.#subscriptions.get(`${parsed.cat}.${parsed.kind}` as SubscriptionKey) ?? []),
               ...(this.#subscriptions.get(`${parsed.cat}.`) ?? []),
@@ -202,12 +219,12 @@ export class MessageClient {
     if (this.#socket) this.#socket.write(messageString);
     else this.#queue.push(messageString);
   }
-  send(...messages: Message[]): void {
+  send(...messages: BusMessage[]): void {
     for (const message of messages) this.#sendInternalMessage({ kind: 'message', msg: message });
   }
-  subscribe<Filter extends Pick<Message, 'cat' | 'kind'> | Pick<Message, 'cat'>>(
+  subscribe<Filter extends Pick<BusMessage, 'cat' | 'kind'> | Pick<BusMessage, 'cat'>>(
     filter: Filter,
-    callback: (message: Extract<Message, Filter>) => void | Promise<void>
+    callback: (message: Extract<BusMessage, Filter>) => void | Promise<void>
   ): Unsubscribe {
     const key = `${filter.cat}.${'kind' in filter ? filter.kind : ''}` as SubscriptionKey;
     if (!this.#subscriptions.has(key)) {

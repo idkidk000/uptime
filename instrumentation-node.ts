@@ -6,7 +6,7 @@ import * as Monitor from '@/workers/monitor';
 import * as Notifier from '@/workers/notifier';
 
 const logger = new ServerLogger(import.meta.url);
-const settingsClient = new SettingsClient(import.meta.url, await SettingsClient.getSettings());
+const settingsClient = new SettingsClient(import.meta.url);
 
 function stop() {
   Monitor.stop();
@@ -18,9 +18,10 @@ function stop() {
 }
 
 async function main() {
+  await settingsClient.init();
   Messaging.start();
   await Notifier.start();
-  if (!settingsClient.current.disableMonitors) Monitor.start();
+  if (!settingsClient.current.disableMonitors) await Monitor.start();
 
   process.addListener('SIGINT', stop);
   process.addListener('SIGTERM', stop);

@@ -3,8 +3,8 @@ import { cn } from '@/lib/utils';
 
 export function Card({ className, children, ...props }: ComponentProps<'article'>) {
   return (
-    <article className={cn('rounded-xl bg-background-card shadow-xl p-4', className)} {...props}>
+    <section className={cn('rounded-xl bg-background-card shadow-xl p-4 transition-in-up', className)} {...props}>
       {children}
-    </article>
+    </section>
   );
 }

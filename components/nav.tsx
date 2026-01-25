@@ -1,6 +1,6 @@
 import { Gauge, Wrench } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/button';
+import { Button } from '@/components/base/button';
 import { description, displayName } from '@/package.json';
 
 export function Nav() {
@@ -13,7 +13,7 @@ export function Nav() {
         Dashboard
       </Button>
       <Button as={Link} href='/settings' variant='muted' className='py-1 border-transparent'>
-        <Wrench className='bg-up rounded-full p-1 size-8! text-background' />
+        <Wrench className='bg-up rounded-full p-1 size-8! text-dark' />
       </Button>
     </nav>
   );

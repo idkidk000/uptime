@@ -3,9 +3,9 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { type ComponentProps, useCallback, useEffect, useRef, useState } from 'react';
-import { Button, ButtonGroup } from '@/components/button';
-import { Card } from '@/components/card';
-import { StateBadge } from '@/components/state-badge';
+import { Button, ButtonGroup } from '@/components/base/button';
+import { Card } from '@/components/base/card';
+import { StatusBadge } from '@/components/status-badge';
 import { useServiceHistory } from '@/hooks/app-queries';
 import { toLocalIso } from '@/lib/date';
 import { monitorDownReasons } from '@/lib/monitor';
@@ -36,14 +36,14 @@ export function HistoryCard({
       >
         <div className='contents font-semibold'>
           {serviceId === null && <h4>Name</h4>}
-          <h4>State</h4>
+          <h4>Status</h4>
           <h4>At</h4>
           <h4>Message</h4>
         </div>
         {history?.data.map((item) => (
           <div className='contents' key={item.id}>
             {serviceId === null && <Link href={`/dashboard/${item.serviceId}`}>{item.name}</Link>}
-            <StateBadge state={item.state} size='sm' className='me-auto' />
+            <StatusBadge status={item.status} size='sm' className='me-auto' />
             <span>{toLocalIso(item.createdAt, { endAt: 's' })}</span>
             <span>
               {item.result === null

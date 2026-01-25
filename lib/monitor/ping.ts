@@ -18,7 +18,7 @@ export type PingMonitorResponse = BaseMonitorResponse & {
   kind: 'ping';
 };
 
-/** ping is a setuid binary so the container requires NET_ADMIN capability to use it*/
+/** ping is a setuid binary and the container requires NET_ADMIN capability to use it*/
 export class PingMonitor extends Monitor<PingMonitorParams, PingMonitorResponse> {
   async check(): Promise<PingMonitorResponse> {
     try {

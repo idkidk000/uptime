@@ -3,18 +3,18 @@ import Link from 'next/link';
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { setPausedMulti } from '@/actions/service';
 import { BarGraph } from '@/components/bar-graph';
-import { Button } from '@/components/button';
-import { Card } from '@/components/card';
-import { InputText } from '@/components/input-text';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/popover';
-import { StateBadge } from '@/components/state-badge';
+import { Button } from '@/components/base/button';
+import { Card } from '@/components/base/card';
+import { InputText } from '@/components/base/input-text';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/base/popover';
+import { StatusBadge } from '@/components/status-badge';
 import { useServicesWithState } from '@/hooks/app-queries';
-import { ServiceState, type ServiceWithState } from '@/lib/drizzle/schema';
+import { ServiceStatus, type ServiceWithState } from '@/lib/drizzle/schema';
 import { cn, enumEntries } from '@/lib/utils';
 
 interface Filter {
   search: string | null;
-  state: ServiceState[];
+  status: ServiceStatus[];
   active: boolean[];
 }
 
@@ -22,23 +22,23 @@ function FilterStateButton({
   filter,
   setFilter,
   label,
-  state,
+  status,
 }: {
   filter: Filter;
   setFilter: Dispatch<SetStateAction<Filter>>;
   label: string;
-  state: ServiceState;
+  status: ServiceStatus;
 }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies(setFilter): state setters are stable
   const handleClick = useCallback(() => {
     setFilter((prev) => ({
       ...prev,
-      state: prev.state.includes(state) ? prev.state.filter((item) => item !== state) : [...prev.state, state],
+      status: prev.status.includes(status) ? prev.status.filter((item) => item !== status) : [...prev.status, status],
     }));
-  }, [state]);
+  }, [status]);
 
   return (
-    <Button size='sm' variant={filter.state.includes(state) ? 'up' : 'muted'} onClick={handleClick}>
+    <Button size='sm' variant={filter.status.includes(status) ? 'up' : 'muted'} onClick={handleClick}>
       {label}
     </Button>
   );
@@ -90,12 +90,12 @@ function ServiceListItem({
         <input type='checkbox' checked={selection?.includes(id) ?? false} onChange={handleCheckChange} />
       )}
       <Link href={`/dashboard/${id}`} className='grid grid-cols-subgrid items-center col-span-3'>
-        <StateBadge
+        <StatusBadge
           size='sm'
-          state={state?.value}
+          status={state?.status}
           className='me-auto'
           suppressHydrationWarning
-        >{`${typeof state?.uptime1d === 'number' ? Math.round(state?.uptime1d) : '0'}%`}</StateBadge>
+        >{`${typeof state?.uptime1d === 'number' ? Math.round(state?.uptime1d) : '0'}%`}</StatusBadge>
         <h4 className='shrink-0 me-auto'>{name}</h4>
         <BarGraph history={state?.miniHistory} />
       </Link>
@@ -106,7 +106,7 @@ function ServiceListItem({
 // TODO: groups
 export function ServiceList() {
   const services = useServicesWithState();
-  const [filter, setFilter] = useState<Filter>({ active: [], search: null, state: [] });
+  const [filter, setFilter] = useState<Filter>({ active: [], search: null, status: [] });
   const [selection, setSelection] = useState<number[] | null>(null);
   const selectionRef = useRef(selection);
   const servicesRef = useRef(services);
@@ -124,7 +124,7 @@ export function ServiceList() {
     setFilter((prev) => ({ ...prev, search: search || null }));
   }, []);
 
-  const handleClearFilterClick = useCallback(() => setFilter({ active: [], search: null, state: [] }), []);
+  const handleClearFilterClick = useCallback(() => setFilter({ active: [], search: null, status: [] }), []);
 
   const handleSelectAllClick = useCallback(
     () =>
@@ -162,23 +162,20 @@ export function ServiceList() {
           <Button
             variant='muted'
             // aspect-square doesn't work in chromium
-            className={cn(
-              'justify-center size-11',
-              (filter.active.length || filter.search !== null || filter.state.length) && 'border-up'
-            )}
-            size='sm'
+            className={cn((filter.active.length || filter.search !== null || filter.status.length) && 'border-up')}
+            size='icon'
             onClick={handleClearFilterClick}
           >
             <ListFilter />
           </Button>
           <Popover>
-            <PopoverTrigger variant='muted' className={filter.state.length ? 'border-up' : undefined}>
-              State
+            <PopoverTrigger variant='muted' className={filter.status.length ? 'border-up' : undefined}>
+              Status
               <ChevronDown />
             </PopoverTrigger>
             <PopoverContent className='open:flex flex-col gap-2'>
-              {enumEntries(ServiceState).map(([label, state]) => (
-                <FilterStateButton key={state} filter={filter} label={label} setFilter={setFilter} state={state} />
+              {enumEntries(ServiceStatus).map(([label, status]) => (
+                <FilterStateButton key={status} filter={filter} label={label} setFilter={setFilter} status={status} />
               ))}
             </PopoverContent>
           </Popover>
@@ -196,11 +193,7 @@ export function ServiceList() {
           <Button variant='muted'>Tags</Button>
         </div>
         {selection !== null && (
-          <div
-            className={cn(
-              'flex gap-2 items-center transition-[scale,opacity] duration-200 overflow-hidden origin-left scale-x-100 opacity-100 starting:scale-x-0 starting:opacity-0'
-            )}
-          >
+          <div className={cn('flex gap-2 items-center transition-in-right')}>
             <input type='checkbox' checked={selection?.length > 0} onChange={handleSelectAllClick} />
             <Button variant='muted' onClick={handlePauseSelectionClick}>
               <Pause />
@@ -225,7 +218,7 @@ export function ServiceList() {
           .filter(
             (service) =>
               (filter.active.length === 0 || filter.active.includes(service.active)) &&
-              (filter.state.length === 0 || (filter.state as number[]).includes(service.state?.value ?? -1)) &&
+              (filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1)) &&
               (filter.search === null || service.name.toLocaleLowerCase().includes(filter.search.toLocaleLowerCase()))
           )
           .toSorted((a, b) => a.name.localeCompare(b.name))

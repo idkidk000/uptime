@@ -1,11 +1,10 @@
 'use server';
 
-import { type } from 'arktype';
 import { eq, getTableColumns } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
 import { keyValTable } from '@/lib/drizzle/schema';
 import { MessageClient } from '@/lib/messaging';
-import { defaultSettings, partialSettingsSchema, type Settings } from '@/lib/settings';
+import { defaultSettings, type Settings, settingsSchema } from '@/lib/settings';
 import { pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
@@ -22,8 +21,7 @@ export async function getSettings(): Promise<Settings> {
 }
 
 export async function updateSettings(data: Partial<Settings>): Promise<void> {
-  const parsed = partialSettingsSchema(data);
-  if (parsed instanceof type.errors) throw parsed;
+  const parsed = settingsSchema.partial().parse(data);
   const rows = await db
     .select(pick(getTableColumns(keyValTable), ['value']))
     .from(keyValTable)

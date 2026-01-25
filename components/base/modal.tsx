@@ -10,7 +10,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { Button } from '@/components/button';
+import { Button } from '@/components/base/button';
 import { cn } from '@/lib/utils';
 
 interface Context {
@@ -34,16 +34,14 @@ function useModal(): Context {
 export function ModalTrigger({ children, onClick, ...props }: ComponentProps<typeof Button<'button'>>) {
   const { modalRef } = useModal();
 
-  const handleClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      if (modalRef.current) {
-        if (modalRef.current.open) modalRef.current.close();
-        else modalRef.current.showModal();
-      }
-      onClick?.(event);
-    },
-    [onClick]
-  );
+  // biome-ignore format: no
+  const handleClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    if (modalRef.current) {
+      if (modalRef.current.open) modalRef.current.close();
+      else modalRef.current.showModal();
+    }
+    onClick?.(event);
+  }, [onClick]);
 
   return (
     <Button onClick={handleClick} {...props}>
@@ -55,13 +53,11 @@ export function ModalTrigger({ children, onClick, ...props }: ComponentProps<typ
 export function ModalClose({ children, onClick, ...props }: ComponentProps<typeof Button<'button'>>) {
   const { modalRef } = useModal();
 
-  const handleClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      modalRef.current?.close();
-      onClick?.(event);
-    },
-    [onClick]
-  );
+  // biome-ignore format: no
+  const handleClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    modalRef.current?.close();
+    onClick?.(event);
+  }, [onClick]);
 
   return (
     <Button onClick={handleClick} {...props}>

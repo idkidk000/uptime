@@ -1,6 +1,12 @@
-import NotFoundPage from '@/app/not-found';
+'use client';
 
-// TODO: implement. will need zod (or similar) schemas for each kind of monitor and tanstack form https://tanstack.com/form/latest/docs/framework/react/guides/validation. forms can obviously be reused for clone and edit pages
+import { PageWrapper } from '@/components/base/page-wrapper';
+import { ServiceForm } from '@/forms/service';
+
 export default function AddPage() {
-  return <NotFoundPage />;
+  return (
+    <PageWrapper pageTitle='Add a new service'>
+      <ServiceForm />
+    </PageWrapper>
+  );
 }

@@ -5,7 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
-import { Button } from '@/components/button';
+import { Button } from '@/components/base/button';
 import { Nav } from '@/components/nav';
 import { ServiceList } from '@/components/service-list';
 import { AppQueriesProvider } from '@/hooks/app-queries';

@@ -6,7 +6,7 @@ import { getSettings } from '@/actions/setting';
 import { getServiceStates } from '@/actions/state';
 import type { GroupSelect, ServiceSelect, StateSelect } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
-import { type InvalidationKind, MessageClient } from '@/lib/messaging';
+import { type BusMessage, type InvalidationKind as InvalidateKind, MessageClient } from '@/lib/messaging';
 import type { Settings } from '@/lib/settings';
 
 const THROTTLE_MILLIS = 100;
@@ -18,16 +18,25 @@ export type Update = { ids: number[] } & (
   | { kind: 'settings'; data: Settings }
 );
 
-export interface Invalidation {
-  kind: Exclude<InvalidationKind, Update['kind']>;
+export interface Invalidate {
+  kind: Exclude<InvalidateKind, Update['kind']>;
   ids: number[];
 }
+
+export type SseMessageKind = 'update' | 'invalidate' | 'toast';
+export type SseMessage<Kind extends SseMessageKind> = Kind extends 'update'
+  ? Update
+  : Kind extends 'invalidate'
+    ? Invalidate
+    : Kind extends 'toast'
+      ? Extract<BusMessage, { cat: 'toast' }>
+      : never;
 
 const logger = new ServerLogger(import.meta.url);
 const messageClient = new MessageClient(import.meta.url);
 const streamControllers = new Set<ReadableStreamDefaultController<unknown>>();
 /** only used in sync code */
-const invalidations = new Map<InvalidationKind, Set<number>>();
+const invalidations = new Map<InvalidateKind, Set<number>>();
 /** also acts as a mutex */
 // biome-ignore lint/correctness/noUnusedVariables: biome bug
 let timeout: NodeJS.Timeout | null = null;
@@ -44,9 +53,9 @@ function timeoutCallback() {
   invalidations.clear();
 }
 
-async function sendClientUpdates(destructuredInvalidations: { kind: InvalidationKind; ids: number[] }[]) {
+async function sendClientUpdates(destructuredInvalidations: { kind: InvalidateKind; ids: number[] }[]) {
   try {
-    const messages: ([event: 'invalidate', data: Invalidation] | [event: 'update', data: Update])[] = [];
+    const messages: ([event: 'invalidate', data: Invalidate] | [event: 'update', data: Update])[] = [];
     for (const { kind, ids } of destructuredInvalidations) {
       if (kind === 'group') messages.push(['update', { kind, ids, data: await getGroups(ids) }]);
       else if (kind === 'service-config') messages.push(['update', { kind, ids, data: await getServices(ids) }]);

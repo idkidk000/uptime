@@ -2,14 +2,14 @@
 
 import { RelativeDate } from '@/components/relative-date';
 import { useAppQueries } from '@/hooks/app-queries';
-import { type MiniHistory, ServiceState } from '@/lib/drizzle/schema';
+import { type MiniHistory, ServiceStatus } from '@/lib/drizzle/schema';
 import { cn } from '@/lib/utils';
 
-const stateClassNames: Record<ServiceState, string> = {
-  [ServiceState.Up]: 'fill-up',
-  [ServiceState.Down]: 'fill-down',
-  [ServiceState.Pending]: 'fill-pending',
-  [ServiceState.Paused]: 'fill-paused',
+const statusClassNames: Record<ServiceStatus, string> = {
+  [ServiceStatus.Up]: 'fill-up',
+  [ServiceStatus.Down]: 'fill-down',
+  [ServiceStatus.Pending]: 'fill-pending',
+  [ServiceStatus.Paused]: 'fill-paused',
 };
 
 const viewboxHeight = 100;
@@ -33,21 +33,21 @@ export function BarGraph({
     history?.items
       ?.filter((item): item is Required<MiniHistory['items'][number]> => typeof item.latency === 'number')
       .reduce((acc, item) => Math.max(acc, item.latency), 0) ?? 0;
-  const mostCommonState = (history?.items
+  const mostCommonStatus = (history?.items
     .reduce<number[]>((acc, item) => {
-      acc[item.state] = (acc[item.state] ?? 0) + 1;
+      acc[item.status] = (acc[item.status] ?? 0) + 1;
       return acc;
     }, [])
-    .map((count, state) => ({ count, state }))
+    .map((count, status) => ({ count, status }))
     .toSorted((a, b) => b.count - a.count)
-    .at(0)?.state ?? ServiceState.Up) as ServiceState;
+    .at(0)?.status ?? ServiceStatus.Up) as ServiceStatus;
 
   return (
     <div className={cn('flex flex-col w-full', className)}>
       <svg
         viewBox={`0 0 ${viewboxWidth} ${viewboxHeight}`}
         preserveAspectRatio='xMidYMid meet'
-        className={stateClassNames[mostCommonState]}
+        className={statusClassNames[mostCommonStatus]}
         suppressHydrationWarning
       >
         {history?.items.map((item, i) => (
@@ -64,7 +64,7 @@ export function BarGraph({
               typeof item.latency === 'undefined' ? 0 : viewboxHeight - (viewboxHeight / maxLatency) * item.latency
             )}
             rx={radius}
-            className={item.state === mostCommonState ? undefined : stateClassNames[item.state]}
+            className={item.status === mostCommonStatus ? undefined : statusClassNames[item.status]}
           />
         ))}
       </svg>
