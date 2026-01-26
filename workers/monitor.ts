@@ -18,13 +18,7 @@ import {
 } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
-import type { BaseMonitorParams, Monitor, MonitorResponse } from '@/lib/monitor';
-import { DnsMonitor } from '@/lib/monitor/dns';
-import { DomainMonitor } from '@/lib/monitor/domain';
-import { HttpMonitor } from '@/lib/monitor/http';
-import { PingMonitor } from '@/lib/monitor/ping';
-import { SslMonitor } from '@/lib/monitor/ssl';
-import { TcpMonitor } from '@/lib/monitor/tcp';
+import { getMonitor } from '@/lib/monitor/utils';
 import { SettingsClient } from '@/lib/settings';
 import { concurrently } from '@/lib/utils';
 
@@ -35,27 +29,8 @@ let interval: NodeJS.Timeout | null = null;
 const POLL_MILLIS = 60_000;
 const STARTUP_DELAY_MILLIS = 5_000;
 
-function getMonitor(service: ServiceWithState): Monitor<BaseMonitorParams, MonitorResponse> {
-  switch (service.params.kind) {
-    case 'http':
-      return new HttpMonitor(service.params, settingsClient);
-    case 'dns':
-      return new DnsMonitor(service.params, settingsClient);
-    case 'ping':
-      return new PingMonitor(service.params, settingsClient);
-    case 'ssl':
-      return new SslMonitor(service.params, settingsClient);
-    case 'tcp':
-      return new TcpMonitor(service.params, settingsClient);
-    case 'domain':
-      return new DomainMonitor(service.params, settingsClient);
-    default:
-      throw new Error(`unhandled monitor kind ${(service.params as { kind: string }).kind} with id ${service.id}`);
-  }
-}
-
 async function checkService(service: ServiceWithState): Promise<void> {
-  const current = service.active ? await getMonitor(service).check() : null;
+  const current = service.active ? await getMonitor(service.params, settingsClient).check() : null;
   const failures = current?.ok ? 0 : (service.state?.failures ?? 0) + (current === null ? 0 : 1);
   const status =
     current === null
@@ -135,6 +110,7 @@ async function checkService(service: ServiceWithState): Promise<void> {
 }
 
 export async function checkServices() {
+  if (settingsClient.current.disableMonitors) return;
   const services = await db
     .select({ ...getTableColumns(serviceTable), state: getTableColumns(stateTable) })
     .from(serviceTable)

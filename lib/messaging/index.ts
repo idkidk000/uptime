@@ -17,17 +17,7 @@ const STARTUP_CACHE_MILLIS = 15_000;
 // actions which can only be carried out by the backend workers. most tasks should be fine in server actions
 export type ActionKind = 'check-service';
 export type InvalidationKind = 'group' | 'service-config' | 'service-history' | 'service-state' | 'settings';
-export type BusMessage =
-  | {
-      cat: 'action';
-      kind: ActionKind;
-      id: number;
-    }
-  | {
-      cat: 'invalidation';
-      kind: InvalidationKind;
-      id: number;
-    }
+export type ToastMessage =
   | {
       cat: 'toast';
       kind: 'status';
@@ -41,15 +31,28 @@ export type BusMessage =
       kind: 'message';
       title: string;
       message: string;
+    };
+export type StatusMessage = {
+  cat: 'status';
+  kind: ServiceStatus;
+  id: number;
+  name: string;
+  reason?: MonitorDownReason;
+  message: string;
+};
+export type BusMessage =
+  | {
+      cat: 'action';
+      kind: ActionKind;
+      id: number;
     }
   | {
-      cat: 'status';
-      kind: ServiceStatus;
+      cat: 'invalidation';
+      kind: InvalidationKind;
       id: number;
-      name: string;
-      reason?: MonitorDownReason;
-      message: string;
-    };
+    }
+  | ToastMessage
+  | StatusMessage;
 
 // FIXME: the generated type is correct but the def is horrible and keys have to be asserted, which defeats the point of this. may need to refactor Message
 type SubscriptionKey = BusMessage extends infer M

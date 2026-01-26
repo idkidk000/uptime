@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import SuperJSON from 'superjson';
 import { getGroups } from '@/actions/group';
@@ -6,8 +7,8 @@ import { getSettings } from '@/actions/setting';
 import { getServiceStates } from '@/actions/state';
 import type { GroupSelect, ServiceSelect, StateSelect } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
-import { type BusMessage, type InvalidationKind as InvalidateKind, MessageClient } from '@/lib/messaging';
-import type { Settings } from '@/lib/settings';
+import { type InvalidationKind as InvalidateKind, MessageClient } from '@/lib/messaging';
+import type { Settings } from '@/lib/settings/schema';
 
 const THROTTLE_MILLIS = 100;
 
@@ -23,15 +24,6 @@ export interface Invalidate {
   ids: number[];
 }
 
-export type SseMessageKind = 'update' | 'invalidate' | 'toast';
-export type SseMessage<Kind extends SseMessageKind> = Kind extends 'update'
-  ? Update
-  : Kind extends 'invalidate'
-    ? Invalidate
-    : Kind extends 'toast'
-      ? Extract<BusMessage, { cat: 'toast' }>
-      : never;
-
 const logger = new ServerLogger(import.meta.url);
 const messageClient = new MessageClient(import.meta.url);
 const streamControllers = new Set<ReadableStreamDefaultController<unknown>>();
@@ -40,6 +32,7 @@ const invalidations = new Map<InvalidateKind, Set<number>>();
 /** also acts as a mutex */
 // biome-ignore lint/correctness/noUnusedVariables: biome bug
 let timeout: NodeJS.Timeout | null = null;
+const deploymentId = randomUUID();
 
 function timeoutCallback() {
   // fully destructure the Invalidations map and sets so they can be processed async
@@ -100,6 +93,8 @@ export function GET() {
       start: (streamController) => {
         streamControllers.add(streamController);
         abortController.signal.addEventListener('abort', () => streamControllers.delete(streamController));
+        // first message fires the `open` event on the client
+        streamController.enqueue(`event: connected\ndata: ${deploymentId}\n\n`);
       },
       cancel: () => abortController.abort(),
     }),

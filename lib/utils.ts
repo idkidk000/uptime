@@ -96,3 +96,7 @@ export function pascalToTitleCase(value: string): string {
     .filter((token) => token.length)
     .join(' ');
 }
+
+export function lowerToSentenceCase(value: string): string {
+  return value.length ? `${value[0].toLocaleUpperCase()}${value.slice(1)}` : value;
+}

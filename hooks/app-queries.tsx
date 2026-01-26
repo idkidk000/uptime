@@ -10,7 +10,7 @@ import { getServiceStates, getStatusCounts, type StatusCounts } from '@/actions/
 import { useLogger } from '@/hooks/logger';
 import { useSse } from '@/hooks/sse';
 import type { GroupSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/schema';
-import type { Settings } from '@/lib/settings';
+import type { Settings } from '@/lib/settings/schema';
 
 interface Context {
   groups: GroupSelect[];
@@ -125,6 +125,10 @@ export function AppQueriesProvider({
             if (Array.isArray(prev)) return [...prev.filter((item) => !message.ids.includes(item.id)), ...message.data];
             queryClient.refetchQueries({ queryKey: [message.kind] });
           });
+      }),
+      subscribe('reconnect', () => {
+        // invalidate everything
+        queryClient.invalidateQueries();
       }),
     ];
     return () => void unsubscribers.map((fn) => fn());

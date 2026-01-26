@@ -5,40 +5,19 @@ import {
   groupToNotifierTable,
   type NotifierSelect,
   notifierTable,
-  ServiceStatus,
-  serviceStatuses,
   serviceTable,
 } from '@/lib/drizzle/schema';
 import { MessageClient } from '@/lib/messaging';
-import { monitorDownReasons } from '@/lib/monitor';
-import type { NotifierParams } from '@/lib/notifier';
-import type { BaseNotifierParams, Notifier } from '@/lib/notifier/base';
-import { GotifyNotifier } from '@/lib/notifier/gotify';
-import { pascalToSentenceCase, pick } from '@/lib/utils';
+import type { Notifier } from '@/lib/notifier';
+import { getNotifier } from '@/lib/notifier/utils';
+import { pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 
 // TODO: renotify. needs interval config on the service/group. use state.changedAt
 
-function getNotifier(params: NotifierParams): Notifier<BaseNotifierParams> {
-  switch (params.kind) {
-    case 'gotify':
-      return new GotifyNotifier(params);
-    default:
-      throw new Error(`unhandled notifier kind ${params.kind}`);
-  }
-}
-
-export async function start(): Promise<void> {
-  const cache = new Map<number, { updatedAt: Date; notifier: Notifier }>(
-    (await db.select().from(notifierTable).where(eq(notifierTable.active, true))).map((item) => [
-      item.id,
-      {
-        updatedAt: item.updatedAt,
-        notifier: getNotifier(item.params),
-      },
-    ])
-  );
+export function start(): void {
+  const cache = new Map<number, { updatedAt: Date; notifier: Notifier }>();
 
   function getInstance(entry: Pick<NotifierSelect, 'id' | 'params' | 'updatedAt'>): Notifier {
     const cached = cache.get(entry.id);
@@ -49,8 +28,6 @@ export async function start(): Promise<void> {
   }
 
   messageClient.subscribe({ cat: 'status' }, async (message) => {
-    if (message.kind === ServiceStatus.Paused || message.kind === ServiceStatus.Pending) return;
-
     // FIXME: need to recurse groups
     const entries = await db
       .select(pick(getTableColumns(notifierTable), ['id', 'params', 'updatedAt']))
@@ -63,13 +40,7 @@ export async function start(): Promise<void> {
       )
       .where(eq(serviceTable.id, message.id));
 
-    for (const entry of entries) {
-      getInstance(entry).send(
-        message.kind,
-        `${message.name} is ${serviceStatuses[message.kind].toLocaleLowerCase()}`,
-        `${typeof message.reason === 'undefined' ? '' : `${pascalToSentenceCase(monitorDownReasons[message.reason])}: `}${message.message}`
-      );
-    }
+    for (const entry of entries) getInstance(entry).send(message);
   });
 }
 

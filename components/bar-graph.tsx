@@ -1,7 +1,6 @@
-/** biome-ignore-all lint/a11y/noSvgWithoutTitle: later */
-
 import { RelativeDate } from '@/components/relative-date';
 import { useAppQueries } from '@/hooks/app-queries';
+import { toLocalIso } from '@/lib/date';
 import { type MiniHistory, ServiceStatus } from '@/lib/drizzle/schema';
 import { cn } from '@/lib/utils';
 
@@ -48,8 +47,8 @@ export function BarGraph({
         viewBox={`0 0 ${viewboxWidth} ${viewboxHeight}`}
         preserveAspectRatio='xMidYMid meet'
         className={statusClassNames[mostCommonStatus]}
-        suppressHydrationWarning
       >
+        <title>{`History graph${history ? ` from ${toLocalIso(history.from, { endAt: 's' })} to ${toLocalIso(history.to, { endAt: 's' })}` : ''}`}</title>
         {history?.items.map((item, i) => (
           <rect
             key={item.id}
@@ -65,6 +64,7 @@ export function BarGraph({
             )}
             rx={radius}
             className={item.status === mostCommonStatus ? undefined : statusClassNames[item.status]}
+            suppressHydrationWarning
           />
         ))}
       </svg>

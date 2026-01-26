@@ -4,7 +4,7 @@ import { eq, getTableColumns } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
 import { keyValTable } from '@/lib/drizzle/schema';
 import { MessageClient } from '@/lib/messaging';
-import { defaultSettings, type Settings, settingsSchema } from '@/lib/settings';
+import { defaultSettings, type Settings, settingsSchema } from '@/lib/settings/schema';
 import { pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
@@ -14,25 +14,18 @@ export async function getSettings(): Promise<Settings> {
     .select(pick(getTableColumns(keyValTable), ['value']))
     .from(keyValTable)
     .where(eq(keyValTable.key, 'settings'));
-  // shouldn't happen. will need to update settings in keyVal on startup to handle schema changes
-  if (rows.length === 0) return defaultSettings;
-  const settings = rows[0].value as Settings;
-  return settings;
+  // deals with no current settings and schema drift
+  return { ...defaultSettings, ...(rows.at(0)?.value as Settings | undefined) };
 }
 
-export async function updateSettings(data: Partial<Settings>): Promise<void> {
-  const parsed = settingsSchema.partial().parse(data);
-  const rows = await db
-    .select(pick(getTableColumns(keyValTable), ['value']))
-    .from(keyValTable)
-    .where(eq(keyValTable.key, 'settings'));
-  const current = rows.length ? (rows[0].value as Settings) : defaultSettings;
+export async function updateSettings(data: Settings): Promise<void> {
+  const sanitised = settingsSchema.parse(data);
   await db
     .insert(keyValTable)
-    .values({ key: 'settings', value: { ...current, parsed } })
+    .values({ key: 'settings', value: sanitised })
     .onConflictDoUpdate({
       target: keyValTable.key,
-      set: { value: parsed },
+      set: { value: sanitised },
     });
   messageClient.send({ cat: 'invalidation', kind: 'settings', id: 0 });
 }

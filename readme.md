@@ -3,7 +3,6 @@
 I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd try to build my own for fun. It's very much a work in progress and there are a few janky bits which I'll tidy up later.
 
 ### What's missing
-- Favicon (critical)
 - Forms to add and edit monitors
 - Forms to manage settings
 - Visual service grouping
@@ -24,12 +23,13 @@ I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd t
   - [Monitors](lib/monitor/). there are:
     - `dns` - tests that records exist and match your query
     - `domain` - tests domain registration expiry through [OpenRDAP](https://openrdap.org/api)
-    - `http` - optionally supports [JSONata](https://docs.jsonata.org/overview.html), regex, and [XPath](https://developer.mozilla.org/en-US/docs/Web/XML/XPath/Guides) evaluation
+    - `http` - optionally supports [JSONata](https://docs.jsonata.org/overview.html), regex, and [XPath](https://developer.mozilla.org/en-US/docs/Web/XML/XPath/Guides) evaluation. JSONata lets you run queries like `($toMillis(events[eventAction="expiration"].eventDate) - $toMillis($now())) <= (86400000 * 28)` against the returned JSON
     - `ping` - you may have heard of this
     - `ssl` - tests remote cert trust and expiry
     - `tcp`  - tests whether a TCP port can be connected to
   - [Notifications](lib/notifier/):
-    - Only [Gotify](https://gotify.net/) is supported. I don't plan to add others
+    - [Gotify](https://gotify.net/)
+    - webhook
 - [APIs](app/api/):
   - [SSE](app/api/sse/route.ts) for pushing out data updates and toasts to the [frontend](hooks/sse.tsx)
   - Read-only JSON API for integration with your other services:

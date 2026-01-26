@@ -67,6 +67,10 @@
               {
                 "name": "useToast",
                 "stableResult": ["setToasts", "showToast"]
+              },
+              {
+                "name": "usePopover",
+                "stableResult": ["setOpen"]
               }
             ],
             "reportMissingDependenciesArray": true

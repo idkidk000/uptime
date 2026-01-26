@@ -1,6 +1,6 @@
 import { ChevronDown, ListFilter, Pause, Play } from 'lucide-react';
 import Link from 'next/link';
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { setPausedMulti } from '@/actions/service';
 import { BarGraph } from '@/components/bar-graph';
 import { Button } from '@/components/base/button';
@@ -8,7 +8,7 @@ import { Card } from '@/components/base/card';
 import { InputText } from '@/components/base/input-text';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/base/popover';
 import { StatusBadge } from '@/components/status-badge';
-import { useServicesWithState } from '@/hooks/app-queries';
+import { useAppQueries, useServicesWithState } from '@/hooks/app-queries';
 import { ServiceStatus, type ServiceWithState } from '@/lib/drizzle/schema';
 import { cn, enumEntries } from '@/lib/utils';
 
@@ -38,7 +38,7 @@ function FilterStateButton({
   }, [status]);
 
   return (
-    <Button size='sm' variant={filter.status.includes(status) ? 'up' : 'muted'} onClick={handleClick}>
+    <Button variant={filter.status.includes(status) ? 'up' : 'muted'} onClick={handleClick} className='py-0'>
       {label}
     </Button>
   );
@@ -62,7 +62,7 @@ function FilterActiveButton({
   }, [active]);
 
   return (
-    <Button size='sm' variant={filter.active.includes(active) ? 'up' : 'muted'} onClick={handleClick}>
+    <Button variant={filter.active.includes(active) ? 'up' : 'muted'} onClick={handleClick} className='py-0'>
       {(active && 'Active') || 'Paused'}
     </Button>
   );
@@ -85,7 +85,7 @@ function ServiceListItem({
   );
 
   return (
-    <li key={id} className={cn('grid grid-cols-subgrid', selection === null ? 'col-span-3' : 'col-span-4')}>
+    <li key={id} className={cn('grid grid-cols-subgrid col-start-2', selection === null ? 'col-span-3' : 'col-span-4')}>
       {selection !== null && (
         <input type='checkbox' checked={selection?.includes(id) ?? false} onChange={handleCheckChange} />
       )}
@@ -103,9 +103,9 @@ function ServiceListItem({
   );
 }
 
-// TODO: groups
 export function ServiceList() {
   const services = useServicesWithState();
+  const { groups } = useAppQueries();
   const [filter, setFilter] = useState<Filter>({ active: [], search: null, status: [] });
   const [selection, setSelection] = useState<number[] | null>(null);
   const selectionRef = useRef(selection);
@@ -143,6 +143,22 @@ export function ServiceList() {
     void setPausedMulti(selectionRef.current, false);
     setSelection(null);
   }, []);
+
+  const groupsWithServices = useMemo(() => {
+    const visibleSevices = services
+      .filter(
+        (service) =>
+          (filter.active.length === 0 || filter.active.includes(service.active)) &&
+          (filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1)) &&
+          (filter.search === null || service.name.toLocaleLowerCase().includes(filter.search.toLocaleLowerCase()))
+      )
+      .toSorted((a, b) => a.name.localeCompare(b.name));
+
+    return groups
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .map((group) => ({ ...group, services: visibleSevices.filter((service) => service.groupId === group.id) }))
+      .filter((group) => group.services.length);
+  }, [filter, groups, services]);
 
   return (
     <Card className='p-0 flex flex-col overflow-hidden'>
@@ -211,20 +227,19 @@ export function ServiceList() {
         //TODO: transition height on filter
         className={cn(
           'grid p-4 overflow-y-auto gap-4',
-          selection === null ? 'grid-cols-[auto_auto_1fr]' : 'grid-cols-[auto_auto_auto_1fr]'
+          selection === null ? 'grid-cols-[auto_auto_auto_1fr]' : 'grid-cols-[auto_auto_auto_auto_1fr]'
         )}
       >
-        {services
-          .filter(
-            (service) =>
-              (filter.active.length === 0 || filter.active.includes(service.active)) &&
-              (filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1)) &&
-              (filter.search === null || service.name.toLocaleLowerCase().includes(filter.search.toLocaleLowerCase()))
-          )
-          .toSorted((a, b) => a.name.localeCompare(b.name))
-          .map((service) => (
-            <ServiceListItem key={service.id} {...service} selection={selection} setSelection={setSelection} />
-          ))}
+        {groupsWithServices.map((group) => {
+          return (
+            <div className='contents' key={group.id}>
+              <li className='col-span-full font-semibold'>{group.name}</li>
+              {group.services.map((service) => (
+                <ServiceListItem key={service.id} {...service} selection={selection} setSelection={setSelection} />
+              ))}
+            </div>
+          );
+        })}
       </ul>
     </Card>
   );

@@ -2,10 +2,12 @@ import { env } from 'node:process';
 import { sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
 import {
+  type GroupSelect,
   groupTable,
   groupToNotifierTable,
   notifierTable,
   type ServiceInsert,
+  ServiceStatus,
   serviceTable,
 } from '@/lib/drizzle/schema';
 import 'dotenv/config';
@@ -15,9 +17,9 @@ const logger = new ServerLogger(import.meta.url);
 
 const [gotifyUrl, gotifyToken] = [env.GOTIFY_URL, env.GOTIFY_TOKEN];
 
-const [groupEntry] = await db
+const groupEntries = await db
   .insert(groupTable)
-  .values({ name: 'Group', active: true })
+  .values(Array.from({ length: 3 }).map((_, i) => ({ name: `Group ${i + 1}`, active: true })))
   .onConflictDoUpdate({ target: groupTable.name, set: { id: sql`id` } })
   .returning();
 
@@ -31,6 +33,10 @@ if (gotifyUrl && gotifyToken) {
         kind: 'gotify',
         address: gotifyUrl,
         token: gotifyToken,
+        statuses: [ServiceStatus.Up, ServiceStatus.Down],
+        priority: {
+          [ServiceStatus.Down]: 5,
+        },
       },
     })
     .onConflictDoUpdate({ target: notifierTable.name, set: { id: sql`id` } })
@@ -38,13 +44,17 @@ if (gotifyUrl && gotifyToken) {
 
   await db
     .insert(groupToNotifierTable)
-    .values({ groupId: groupEntry.id, notifierId: notifierEntry.id })
+    .values(groupEntries.map(({ id }) => ({ groupId: id, notifierId: notifierEntry.id })))
     .onConflictDoNothing();
+}
+
+function randomGroup(): GroupSelect {
+  return groupEntries[Math.floor(Math.random() * groupEntries.length)];
 }
 
 const services: ServiceInsert[] = [
   {
-    groupId: groupEntry.id,
+    groupId: randomGroup().id,
     name: 'JSONata',
     failuresBeforeDown: 3,
     active: true,
@@ -65,7 +75,7 @@ const services: ServiceInsert[] = [
     },
   },
   {
-    groupId: groupEntry.id,
+    groupId: randomGroup().id,
     name: 'Regex',
     failuresBeforeDown: 3,
     active: true,
@@ -86,7 +96,7 @@ const services: ServiceInsert[] = [
     },
   },
   {
-    groupId: groupEntry.id,
+    groupId: randomGroup().id,
     name: 'XPath',
     failuresBeforeDown: 3,
     active: true,
@@ -107,7 +117,7 @@ const services: ServiceInsert[] = [
     },
   },
   {
-    groupId: groupEntry.id,
+    groupId: randomGroup().id,
     name: 'DNS',
     failuresBeforeDown: 3,
     active: true,
@@ -123,7 +133,7 @@ const services: ServiceInsert[] = [
     },
   },
   {
-    groupId: groupEntry.id,
+    groupId: randomGroup().id,
     name: 'Ping',
     failuresBeforeDown: 3,
     active: true,
@@ -134,11 +144,12 @@ const services: ServiceInsert[] = [
       address: 'localhost',
       upWhen: {
         latency: 5,
+        successPercent: 100,
       },
     },
   },
   {
-    groupId: groupEntry.id,
+    groupId: randomGroup().id,
     name: 'TCP',
     failuresBeforeDown: 3,
     active: true,
@@ -164,7 +175,7 @@ const services: ServiceInsert[] = [
       }))
       .toArray() ?? []
   ).map(({ host, port }, i) => ({
-    groupId: groupEntry.id,
+    groupId: randomGroup().id,
     name: `SSL${i + 1}`,
     failuresBeforeDown: 0,
     checkSeconds: 86400,
@@ -187,7 +198,7 @@ const services: ServiceInsert[] = [
       .map((match) => match.groups.domain)
       .toArray() ?? []
   ).map((domain, i) => ({
-    groupId: groupEntry.id,
+    groupId: randomGroup().id,
     name: `Domain${i + 1}`,
     failuresBeforeDown: 0,
     checkSeconds: 86400,
@@ -209,4 +220,4 @@ const serviceEntries = await db
   .onConflictDoUpdate({ target: serviceTable.name, set: { id: sql`id` } })
   .returning();
 
-logger.success({ groupEntry, serviceEntries });
+logger.success({ groupEntries, serviceEntries });
