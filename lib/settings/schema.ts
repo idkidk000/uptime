@@ -5,7 +5,7 @@ export const settingsSchema = z.object({
   historySummaryItems: z.int().min(0).default(24),
   monitorConcurrency: z.int().min(1).default(4),
   defaultMonitorTimeout: z.int().min(0).default(5000),
-  disableMonitors: z.boolean().default(false),
+  enableMonitors: z.boolean().default(true),
 });
 
 export const partialSettingsSchema = settingsSchema.partial();

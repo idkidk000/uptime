@@ -1,12 +1,12 @@
 /** biome-ignore-all lint/suspicious/useAwait: server actions must be async */
 'use server';
 
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
-import { type ServiceSelect, serviceTable } from '@/lib/drizzle/schema';
+import { type ServiceInsert, type ServiceSelect, serviceInsertSchema, serviceTable } from '@/lib/drizzle/schema';
 import { type BusMessage, MessageClient } from '@/lib/messaging';
+import { pick } from '@/lib/utils';
 
-// TODO: validate that this is only getting reinstantiated every minute in dev mode.
 const messageClient = new MessageClient(import.meta.url);
 
 export async function getServices(serviceIds?: number[]): Promise<ServiceSelect[]> {
@@ -40,4 +40,14 @@ export async function deleteService(id: number): Promise<void> {
     { cat: 'invalidation', kind: 'service-history', id },
     { cat: 'invalidation', kind: 'service-state', id }
   );
+}
+
+export async function addService(data: ServiceInsert, check: boolean): Promise<void> {
+  // serviceInsertSchema includes monitorParamsSchema
+  const sanitised = serviceInsertSchema.parse(data);
+  const [row] = await db
+    .insert(serviceTable)
+    .values(sanitised)
+    .returning(pick(getTableColumns(serviceTable), ['id']));
+  if (check) await checkService(row.id);
 }

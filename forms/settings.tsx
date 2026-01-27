@@ -11,12 +11,13 @@ import { FormSelect } from '@/components/form/select';
 import { FormSwitch } from '@/components/form/switch';
 import { useAppQueries } from '@/hooks/app-queries';
 import { useLogger } from '@/hooks/logger';
+import { useToast } from '@/hooks/toast';
+import { ServiceStatus } from '@/lib/drizzle/schema';
 import { settingsSchema } from '@/lib/settings/schema';
 
 // https://tanstack.com/form/latest/docs/framework/react/quick-start
 
 // TODO: pre-mapped form components https://tanstack.com/form/latest/docs/framework/react/guides/form-composition
-// TODO: figure out how to compose forms dynamically. or maybe i need a form per monitor which imports a big chunk of form components for the main service (i.e. not MonitorParams) bits. but then i'd probably lose form state when switching monitors
 
 const { fieldContext, formContext } = createFormHookContexts();
 
@@ -38,13 +39,20 @@ const { useAppForm } = createFormHook({
 export function SettingsForm() {
   const logger = useLogger(import.meta.url);
   const { settings } = useAppQueries();
+  const { showToast } = useToast();
 
   const form = useAppForm({
     defaultValues: settings,
     onSubmit(form) {
       updateSettings(form.value)
-        .then(() => logger.success('updated settings', form.value))
-        .catch((err) => logger.error('error updating settings', form.value, err));
+        .then(() => {
+          logger.success('updated settings', form.value);
+          showToast('Settings updated', '', ServiceStatus.Up);
+        })
+        .catch((err) => {
+          logger.error('error updating settings', form.value, err);
+          showToast('Error updating settings', String(err), ServiceStatus.Down);
+        });
       // no point resetting
       // form.formApi.reset();
     },
@@ -57,9 +65,9 @@ export function SettingsForm() {
 
   return (
     <Card>
-      <form className='grid grid-cols-[1fr_2fr] @2xl:grid-cols-[1fr_2fr_1fr_2fr] @8xl:grid-cols-[1fr_2fr_1fr_2fr_1fr_2fr] gap-4 items-center'>
-        <fieldset className='grid col-span-full grid-cols-subgrid gap-4 items-center'>
-          <legend className='col-span-full font-semibold text-xl mb-4'>Monitors</legend>
+      <form>
+        <fieldset>
+          <legend>Monitors</legend>
           <form.AppField
             name='defaultMonitorTimeout'
             children={(field) => (
@@ -87,10 +95,10 @@ export function SettingsForm() {
             )}
           />
           <form.AppField
-            name='disableMonitors'
+            name='enableMonitors'
             children={(field) => (
               <field.FormSwitch
-                label='Disable'
+                label='Enable'
                 onValueChange={field.handleChange}
                 onBlur={field.handleBlur}
                 value={field.state.value}
@@ -99,8 +107,8 @@ export function SettingsForm() {
             )}
           />
         </fieldset>
-        <fieldset className='grid col-span-full grid-cols-subgrid gap-4 items-center'>
-          <legend className='col-span-full font-semibold text-xl mb-4'>Misc</legend>
+        <fieldset>
+          <legend>Misc</legend>
           <form.AppField
             name='historySummaryItems'
             children={(field) => (

@@ -15,13 +15,13 @@ import { ServerLogger } from '@/lib/logger/server';
 
 const logger = new ServerLogger(import.meta.url);
 
-const [gotifyUrl, gotifyToken] = [env.GOTIFY_URL, env.GOTIFY_TOKEN];
-
 const groupEntries = await db
   .insert(groupTable)
   .values(Array.from({ length: 3 }).map((_, i) => ({ name: `Group ${i + 1}`, active: true })))
   .onConflictDoUpdate({ target: groupTable.name, set: { id: sql`id` } })
   .returning();
+
+const [gotifyUrl, gotifyToken] = [env.GOTIFY_URL, env.GOTIFY_TOKEN];
 
 if (gotifyUrl && gotifyToken) {
   const [notifierEntry] = await db
@@ -37,6 +37,29 @@ if (gotifyUrl && gotifyToken) {
         priority: {
           [ServiceStatus.Down]: 5,
         },
+      },
+    })
+    .onConflictDoUpdate({ target: notifierTable.name, set: { id: sql`id` } })
+    .returning();
+
+  await db
+    .insert(groupToNotifierTable)
+    .values(groupEntries.map(({ id }) => ({ groupId: id, notifierId: notifierEntry.id })))
+    .onConflictDoNothing();
+}
+
+const webhookUrl = env.WEBHOOK_URL;
+
+if (webhookUrl) {
+  const [notifierEntry] = await db
+    .insert(notifierTable)
+    .values({
+      name: 'Webhook',
+      active: true,
+      params: {
+        kind: 'webhook',
+        address: webhookUrl,
+        statuses: [ServiceStatus.Up, ServiceStatus.Down],
       },
     })
     .onConflictDoUpdate({ target: notifierTable.name, set: { id: sql`id` } })

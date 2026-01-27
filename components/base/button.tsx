@@ -1,7 +1,8 @@
 import type { ComponentProps, ComponentPropsWithoutRef, ElementType, RefObject } from 'react';
 import { cn } from '@/lib/utils';
 
-const base = 'rounded-full shadow-md transition-colors border-2 inline-flex gap-1 items-center font-semibold';
+const base =
+  'rounded-full shadow-md transition-colors border-2 inline-flex gap-1 items-center font-semibold justify-center';
 
 const variants = {
   up: 'border-transparent bg-up hover:bg-up/75 active:bg-up/50 disabled:bg-up/25 disabled:text-dark/75 text-dark',
@@ -48,7 +49,7 @@ export function ButtonGroup({ className, children, ...props }: ComponentProps<'d
   return (
     <div
       className={cn(
-        '*:not-first:border-s *:not-last:border-e *:not-first:rounded-s-none *:not-last:rounded-e-none',
+        '*:not-first:border-s *:not-last:border-e *:not-first:rounded-s-none *:not-last:rounded-e-none flex',
         className
       )}
       {...props}

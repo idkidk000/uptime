@@ -15,7 +15,7 @@ export async function getServiceHistory(
   serviceId: number | null,
   { page = 0, pageSize = 20 }: { page?: number; pageSize?: number } = {}
 ): Promise<Paginated<HistorySummarySelect[]>> {
-  logger.info({ serviceId, pageNum: page, pageSize });
+  logger.debugLow({ serviceId, pageNum: page, pageSize });
   const data: HistorySummarySelect[] = await db
     .select()
     .from(historySummaryView)

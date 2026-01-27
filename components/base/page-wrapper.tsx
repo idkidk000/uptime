@@ -8,13 +8,13 @@ export function PageWrapper({
   children,
   pageTitle,
   ...props
-}: ComponentProps<'div'> & { pageTitle: string }) {
+}: ComponentProps<'div'> & { pageTitle: string | null }) {
   return (
     <article
       className={cn('flex flex-col gap-4 overflow-x-hidden overflow-y-auto h-full @container', className)}
       {...props}
     >
-      <h1 className='text-3xl font-semibold p-1 transition-in-right'>{pageTitle}</h1>
+      {pageTitle && <h1 className='text-3xl font-semibold p-1 transition-in-right'>{pageTitle}</h1>}
       {children}
     </article>
   );

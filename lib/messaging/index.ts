@@ -1,6 +1,7 @@
 import { rmSync } from 'node:fs';
-import { createConnection, createServer, type Socket } from 'node:net';
+import { createServer, Socket } from 'node:net';
 import { sep } from 'node:path';
+import { env } from 'node:process';
 import { createInterface } from 'node:readline';
 import SuperJSON from 'superjson';
 import type { ServiceStatus } from '@/lib/drizzle/schema';
@@ -8,9 +9,10 @@ import { ServerLogger } from '@/lib/logger/server';
 import type { MonitorDownReason } from '@/lib/monitor';
 
 // use a unix socket on systems which support it. fallback to tcp/ip and hope we don't have a port collision
-const SOCKET_ADDR = '.messaging.sock';
+const SOCKET_PATH = '.messaging.sock';
 const SOCKET_FALLBACK_PORT = 33625;
 const SOCKET_FALLBACK_ADDR = '127.0.0.1';
+
 // only needs to be this high in dev
 const STARTUP_CACHE_MILLIS = 15_000;
 
@@ -147,7 +149,7 @@ export class MessageServer {
   });
   constructor() {
     try {
-      rmSync(SOCKET_ADDR, { force: true });
+      rmSync(SOCKET_PATH, { force: true });
     } catch {
       /* empty */
     }
@@ -157,24 +159,25 @@ export class MessageServer {
     this.#server.addListener('listening', () =>
       this.#logger.success(
         'MessageServer listening on',
-        isUnixLike() ? SOCKET_ADDR : `${SOCKET_FALLBACK_ADDR}:${SOCKET_FALLBACK_PORT}`
+        isUnixLike() ? SOCKET_PATH : `${SOCKET_FALLBACK_ADDR}:${SOCKET_FALLBACK_PORT}`
       )
     );
     this.#server.addListener('error', (err) => this.#logger.error('MessageServer error', err));
-    if (isUnixLike()) this.#server.listen(SOCKET_ADDR);
+    if (isUnixLike()) this.#server.listen(SOCKET_PATH);
     else this.#server.listen(SOCKET_FALLBACK_PORT, SOCKET_FALLBACK_ADDR);
   }
   stop() {
     this.#server.close();
     if (this.#cacheTimeout !== null) clearTimeout(this.#cacheTimeout);
     try {
-      rmSync(SOCKET_ADDR, { force: true });
+      rmSync(SOCKET_PATH, { force: true });
     } catch {
       /* empty */
     }
   }
 }
 
+// during dev this gets reinstantiated every time a server action which has a top-level MessageClient is called. it's only a dev thing and doesn't happen after bundling
 export class MessageClient {
   #socket: Socket | null = null;
   #subscriptions = new Map<SubscriptionKey, Set<Callback>>();
@@ -182,22 +185,24 @@ export class MessageClient {
   #logger: ServerLogger;
   constructor(public readonly importMetaUrl: string) {
     this.#logger = new ServerLogger(importMetaUrl, 'MessageClient');
-    // FIXME: dispose of failed sockets properly
+    // next creates an instance per server action (not per server action module) during next build to figure out bundling. there is no server to connect to
+    if (env.IS_BUILDING) return;
+    let socket: Socket | null = null;
     const interval = setInterval(() => {
-      const socket = isUnixLike()
-        ? createConnection(SOCKET_ADDR)
-        : createConnection(SOCKET_FALLBACK_PORT, SOCKET_FALLBACK_ADDR);
-      socket.addListener('error', (err) => {
-        this.#logger.debugLow('MessageClient error', err);
-      });
+      if (socket) socket.destroy();
+      socket = new Socket();
+      socket.addListener('error', (err) => this.#logger.debugLow('MessageClient error', String(err)));
+      socket.connect(isUnixLike() ? { path: SOCKET_PATH } : { port: SOCKET_FALLBACK_PORT, host: SOCKET_FALLBACK_ADDR });
       socket.addListener('ready', () => {
+        if (!socket) {
+          this.#logger.error('MessageClient connected but socket is null');
+          return;
+        }
         this.#logger.success('MessageClient connected');
         this.#socket = socket;
         clearInterval(interval);
-        for (const item of this.#queue) {
-          this.#logger.debugLow('pushing queued message', item);
-          socket.write(item);
-        }
+        if (this.#queue.length) this.#logger.debugLow('pushing queued messages', this.#queue);
+        for (const item of this.#queue) socket.write(item);
         this.#queue = [];
         const readline = createInterface(this.#socket);
         readline.addListener('line', (data) => {
@@ -217,6 +222,8 @@ export class MessageClient {
     }, 100);
   }
   #sendInternalMessage(internalMessage: InternalMessage) {
+    // this also can't work during next build
+    if (env.IS_BUILDING) return;
     const messageString = `${SuperJSON.stringify(internalMessage)}\n`;
     this.#logger.debugLow('sendInternalMessage', messageString, this.#socket === null ? 'disconnected' : 'connected?');
     if (this.#socket) this.#socket.write(messageString);

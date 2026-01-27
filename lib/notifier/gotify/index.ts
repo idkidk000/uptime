@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import { serviceStatuses } from '@/lib/drizzle/schema';
 import type { StatusMessage } from '@/lib/messaging';
 import { monitorDownReasons } from '@/lib/monitor';
@@ -13,7 +12,7 @@ export class GotifyNotifier extends Notifier<GotifyNotifierParams> {
     const body = `${typeof message.reason === 'undefined' ? '' : `${pascalToSentenceCase(monitorDownReasons[message.reason])}: `}${message.message}`;
     // undefined uses the gotify app's default (normally 0)
     const priority = this.params.priority?.[message.kind];
-    await fetch(join(this.params.address, 'message'), {
+    await fetch(new URL('message', this.params.address), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

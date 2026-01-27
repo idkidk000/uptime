@@ -145,7 +145,7 @@ export function ServiceList() {
   }, []);
 
   const groupsWithServices = useMemo(() => {
-    const visibleSevices = services
+    const visibleServices = services
       .filter(
         (service) =>
           (filter.active.length === 0 || filter.active.includes(service.active)) &&
@@ -156,7 +156,7 @@ export function ServiceList() {
 
     return groups
       .toSorted((a, b) => a.name.localeCompare(b.name))
-      .map((group) => ({ ...group, services: visibleSevices.filter((service) => service.groupId === group.id) }))
+      .map((group) => ({ ...group, services: visibleServices.filter((service) => service.groupId === group.id) }))
       .filter((group) => group.services.length);
   }, [filter, groups, services]);
 

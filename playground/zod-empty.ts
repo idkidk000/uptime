@@ -4,10 +4,10 @@ import { ServerLogger } from '@/lib/logger/server';
 
 const logger = new ServerLogger(import.meta.url);
 
-logger.info(empty(serviceInsertSchema));
-logger.info(init(serviceInsertSchema));
+logger.plain(empty(serviceInsertSchema));
+logger.plain(init(serviceInsertSchema));
 
 const schema = serviceInsertSchema.omit({ params: true });
 
-logger.info(empty(schema));
-logger.info(init(schema));
+logger.plain(empty(schema));
+logger.plain(init(schema));

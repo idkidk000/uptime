@@ -52,7 +52,7 @@ export function ServiceForm() {
     defaultValues,
     onSubmit(form) {
       logger.info('submit', form.value);
-      //TODO: addService (doesn't exist yet), checkService (need id)
+      //TODO: addService()
       showToast(`Added ${form.value.name}`, 'Monitor will run shortly');
       form.formApi.reset();
     },
@@ -65,7 +65,7 @@ export function ServiceForm() {
 
   return (
     <Card>
-      <form className='grid grid-cols-[1fr_2fr] @2xl:grid-cols-[1fr_2fr_1fr_2fr] @8xl:grid-cols-[1fr_2fr_1fr_2fr_1fr_2fr] gap-4 items-center'>
+      <form>
         <form.AppField
           name='name'
           children={(field) => (

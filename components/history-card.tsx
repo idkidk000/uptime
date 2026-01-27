@@ -32,7 +32,7 @@ export function HistoryCard({
     <Card className={cn('flex flex-col gap-4', className)} {...props}>
       {children}
       <div
-        className={`grid gap-4 items-start ${serviceId === null ? 'grid-cols-[auto_auto_auto_1fr]' : 'grid-cols-[auto_auto_1fr]'}`}
+        className={`grid gap-4 items-start ${serviceId === null ? 'grid-cols-[auto_auto_min-content_1fr] md:grid-cols-[auto_auto_auto_1fr]' : 'grid-cols-[auto_min-content_1fr] md:grid-cols-[auto_auto_1fr]'}`}
       >
         <div className='contents font-semibold'>
           {serviceId === null && <h4>Name</h4>}

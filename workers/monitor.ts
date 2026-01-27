@@ -23,7 +23,7 @@ import { SettingsClient } from '@/lib/settings';
 import { concurrently } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
-const settingsClient = new SettingsClient(import.meta.url, messageClient);
+const settingsClient = await SettingsClient.newAsync(import.meta.url, messageClient);
 const logger = new ServerLogger(import.meta.url);
 let interval: NodeJS.Timeout | null = null;
 const POLL_MILLIS = 60_000;
@@ -110,7 +110,7 @@ async function checkService(service: ServiceWithState): Promise<void> {
 }
 
 export async function checkServices() {
-  if (settingsClient.current.disableMonitors) return;
+  if (!settingsClient.current.enableMonitors) return;
   const services = await db
     .select({ ...getTableColumns(serviceTable), state: getTableColumns(stateTable) })
     .from(serviceTable)
@@ -131,8 +131,7 @@ function checkServiceById(id: number): void {
     .then(([service]) => checkService(service));
 }
 
-export async function start(): Promise<void> {
-  await settingsClient.init();
+export function start(): void {
   setTimeout(() => {
     void checkServices();
     interval = setInterval(checkServices, POLL_MILLIS);

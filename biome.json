@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.12/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.13/schema.json",
   "assist": {
     "actions": {
       "source": {
@@ -14,7 +14,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build", "!samples"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!samples"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -36,7 +43,10 @@
       "react": "recommended"
     },
     "enabled": true,
-    "includes": ["**", "!playground/**"],
+    "includes": [
+      "**",
+      "!playground/**"
+    ],
     "rules": {
       "correctness": {
         "noUnusedImports": {
@@ -50,7 +60,9 @@
             "hooks": [
               {
                 "name": "useModal",
-                "stableResult": ["modalRef"]
+                "stableResult": [
+                  "modalRef"
+                ]
               },
               {
                 "name": "useLogger",
@@ -62,15 +74,22 @@
               },
               {
                 "name": "useSse",
-                "stableResult": ["subscribe"]
+                "stableResult": [
+                  "subscribe"
+                ]
               },
               {
                 "name": "useToast",
-                "stableResult": ["setToasts", "showToast"]
+                "stableResult": [
+                  "setToasts",
+                  "showToast"
+                ]
               },
               {
                 "name": "usePopover",
-                "stableResult": ["setOpen"]
+                "stableResult": [
+                  "setOpen"
+                ]
               }
             ],
             "reportMissingDependenciesArray": true

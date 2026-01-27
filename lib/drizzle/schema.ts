@@ -3,7 +3,7 @@ import { index, integer, primaryKey, real, sqliteTable, sqliteView, text } from 
 import { createInsertSchema } from 'drizzle-zod';
 import z from 'zod';
 import type { MonitorResponse } from '@/lib/monitor';
-import type { MonitorParams } from '@/lib/monitor/schema';
+import { type MonitorParams, monitorParamsSchema } from '@/lib/monitor/schema';
 import type { NotifierParams } from '@/lib/notifier/schema';
 import { enumToObject } from '@/lib/utils';
 
@@ -116,6 +116,7 @@ export const serviceInsertSchema = createInsertSchema(serviceTable)
     checkSeconds: z.int().min(300),
     failuresBeforeDown: z.int().min(0).default(3),
     retainCount: z.int().min(0).default(8640),
+    params: monitorParamsSchema,
   });
 type ServiceTable = typeof serviceTable;
 export type ServiceInsert = ServiceTable['$inferInsert'];

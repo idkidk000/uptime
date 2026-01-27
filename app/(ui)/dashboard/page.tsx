@@ -22,9 +22,9 @@ export default function Home() {
     <PageWrapper pageTitle='Quick Stats'>
       <Card className='flex flex-row *:grow *:shrink *:basis-0 text-center'>
         {typedEntries(statusCounts).map(([status, count]) => (
-          <div key={status} className='flex flex-col gap-2 text-2xl font-bold'>
-            <h3>{serviceStatuses[status] ?? 'Unknown'}</h3>
-            <span className={statusClasses[status]}>{count}</span>
+          <div key={status} className='flex flex-col gap-2 font-bold'>
+            <h3 className='text-lg md:text-2xl'>{serviceStatuses[status] ?? 'Unknown'}</h3>
+            <span className={`${statusClasses[status]} text-2xl`}>{count}</span>
           </div>
         ))}
       </Card>

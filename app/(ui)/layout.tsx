@@ -39,7 +39,7 @@ export default async function RootLayout({
   return (
     <html lang='en'>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} flex flex-col gap-4 bg-background text-foreground transition-colors duration-200 accent-up antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} flex flex-col bg-background text-foreground transition-colors duration-200 accent-up antialiased min-h-dvh`}
       >
         <SseProvider>
           <ToastProvider>

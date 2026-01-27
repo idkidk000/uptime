@@ -145,36 +145,15 @@ export function useAppQueries(): Context {
 
 export function useServicesWithState(): ServiceWithState[] {
   const { services, states } = useAppQueries();
-  // const query = useQuery({
-  //   //TODO: this key is not ideal
-  //   queryKey: ['service-state', 'meta', 'service-config'],
-  //   queryFn: () => {
-  //     if (!services) return [];
-  //     const statesMap = new Map((states ?? []).map((item) => [item.id, item]));
-  //     return services.map((item) => ({ ...item, state: statesMap.get(item.id) ?? null }));
-  //   },
-  // });
-  // return query.data ?? [];
-  if (!services) return [];
-  const statesMap = new Map((states ?? []).map((item) => [item.id, item]));
-  return services.map((item) => ({ ...item, state: statesMap.get(item.id) ?? null }));
+  const statesMap = useMemo(() => new Map((states ?? []).map((item) => [item.id, item])), [states]);
+  return useMemo(() => {
+    if (!services) return [];
+    return services.map((item) => ({ ...item, state: statesMap.get(item.id) ?? null }));
+  }, [services, statesMap]);
 }
 
 export function useServiceWithState(id: number | null | undefined): ServiceWithState | undefined {
   const { services, states } = useAppQueries();
-  // const query = useQuery({
-  //   //TODO: this key is not ideal
-  //   queryKey: ['service-state', id, 'service-config'],
-  //   queryFn: () => {
-  //     if (typeof id !== 'number') return;
-  //     const service = services.find((item) => item.id === id);
-  //     if (!service) return;
-  //     const state = states.find((item) => item.id === id) ?? null;
-  //     return { ...service, state };
-  //   },
-  //   enabled: typeof id === 'number',
-  // });
-  // return query.data;
   if (typeof id !== 'number') return;
   const service = services.find((item) => item.id === id);
   if (!service) return;
