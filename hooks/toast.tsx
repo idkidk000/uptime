@@ -81,7 +81,7 @@ function Toast({ id, message, title, state, closeAt, held, variant }: ToastData)
     <div
       className={cn(
         'w-96 max-w-dvw p-4 rounded-xl shadow-lg border-2 border-unknown/25 bg-background text-foreground gap-2 pointer-events-auto select-none grid grid-cols-[1fr_auto_auto] transition-in-right',
-        // ' starting:opacity-0 starting:-translate-x-1/2 starting:scale-50 opacity-100 translate-x-0 scale-100 transtion-[opacity,translate,scale] duration-200 origin-center'
+        // ' starting:opacity-0 starting:-translate-x-1/2 starting:scale-50 opacity-100 translate-x-0 scale-100 transtion-[opacity,translate,scale] duration-150 origin-center'
         state === ToastState.Closing && 'opacity-0 translate-x-1/2 scale-50',
         variant === ServiceStatus.Down && 'bg-down text-light',
         variant === ServiceStatus.Paused && 'bg-paused text-dark',

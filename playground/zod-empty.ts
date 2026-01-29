@@ -1,13 +1,16 @@
 import { empty, init } from 'zod-empty';
 import { serviceInsertSchema } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
+import { settingsSchema } from '@/lib/settings/schema';
 
 const logger = new ServerLogger(import.meta.url);
 
-logger.plain(empty(serviceInsertSchema));
-logger.plain(init(serviceInsertSchema));
+// logger.plain(empty(settingsSchema));
+// logger.plain(init(settingsSchema));
 
-const schema = serviceInsertSchema.omit({ params: true });
+logger.plain(settingsSchema.shape);
 
-logger.plain(empty(schema));
-logger.plain(init(schema));
+// const schema = serviceInsertSchema.omit({ params: true });
+
+// logger.plain(empty(schema));
+// logger.plain(init(schema));

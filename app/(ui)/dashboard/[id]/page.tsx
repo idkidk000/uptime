@@ -39,8 +39,7 @@ export default function DetailPage() {
           <span className='font-semibold text-up'>{`${service.params.kind}: ${'recordType' in service.params ? `${service.params.recordType}: ` : ''}${service.params.address}${'port' in service.params ? `:${service.params.port}` : ''}`}</span>
         )}
         <ConfirmModal message={`Are you sure you want to delete ${service.name}?`} onConfirm={handleDeleteClick}>
-          {/* bit jank tbh */}
-          <ButtonGroup className='*:px-0  *:grow md:*:grow-0 md:*:px-4'>
+          <ButtonGroup className='max-md:*:px-0 max-md:*:grow'>
             <Button variant='up' onClick={handleCheckClick}>
               <ShieldQuestion />
               Check

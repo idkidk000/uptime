@@ -42,7 +42,7 @@ export function Switch({
     >
       <span className='w-full px-2 bg-foreground/10 rounded-full'>
         <svg
-          className='rounded-full size-8 transition-[translate] duration-200 border-2 stroke-dark border-foreground/10 bg-unknown -translate-x-6 group-aria-checked:bg-up group-aria-checked:translate-x-6 mx-auto shadow-md'
+          className='rounded-full size-8 transition-[translate] duration-150 border-2 stroke-dark border-foreground/10 bg-unknown -translate-x-6 group-aria-checked:bg-up group-aria-checked:translate-x-6 mx-auto shadow-md'
           width='24'
           height='24'
           viewBox='0 0 24 24'
@@ -54,11 +54,11 @@ export function Switch({
         >
           <path
             d='M3 12 21 12'
-            className=' origin-center rotate-45 group-aria-checked:scale-x-50 group-aria-checked:-translate-x-[6px] group-aria-checked:translate-y-[2px] transition-[rotate,scale,translate] duration-200'
+            className=' origin-center rotate-45 group-aria-checked:scale-x-50 group-aria-checked:-translate-x-[6px] group-aria-checked:translate-y-[2px] transition-[rotate,scale,translate] duration-150'
           />
           <path
             d='M3 12 21 12'
-            className=' origin-center -rotate-45 group-aria-checked:translate-x-[3px] group-aria-checked:scale-x-85  transition-[rotate,scale,translate] duration-200'
+            className=' origin-center -rotate-45 group-aria-checked:translate-x-[3px] group-aria-checked:scale-x-85  transition-[rotate,scale,translate] duration-150'
           />
         </svg>
       </span>

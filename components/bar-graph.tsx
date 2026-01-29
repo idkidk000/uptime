@@ -27,7 +27,7 @@ export function BarGraph({
   withLabels?: boolean;
 }) {
   const { settings } = useAppQueries();
-  const viewboxWidth = itemViewboxWidth * settings.historySummaryItems;
+  const viewboxWidth = itemViewboxWidth * settings.history.summaryItems;
   const maxLatency =
     history?.items
       ?.filter((item): item is Required<MiniHistory['items'][number]> => typeof item.latency === 'number')
@@ -48,16 +48,19 @@ export function BarGraph({
         preserveAspectRatio='xMidYMid meet'
         className={statusClassNames[mostCommonStatus]}
       >
-        <title>{`History graph${history ? ` from ${toLocalIso(history.from, { endAt: 's' })} to ${toLocalIso(history.to, { endAt: 's' })}` : ''}`}</title>
+        <title
+          suppressHydrationWarning
+        >{`History graph${history ? ` from ${toLocalIso(history.from, { endAt: 's' })} to ${toLocalIso(history.to, { endAt: 's' })}` : ''}`}</title>
         {history?.items.map((item, i) => (
           <rect
             key={item.id}
-            width={Math.round((viewboxWidth / settings.historySummaryItems) * barWidth)}
+            width={Math.round((viewboxWidth / settings.history.summaryItems) * barWidth)}
             height={Math.round(
               typeof item.latency === 'undefined' ? viewboxHeight : (viewboxHeight / maxLatency) * item.latency
             )}
             x={Math.round(
-              (viewboxWidth / settings.historySummaryItems) * (settings.historySummaryItems - history.items.length + i)
+              (viewboxWidth / settings.history.summaryItems) *
+                (settings.history.summaryItems - history.items.length + i)
             )}
             y={Math.round(
               typeof item.latency === 'undefined' ? 0 : viewboxHeight - (viewboxHeight / maxLatency) * item.latency

@@ -1,40 +1,16 @@
 /** biome-ignore-all lint/correctness/noChildrenProp: not my library */
-import { createFormHook, createFormHookContexts } from '@tanstack/react-form';
+
 import { useCallback } from 'react';
 import { updateSettings } from '@/actions/setting';
-import { Button } from '@/components/base/button';
 import { Card } from '@/components/base/card';
-import { FormInputDuration } from '@/components/form/input-duration';
-import { FormInputNumber } from '@/components/form/input-number';
-import { FormInputText } from '@/components/form/input-text';
-import { FormSelect } from '@/components/form/select';
-import { FormSwitch } from '@/components/form/switch';
 import { useAppQueries } from '@/hooks/app-queries';
+import { useAppForm } from '@/hooks/form';
 import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
 import { ServiceStatus } from '@/lib/drizzle/schema';
 import { settingsSchema } from '@/lib/settings/schema';
 
 // https://tanstack.com/form/latest/docs/framework/react/quick-start
-
-// TODO: pre-mapped form components https://tanstack.com/form/latest/docs/framework/react/guides/form-composition
-
-const { fieldContext, formContext } = createFormHookContexts();
-
-const { useAppForm } = createFormHook({
-  fieldComponents: {
-    FormInputText,
-    FormInputNumber,
-    FormSelect,
-    FormInputDuration,
-    FormSwitch,
-  },
-  formComponents: {
-    Button,
-  },
-  fieldContext,
-  formContext,
-});
 
 export function SettingsForm() {
   const logger = useLogger(import.meta.url);
@@ -57,6 +33,9 @@ export function SettingsForm() {
       // form.formApi.reset();
     },
     validators: {
+      // @ts-expect-error: tanstack form thinks the schema can't handle undefined fields (it can and has defaults for all of them)
+      // settingsSchema.required() is not recursive so does not help
+      // FIXME: conflict seems to be in settingsSchema['~standard'].types, which is (tuple of shape in, shape out) | undefined. shape in allows undefined. shape out does not. tanstack form should be looking at shape out i think. maybe the type can be asserted. or maybe it would be easier to just write my own form hook idk
       onSubmit: settingsSchema.required(),
     },
   });
@@ -69,58 +48,20 @@ export function SettingsForm() {
         <fieldset>
           <legend>Monitors</legend>
           <form.AppField
-            name='defaultMonitorTimeout'
-            children={(field) => (
-              <field.FormInputDuration
-                label='Timeout'
-                onValueChange={field.handleChange}
-                onBlur={field.handleBlur}
-                value={field.state.value}
-                errors={field.state.meta.errors}
-                mode='millis'
-              />
-            )}
+            name='monitor.defaultTimeout'
+            children={(field) => <field.FormInputDuration label='Timeout' mode='millis' />}
           />
           <form.AppField
-            name='monitorConcurrency'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Concurrency'
-                onValueChange={field.handleChange}
-                onBlur={field.handleBlur}
-                value={field.state.value}
-                errors={field.state.meta.errors}
-                withButtons
-              />
-            )}
+            name='monitor.concurrency'
+            children={(field) => <field.FormInputNumber label='Concurrency' withButtons />}
           />
-          <form.AppField
-            name='enableMonitors'
-            children={(field) => (
-              <field.FormSwitch
-                label='Enable'
-                onValueChange={field.handleChange}
-                onBlur={field.handleBlur}
-                value={field.state.value}
-                errors={field.state.meta.errors}
-              />
-            )}
-          />
+          <form.AppField name='monitor.enable' children={(field) => <field.FormSwitch label='Enable' />} />
         </fieldset>
         <fieldset>
           <legend>Misc</legend>
           <form.AppField
-            name='historySummaryItems'
-            children={(field) => (
-              <field.FormInputNumber
-                label='History summary items'
-                onValueChange={field.handleChange}
-                onBlur={field.handleBlur}
-                value={field.state.value}
-                errors={field.state.meta.errors}
-                withButtons
-              />
-            )}
+            name='history.summaryItems'
+            children={(field) => <field.FormInputNumber label='History summary items' withButtons />}
           />
         </fieldset>
         <form.AppForm>

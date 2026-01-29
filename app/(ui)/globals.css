@@ -21,19 +21,19 @@
 }
 
 @utility transition-in-up {
-  @apply starting:translate-y-1/2 starting:scale-90 starting:opacity-0 translate-y-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-200 origin-top;
+  @apply starting:translate-y-1/2 starting:scale-90 starting:opacity-0 translate-y-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-150 origin-top;
 }
 
 @utility transition-in-down {
-  @apply starting:-translate-y-1/2 starting:scale-90 starting:opacity-0 translate-y-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-200 origin-top;
+  @apply starting:-translate-y-1/2 starting:scale-90 starting:opacity-0 translate-y-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-150 origin-top;
 }
 
 @utility transition-in-left {
-  @apply starting:translate-x-1/2 starting:scale-90 starting:opacity-0 translate-x-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-200 origin-left;
+  @apply starting:translate-x-1/2 starting:scale-90 starting:opacity-0 translate-x-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-150 origin-left;
 }
 
 @utility transition-in-right {
-  @apply starting:-translate-x-1/2 starting:scale-90 starting:opacity-0 translate-x-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-200 origin-left;
+  @apply starting:-translate-x-1/2 starting:scale-90 starting:opacity-0 translate-x-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-150 origin-left;
 }
 
 @layer base {

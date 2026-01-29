@@ -7,6 +7,7 @@ import { getServices } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStatusCounts } from '@/actions/state';
 import RootLayoutClient from '@/app/(ui)/layout-client';
+import { IsMobileProvider } from '@/hooks/mobile';
 import { SseProvider } from '@/hooks/sse';
 import { ToastProvider } from '@/hooks/toast';
 import { description, displayName } from '@/package.json';
@@ -39,21 +40,23 @@ export default async function RootLayout({
   return (
     <html lang='en'>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} flex flex-col bg-background text-foreground transition-colors duration-200 accent-up antialiased min-h-dvh`}
+        className={`${geistSans.variable} ${geistMono.variable} flex flex-col bg-background text-foreground transition-colors duration-150 accent-up antialiased min-h-dvh`}
       >
-        <SseProvider>
-          <ToastProvider>
-            <RootLayoutClient
-              groups={groups}
-              services={services}
-              states={states}
-              statusCounts={stateCounts}
-              settings={settings}
-            >
-              {children}
-            </RootLayoutClient>
-          </ToastProvider>
-        </SseProvider>
+        <IsMobileProvider>
+          <SseProvider>
+            <ToastProvider>
+              <RootLayoutClient
+                groups={groups}
+                services={services}
+                states={states}
+                statusCounts={stateCounts}
+                settings={settings}
+              >
+                {children}
+              </RootLayoutClient>
+            </ToastProvider>
+          </SseProvider>
+        </IsMobileProvider>
       </body>
     </html>
   );

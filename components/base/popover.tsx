@@ -118,7 +118,7 @@ export function PopoverContent({
   );
 
   const merged = cn(
-    'top-[anchor(bottom)] p-2 rounded-xl shadow border-foreground/10 bg-background-card border-2 opacity-0 -translate-y-1/2 scale-90 open:opacity-100 open:translate-y-0 open:scale-100 starting:open:opacity-0 starting:open:-translate-y-1/2 starting:open:scale-90 transition-all transition-discrete duration-200 ',
+    'top-[anchor(bottom)] p-2 rounded-xl shadow border-foreground/10 bg-background-card border-2 opacity-0 -translate-y-1/2 scale-90 open:opacity-100 open:translate-y-0 open:scale-100 starting:open:opacity-0 starting:open:-translate-y-1/2 starting:open:scale-90 transition-all transition-discrete duration-150 ',
     alignment === 'center' && '[justify-self:anchor-center]',
     alignment === 'left' && 'left-[anchor(left)]',
     alignment === 'right' && 'right-[anchor(right)]',

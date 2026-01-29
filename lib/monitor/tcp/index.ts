@@ -14,10 +14,10 @@ export class TcpMonitor extends Monitor<TcpMonitorParams> {
             kind: 'tcp',
             ok: false,
             reason: MonitorDownReason.Timeout,
-            message: `Could not connect in ${this.settingsClient.current.defaultMonitorTimeout}ms`,
+            message: `Could not connect in ${this.settingsClient.current.monitor.defaultTimeout}ms`,
           });
           socket.destroy();
-        }, this.settingsClient.current.defaultMonitorTimeout);
+        }, this.settingsClient.current.monitor.defaultTimeout);
         socket.addListener('error', (err) => {
           resolve({
             kind: 'tcp',

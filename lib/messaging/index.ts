@@ -1,15 +1,16 @@
 import { rmSync } from 'node:fs';
 import { createServer, Socket } from 'node:net';
-import { sep } from 'node:path';
+import { join, sep } from 'node:path';
 import { env } from 'node:process';
 import { createInterface } from 'node:readline';
 import SuperJSON from 'superjson';
 import type { ServiceStatus } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import type { MonitorDownReason } from '@/lib/monitor';
+import { name } from '@/package.json';
 
 // use a unix socket on systems which support it. fallback to tcp/ip and hope we don't have a port collision
-const SOCKET_PATH = '.messaging.sock';
+const SOCKET_PATH = join(env.TEMP_ROOT ?? '.', `.${name}.messaging.sock`);
 const SOCKET_FALLBACK_PORT = 33625;
 const SOCKET_FALLBACK_ADDR = '127.0.0.1';
 
@@ -136,7 +137,9 @@ export class MessageServer {
           return;
         }
         default: {
-          throw new Error(`unhandled internal message kind ${(internalMessage as { kind: string }).kind}`);
+          throw new Error(
+            `unhandled internal message kind ${(internalMessage satisfies never as { kind: string }).kind}`
+          );
         }
       }
     });
@@ -162,7 +165,10 @@ export class MessageServer {
         isUnixLike() ? SOCKET_PATH : `${SOCKET_FALLBACK_ADDR}:${SOCKET_FALLBACK_PORT}`
       )
     );
-    this.#server.addListener('error', (err) => this.#logger.error('MessageServer error', err));
+    this.#server.addListener('error', (err) => {
+      this.#logger.error('MessageServer error', String(err));
+      throw err;
+    });
     if (isUnixLike()) this.#server.listen(SOCKET_PATH);
     else this.#server.listen(SOCKET_FALLBACK_PORT, SOCKET_FALLBACK_ADDR);
   }

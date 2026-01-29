@@ -16,7 +16,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
           controller.abort();
           reject('timeout');
         },
-        (this.params.upWhen?.latency ?? this.settingsClient.current.defaultMonitorTimeout) + 100
+        (this.params.upWhen?.latency ?? this.settingsClient.current.monitor.defaultTimeout) + 100
       );
       const started = performance.now();
       // fetch will throw on abort signal, though it may not be immediate (i.e. if the remote does not respond at all)
@@ -98,7 +98,9 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
             break;
           }
           default: {
-            throw new Error(`unhandled query kind ${(this.params.upWhen.query as { kind: string }).kind}`);
+            throw new Error(
+              `unhandled query kind ${(this.params.upWhen.query satisfies never as { kind: string }).kind}`
+            );
           }
         }
       }

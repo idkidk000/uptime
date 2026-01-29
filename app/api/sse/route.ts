@@ -24,8 +24,8 @@ export interface Invalidate {
   ids: number[];
 }
 
-const logger = new ServerLogger(import.meta.url);
 const messageClient = new MessageClient(import.meta.url);
+const logger = new ServerLogger(import.meta.url);
 const streamControllers = new Set<ReadableStreamDefaultController<unknown>>();
 /** only used in sync code */
 const invalidations = new Map<InvalidateKind, Set<number>>();

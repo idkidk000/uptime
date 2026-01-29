@@ -1,15 +1,20 @@
 import { z } from 'zod';
-import { init } from 'zod-empty';
 
 export const settingsSchema = z.object({
-  historySummaryItems: z.int().min(0).default(24),
-  monitorConcurrency: z.int().min(1).default(4),
-  defaultMonitorTimeout: z.int().min(0).default(5000),
-  enableMonitors: z.boolean().default(true),
+  history: z
+    .object({
+      summaryItems: z.int().min(0).default(24),
+    })
+    .prefault({}),
+  monitor: z
+    .object({
+      concurrency: z.int().min(1).default(4),
+      defaultTimeout: z.int().min(0).default(5000),
+      enable: z.boolean().default(true),
+    })
+    .prefault({}),
 });
-
-export const partialSettingsSchema = settingsSchema.partial();
 
 export type Settings = z.infer<typeof settingsSchema>;
 
-export const defaultSettings: Settings = init(settingsSchema);
+export const defaultSettings = settingsSchema.parse({});

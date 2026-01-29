@@ -1,7 +1,10 @@
 import process from 'node:process';
+import { ServerLogger } from '@/lib/logger/server';
 import * as Messaging from '@/workers/messaging';
 import * as Monitor from '@/workers/monitor';
 import * as Notifier from '@/workers/notifier';
+
+const logger = new ServerLogger(import.meta.url);
 
 function stop() {
   Monitor.stop();
@@ -13,12 +16,17 @@ function stop() {
 }
 
 function main() {
-  Messaging.start();
-  Notifier.start();
-  Monitor.start();
+  try {
+    Messaging.start();
+    Notifier.start();
+    Monitor.start();
 
-  process.addListener('SIGINT', stop);
-  process.addListener('SIGTERM', stop);
+    process.addListener('SIGINT', stop);
+    process.addListener('SIGTERM', stop);
+  } catch (err) {
+    logger.error('fatal error during startup', err);
+    stop();
+  }
 }
 
 main();

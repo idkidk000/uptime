@@ -11,28 +11,28 @@ const items: { href: string; label: string; icon: ElementType }[] = [
   { href: '/settings', label: 'Settings', icon: Wrench },
 ];
 
-// animation idea was from https://youtube.com/watch?v=S98uVU2CAl0 but it doesn't work in firefox yet
+// animation idea from https://youtube.com/watch?v=8_NQ7ARXz8c but firefox doesn't transition the span's anchor-relative position props (yet?)
 export function BottomNav() {
   const pathName = usePathname();
   return (
-    <div className='block md:hidden bg-background-head sticky bottom-0 transition-in-up mt-auto'>
-      <span className='fixed [position-anchor:--bottom-nav-anchor] left-[anchor(left)] right-[anchor(right)] top-[anchor(top)] bottom-[anchor(bottom)] transition-[left,right,top,bottom] duration-200 bg-background rounded-md -z-10' />
-      <nav className='grid grid-cols-4 items-center gap-4'>
-        {items.map(({ href, label, icon: Icon }) => (
-          <Link
-            href={href}
-            key={href}
-            className={cn(
-              'flex flex-col items-center transition-[background-color,scale] duration-200 rounded-md py-2 origin-bottom',
-              // href === pathName && 'bg-background shadow-md scale-110'
-              href === pathName && '[anchor-name:--bottom-nav-anchor]'
-            )}
-          >
-            <Icon />
-            {label}
-          </Link>
-        ))}
-      </nav>
-    </div>
+    <nav className='md:hidden bg-background-head sticky bottom-0 transition-in-up mt-auto grid grid-cols-4 items-center gap-4'>
+      {items.map(({ href, label, icon: Icon }) => (
+        <Link
+          href={href}
+          key={href}
+          className={cn(
+            'flex flex-col items-center rounded-md py-2 transition-[-moz-background-color] duration-150 [-moz-background-color:var(--color-background-head)]',
+            href === pathName && '[anchor-name:--bottom-nav-anchor] [-moz-background-color:var(--color-background)]'
+          )}
+        >
+          <Icon />
+          {label}
+        </Link>
+      ))}
+      <span
+        className='fixed [position-anchor:--bottom-nav-anchor] left-[anchor(left)] right-[anchor(right)] top-[anchor(top)] bottom-[anchor(bottom)] transition-[left,right,top,bottom] duration-150 bg-background rounded-md -z-10 [-moz-background-color:var(--color-background-head)]'
+        aria-hidden
+      />
+    </nav>
   );
 }

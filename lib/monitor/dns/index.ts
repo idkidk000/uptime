@@ -6,7 +6,7 @@ import { roundTo } from '@/lib/utils';
 export class DnsMonitor extends Monitor<DnsMonitorParams> {
   async check(): Promise<MonitorResponse<'dns'>> {
     try {
-      const resolver = new Resolver({ timeout: this.settingsClient.current.defaultMonitorTimeout });
+      const resolver = new Resolver({ timeout: this.settingsClient.current.monitor.defaultTimeout });
       if (this.params.resolver) resolver.setServers([this.params.resolver]);
       const started = performance.now();
       const results = (await resolver.resolve(this.params.address, this.params.recordType)) as string[];

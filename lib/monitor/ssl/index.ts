@@ -24,7 +24,7 @@ export class SslMonitor extends Monitor<SslMonitorParams> {
         host,
         port,
         rejectUnauthorized: false,
-        timeout: this.settingsClient.current.defaultMonitorTimeout,
+        timeout: this.settingsClient.current.monitor.defaultTimeout,
       });
       try {
         const { promise, resolve, reject } = Promise.withResolvers();

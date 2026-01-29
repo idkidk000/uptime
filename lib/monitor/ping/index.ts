@@ -20,7 +20,7 @@ export class PingMonitor extends Monitor<PingMonitorParams> {
           message: `Address ${this.params.address} contains unsafe characters`,
         };
       const process = spawn('ping', ['-c', 5, '-A', this.params.address].map(String), {
-        timeout: this.settingsClient.current.defaultMonitorTimeout,
+        timeout: this.settingsClient.current.monitor.defaultTimeout,
       });
       // legacy apis are very cool and good and normal
       process.addListener('error', (err) => {

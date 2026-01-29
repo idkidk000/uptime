@@ -27,7 +27,7 @@ export class DomainMonitor extends Monitor<DomainMonitorParams> {
           controller.abort();
           reject('timeout');
         },
-        (this.params.upWhen?.latency ?? this.settingsClient.current.defaultMonitorTimeout) + 100
+        (this.params.upWhen?.latency ?? this.settingsClient.current.monitor.defaultTimeout) + 100
       );
       const started = performance.now();
       // fetch will throw on abort signal, though it may not be immediate (i.e. if the remote does not respond at all)
