@@ -2,8 +2,8 @@
 
 import { Copy, Pause, Play, ShieldQuestion, SquarePen, Trash } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useCallback } from 'react';
+import { redirect, useParams } from 'next/navigation';
+import { useCallback, useEffect } from 'react';
 import { clearServiceHistory } from '@/actions/history';
 import { checkService, deleteService, togglePaused } from '@/actions/service';
 import { BarGraph } from '@/components/bar-graph';
@@ -16,6 +16,8 @@ import { StatusBadge } from '@/components/status-badge';
 import { useServiceWithState } from '@/hooks/app-queries';
 import { toDuration, toLocalIso } from '@/lib/date';
 
+const REDIRECT_MILLIS = 3_000;
+
 export default function DetailPage() {
   const { id } = useParams();
   const numId = Number(id);
@@ -25,6 +27,12 @@ export default function DetailPage() {
   const handleClearHistoryClick = useCallback(() => clearServiceHistory(numId), [numId]);
   const handleCheckClick = useCallback(() => checkService(numId), [numId]);
   const handleDeleteClick = useCallback(() => deleteService(numId), [numId]);
+
+  useEffect(() => {
+    if (service) return;
+    const timeout = setTimeout(() => redirect('/dashboard'), REDIRECT_MILLIS);
+    return () => clearTimeout(timeout);
+  }, [service]);
 
   if (!service) return <div className='text-down text-2xl'>Could not find a service with id {JSON.stringify(id)}</div>;
 

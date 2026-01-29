@@ -11,6 +11,7 @@ export class WebhookNotifier extends Notifier<WebhookNotifierParams> {
         'Content-Type': 'application/json',
         ...this.params.headers,
       },
+      cache: 'no-store',
       body: JSON.stringify(message),
     });
   }

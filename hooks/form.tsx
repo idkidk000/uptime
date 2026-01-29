@@ -2,6 +2,7 @@ import { createFormHook, createFormHookContexts } from '@tanstack/react-form';
 import { Button } from '@/components/base/button';
 import { FormInputDuration } from '@/components/form/input-duration';
 import { FormInputNumber } from '@/components/form/input-number';
+import { FormInputPassword } from '@/components/form/input-password';
 import { FormInputText } from '@/components/form/input-text';
 import { FormSelect } from '@/components/form/select';
 import { FormSwitch } from '@/components/form/switch';
@@ -19,6 +20,7 @@ export const { useAppForm } = createFormHook({
     FormSelect,
     FormInputDuration,
     FormSwitch,
+    FormInputPassword,
   },
   formComponents: {
     Button,

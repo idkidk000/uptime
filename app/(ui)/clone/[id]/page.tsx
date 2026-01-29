@@ -1,8 +1,14 @@
 'use client';
 
-import NotFoundPage from '@/app/(ui)/not-found';
+import { useParams } from 'next/navigation';
+import { PageWrapper } from '@/components/base/page-wrapper';
+import { ServiceForm } from '@/forms/service';
 
-// TODO: implement
 export default function ClonePage() {
-  return <NotFoundPage />;
+  const { id } = useParams();
+  return (
+    <PageWrapper pageTitle='Clone service'>
+      <ServiceForm mode='clone' id={Number(id)} />
+    </PageWrapper>
+  );
 }

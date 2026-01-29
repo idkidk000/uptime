@@ -7,7 +7,6 @@ const RE_SAFE = /^[a-zA-Z0-9._-]+$/;
 const RE_LOSS = /\b(?<loss>[\d.]+)% packet loss\b/;
 const RE_RTT = /= (?<min>[\d.]+)\/(?<avg>[\d.]+)\/(?<max>[\d.]+)\/(?<mdev>[\d.]+) ms,/;
 
-/** ping is a setuid binary and the container requires NET_ADMIN capability to use it*/
 export class PingMonitor extends Monitor<PingMonitorParams> {
   async check(): Promise<MonitorResponse<'ping'>> {
     try {

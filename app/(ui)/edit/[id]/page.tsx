@@ -1,8 +1,14 @@
 'use client';
 
-import NotFoundPage from '@/app/(ui)/not-found';
+import { useParams } from 'next/navigation';
+import { PageWrapper } from '@/components/base/page-wrapper';
+import { ServiceForm } from '@/forms/service';
 
-// TODO: implement
-export default function Home() {
-  return <NotFoundPage />;
+export default function EditPage() {
+  const { id } = useParams();
+  return (
+    <PageWrapper pageTitle='Edit service'>
+      <ServiceForm mode='edit' id={Number(id)} />
+    </PageWrapper>
+  );
 }

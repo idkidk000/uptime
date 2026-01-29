@@ -103,24 +103,26 @@ export const serviceTable = sqliteTable('service', {
     .$onUpdate(() => sql`(unixepoch())`),
 });
 
-export const serviceInsertSchema = createInsertSchema(serviceTable)
+export const serviceUpdateSchema = createInsertSchema(serviceTable)
   .omit({
     createdAt: true,
     updatedAt: true,
     id: true,
   })
   .extend({
-    groupId: z.int().default(1),
+    id: z.int(),
+    groupId: z.int().min(1).default(1),
     name: z.string().min(1),
     active: z.boolean().default(true),
-    checkSeconds: z.int().min(300),
+    checkSeconds: z.int().min(60).default(300),
     failuresBeforeDown: z.int().min(0).default(3),
     retainCount: z.int().min(0).default(8640),
     params: monitorParamsSchema,
   });
-type ServiceTable = typeof serviceTable;
-export type ServiceInsert = ServiceTable['$inferInsert'];
-export type ServiceSelect = ServiceTable['$inferSelect'];
+export const serviceInsertSchema = serviceUpdateSchema.omit({ id: true });
+export type ServiceUpdate = z.infer<typeof serviceUpdateSchema>;
+export type ServiceInsert = z.infer<typeof serviceInsertSchema>;
+export type ServiceSelect = (typeof serviceTable)['$inferSelect'];
 
 // HistoryTable
 

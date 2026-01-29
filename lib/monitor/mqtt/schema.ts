@@ -15,12 +15,12 @@ export const mqttMonitorParamsSchema = baseMonitorParamsSchema.extend({
           z.object({
             kind: z.enum(['jsonata', 'xpath']),
             expression: z.string(),
-            expected: z.unknown(),
+            expected: z.union([z.coerce.number(), z.coerce.boolean(), z.string()]),
           }),
           z.object({
             kind: z.literal('regex'),
             expression: z.string(),
-            expected: z.boolean(),
+            expected: z.coerce.boolean(),
           }),
         ])
         .optional(),

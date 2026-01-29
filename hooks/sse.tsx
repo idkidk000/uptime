@@ -58,13 +58,14 @@ export function SseProvider({ children }: { children: ReactNode }) {
         clearInterval(state.current.interval);
         state.current.interval = null;
       }
-      const deploymentId: string = event.data.deploymentId;
+      const deploymentId: string = event.data;
+      logger.info('deploymentId changed from', state.current.deploymentId, 'to', deploymentId);
       // deployment id (generated on server startup) changed - reload the frontend
       if (state.current.deploymentId !== null && state.current.deploymentId !== deploymentId) {
-        logger.info('deploymentId changed from', state.current.deploymentId, 'to', deploymentId);
         window.location.reload();
         return;
       }
+      state.current.deploymentId = deploymentId;
       // used by app-queries hook to invalidate all queries
       if (state.current.errors) {
         logger.success('reconnected after', state.current.errors, 'errors');

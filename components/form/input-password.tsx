@@ -1,19 +1,19 @@
 import { type ComponentProps, useId } from 'react';
-import { InputDuration } from '@/components/base/input-duration';
+import { InputPassword } from '@/components/base/input-password';
 import { useFieldContext } from '@/hooks/form';
 
-export function FormInputDuration({
+export function FormInputPassword({
   label,
   placeholder,
   description,
   ...props
-}: Omit<ComponentProps<typeof InputDuration>, 'placeholder' | 'value' | 'onValueChange' | 'onBlur'> & {
+}: Omit<ComponentProps<typeof InputPassword>, 'placeholder' | 'value' | 'onValueChange' | 'onBlur'> & {
   label: string;
   placeholder?: string;
   description?: string;
 }) {
   const id = useId();
-  const field = useFieldContext<number>();
+  const field = useFieldContext<string>();
   const errors = field.state.meta.errors;
 
   return (
@@ -21,16 +21,16 @@ export function FormInputDuration({
       <label htmlFor={id} className='font-semibold'>
         {label}
       </label>
-      <InputDuration
+      <InputPassword
         id={id}
-        placeholder={placeholder ?? label}
         value={field.state.value}
         onValueChange={field.handleChange}
         onBlur={field.handleBlur}
+        placeholder={placeholder ?? label}
         {...props}
       />
       {errors?.length ? (
-        <span className='col-span-2 ms-auto text-down transition-in-up'>
+        <span className='col-span-2 ms-auto password-down transition-in-up'>
           {errors.map((err) => err?.message).join('. ')}
         </span>
       ) : description ? (

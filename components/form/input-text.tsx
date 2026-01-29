@@ -17,7 +17,7 @@ export function FormInputText({
   const errors = field.state.meta.errors;
 
   return (
-    <div className='grid grid-cols-subgrid col-span-2 items-center gap-x-4 gap-y-1'>
+    <div className='grid grid-cols-subgrid col-span-2 items-center gap-x-4 gap-y-1 transition-in-up'>
       <label htmlFor={id} className='font-semibold'>
         {label}
       </label>
@@ -30,7 +30,7 @@ export function FormInputText({
         {...props}
       />
       {errors?.length ? (
-        <span className='col-span-2 ms-auto text-down transition-in-down'>
+        <span className='col-span-2 ms-auto text-down transition-in-up'>
           {errors.map((err) => err?.message).join('. ')}
         </span>
       ) : description ? (

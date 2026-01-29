@@ -19,6 +19,7 @@ export class GotifyNotifier extends Notifier<GotifyNotifierParams> {
         'X-Gotify-Key': this.params.token,
       },
       body: JSON.stringify({ title, message: body, priority }),
+      cache: 'no-store',
     });
   }
 }

@@ -1,9 +1,11 @@
 import z from 'zod';
 import { baseMonitorParamsSchema } from '@/lib/monitor';
 
+export const dnsRecordTypes = ['A', 'AAA', 'CNAME'] as const;
+
 export const dnsMonitorParamsSchema = baseMonitorParamsSchema.extend({
   kind: z.literal('dns'),
-  recordType: z.enum(['A', 'AAA', 'CNAME']).default('A'),
+  recordType: z.enum(dnsRecordTypes).default('A'),
   resolver: z.string().optional(),
   upWhen: z
     .object({

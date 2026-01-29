@@ -37,6 +37,7 @@ export class DomainMonitor extends Monitor<DomainMonitorParams> {
           headers: { 'User-Agent': `${name} ${version}` },
           signal: controller.signal,
           keepalive: false,
+          cache: 'no-store',
         }),
         promise,
       ]);

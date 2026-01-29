@@ -6,6 +6,22 @@ import type { HttpMonitorParams } from '@/lib/monitor/http/schema';
 import { parseRegex, roundTo } from '@/lib/utils';
 import { name, version } from '@/package.json';
 
+// BUG: next isn't listenining on localhost in the container so the mock api monitors don't work
+/*
+root@uptime-blahaj:/app# curl http://uptime-blahaj:3000/api/mock/json
+{"ok":true,"data":"some value"}
+root@uptime-blahaj:/app# curl http://uptime-blahaj:3001/api/mock/json
+curl: (7) Failed to connect to uptime-blahaj port 3001 after 0 ms: Could not connect to server
+root@uptime-blahaj:/app# curl http://127.0.0.1:3000/api/mock/json
+curl: (7) Failed to connect to 127.0.0.1 port 3000 after 0 ms: Could not connect to server
+root@uptime-blahaj:/app#
+
+generated server.js has a hostname of '0.0.0.0' which should mean all addresses, but that is not what's happnening. the nextjs docs continue to be poorly indexed and unsearchable
+
+root@uptime-blahaj:/app# ss -tulpen
+Netid      State       Recv-Q      Send-Q             Local Address:Port             Peer Address:Port      Process
+tcp        LISTEN      0           511                   172.17.0.2:3000                  0.0.0.0:*                       uid:1000 ino:1929501 sk:15 cgroup:/ <->
+*/
 export class HttpMonitor extends Monitor<HttpMonitorParams> {
   async check(): Promise<MonitorResponse<'http'>> {
     try {
@@ -26,6 +42,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
           headers: { 'User-Agent': `${name} ${version}`, ...this.params.headers },
           signal: controller.signal,
           keepalive: false,
+          cache: 'no-store',
         }),
         promise,
       ]);

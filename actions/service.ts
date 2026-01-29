@@ -3,9 +3,16 @@
 
 import { eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
-import { type ServiceInsert, type ServiceSelect, serviceInsertSchema, serviceTable } from '@/lib/drizzle/schema';
+import {
+  type ServiceInsert,
+  type ServiceSelect,
+  type ServiceUpdate,
+  serviceInsertSchema,
+  serviceTable,
+  serviceUpdateSchema,
+} from '@/lib/drizzle/schema';
 import { type BusMessage, MessageClient } from '@/lib/messaging';
-import { pick } from '@/lib/utils';
+import { omit, pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 
@@ -42,12 +49,26 @@ export async function deleteService(id: number): Promise<void> {
   );
 }
 
-export async function addService(data: ServiceInsert, check: boolean): Promise<void> {
+export async function addService(data: ServiceInsert, check: boolean): Promise<number> {
   // serviceInsertSchema includes monitorParamsSchema
   const sanitised = serviceInsertSchema.parse(data);
   const [row] = await db
     .insert(serviceTable)
     .values(sanitised)
     .returning(pick(getTableColumns(serviceTable), ['id']));
+  messageClient.send({ cat: 'invalidation', kind: 'service-config', id: row.id });
+  if (check) await checkService(row.id);
+  return row.id;
+}
+
+export async function editService(data: ServiceUpdate, check: boolean): Promise<void> {
+  // serviceInsertSchema includes monitorParamsSchema
+  const sanitised = serviceUpdateSchema.parse(data);
+  const [row] = await db
+    .update(serviceTable)
+    .set(omit(sanitised, ['id']))
+    .where(eq(serviceTable.id, sanitised.id))
+    .returning(pick(getTableColumns(serviceTable), ['id']));
+  messageClient.send({ cat: 'invalidation', kind: 'service-config', id: row.id });
   if (check) await checkService(row.id);
 }

@@ -18,7 +18,7 @@ export const monitorDownReasons = enumToObject(MonitorDownReason);
 
 export const baseMonitorParamsSchema = z.object({
   kind: z.string(),
-  address: z.string(),
+  address: z.string().min(1),
   upWhen: z
     .object({
       latency: z.int().min(0).optional(),

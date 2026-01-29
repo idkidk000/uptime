@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/correctness/noChildrenProp: not my library */
 
+import Link from 'next/link';
 import { useCallback } from 'react';
 import { updateSettings } from '@/actions/setting';
 import { Card } from '@/components/base/card';
@@ -71,6 +72,9 @@ export function SettingsForm() {
             </form.Button>
             <form.Button type='button' onClick={handleReset} variant='down'>
               Reset
+            </form.Button>
+            <form.Button as={Link} href='/dashboard' variant='unknown'>
+              Cancel
             </form.Button>
           </div>
         </form.AppForm>

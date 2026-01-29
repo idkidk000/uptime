@@ -204,7 +204,7 @@ export class MessageClient {
           this.#logger.error('MessageClient connected but socket is null');
           return;
         }
-        this.#logger.success('MessageClient connected');
+        this.#logger.info('MessageClient connected');
         this.#socket = socket;
         clearInterval(interval);
         if (this.#queue.length) this.#logger.debugLow('pushing queued messages', this.#queue);

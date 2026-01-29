@@ -1,3 +1,5 @@
+'use client';
+
 import { ChevronDown, ListFilter, Pause, Play } from 'lucide-react';
 import Link from 'next/link';
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
