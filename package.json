@@ -55,6 +55,7 @@
     "docker:start": "docker run --name uptime-blahaj -h uptime-blahaj -it --rm -p 3000:3000 -v ./.local:/config -u 1000:1000 uptime-blahaj:latest",
     "format": "biome format --write",
     "lint": "biome lint --reporter=summary",
+    "local": "npm run build && npm run start",
     "sse": "curl http://localhost:3000/api/sse",
     "start": "next start"
   },

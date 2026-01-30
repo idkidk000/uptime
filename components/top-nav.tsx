@@ -1,6 +1,6 @@
 import { Gauge, Wrench } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/base/button';
+import { Button } from '@/components/button';
 import { description, displayName } from '@/package.json';
 
 export function TopNav() {

@@ -231,7 +231,7 @@ export class MessageClient {
     // this also can't work during next build
     if (env.IS_BUILDING) return;
     const messageString = `${SuperJSON.stringify(internalMessage)}\n`;
-    this.#logger.debugLow('sendInternalMessage', messageString, this.#socket === null ? 'disconnected' : 'connected?');
+    this.#logger.debugLow('sendInternalMessage', messageString, this.#socket === null ? 'disconnected' : 'connected');
     if (this.#socket) this.#socket.write(messageString);
     else this.#queue.push(messageString);
   }

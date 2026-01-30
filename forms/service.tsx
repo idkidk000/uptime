@@ -2,12 +2,12 @@
 
 import { useStore } from '@tanstack/react-form';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { Activity, useCallback, useMemo } from 'react';
+import { redirect, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo } from 'react';
 import type z from 'zod';
 import { init } from 'zod-empty';
 import { addService, editService } from '@/actions/service';
-import { Card } from '@/components/base/card';
+import { Card } from '@/components/card';
 import { useAppQueries } from '@/hooks/app-queries';
 import { useAppForm } from '@/hooks/form';
 import { useLogger } from '@/hooks/logger';
@@ -38,7 +38,7 @@ function listMonitorFields(monitorKind: MonitorKind): Set<string> {
         .filter((item) => typeof item !== 'undefined');
     }
     if (type === 'object') {
-      if (!('properties' in fragment)) return [path]; //record<string,string>
+      if (!('properties' in fragment)) return [path];
       return Object.entries(fragment.properties as Record<string, Record<string, unknown>>)
         .flatMap(([key, val]) => recurse(val, `${path}.${key}`))
         .filter((item) => typeof item !== 'undefined');
@@ -57,17 +57,24 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
   const logger = useLogger(import.meta.url);
   const { groups, services } = useAppQueries();
   const { showToast } = useToast();
+  const router = useRouter();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(services.find): using reactive data as form defaults would be very annoying
   const defaultValues = useMemo(() => {
     if (props.mode !== 'add') {
       const item = services.find((item) => item.id === props.id);
-      if (!item) throw new Error(`id ${props.id} does not exist`);
+      if (!item) {
+        // throw new Error(`id ${props.id} does not exist`);
+        logger.error('id', props.id, 'does not exist');
+        return null;
+      }
       if (props.mode === 'clone') return { ...item, name: '' };
       return item;
     }
     return insertDefaults;
-  }, [props]) as z.infer<typeof schema>;
+  }, [props]) as z.infer<typeof schema> | null;
+
+  if (defaultValues === null) redirect('/dashboard');
 
   const form = useAppForm({
     defaultValues,
@@ -77,8 +84,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
         addService(form.value, true)
           .then((id) => {
             showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
-            // form.formApi.reset();
-            redirect(`/dashboard/${id}`);
+            router.push(`/dashboard/${id}`);
           })
           .catch((err) => {
             logger.error('Error adding service', err);
@@ -88,8 +94,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
         editService({ ...form.value, id: props.id }, true)
           .then(() => {
             showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
-            // form.formApi.reset();
-            redirect(`/dashboard/${props.id}`);
+            router.push(`/dashboard/${props.id}`);
           })
           .catch((err) => {
             logger.error('Error updating service', err);
@@ -98,12 +103,24 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
     },
     validators: {
       // @ts-expect-error: i think tanstack form is looking at schema['~standard'].type[0] (input shape) rather than output shape
-      onSubmit: schema,
+      onSubmitAsync: schema,
     },
   });
 
   const monitorKind = useStore(form.store, (state) => state.values.params.kind);
   const monitorFields = useMemo(() => listMonitorFields(monitorKind), [monitorKind]);
+
+  // clear upWhen.query when all its fields are undefined (type is Record<string,unknown>|undefined)
+  const upWhenQuery = useStore(
+    form.store,
+    (state) =>
+      (state.values.params.upWhen as typeof state.values.params.upWhen & { query?: Record<string, unknown> })?.query
+  );
+  useEffect(() => {
+    if (typeof upWhenQuery === 'undefined') return;
+    if (Object.values(upWhenQuery).every((value) => typeof value === 'undefined' || value === ''))
+      form.setFieldValue('params.upWhen.query', undefined);
+  }, [upWhenQuery, form]);
 
   const handleReset = useCallback(() => form.reset(), [form]);
 
@@ -112,19 +129,34 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
       <form>
         <fieldset>
           <legend>Service</legend>
-          <form.AppField name='name' children={(field) => <field.FormInputText label='Name' />} />
-          <form.AppField name='active' children={(field) => <field.FormSwitch label='Active' />} />
+          <form.AppField
+            name='name'
+            children={(field) => <field.FormInputText label='Name' description='Unique name' />}
+          />
+          <form.AppField
+            name='active'
+            children={(field) => <field.FormSwitch label='Active' description='Enable monitoring' />}
+          />
           <form.AppField
             name='checkSeconds'
-            children={(field) => <field.FormInputDuration label='Check frequency' />}
+            children={(field) => (
+              <field.FormInputDuration label='Check frequency' description='How often to monitor service' />
+            )}
           />
           <form.AppField
             name='failuresBeforeDown'
-            children={(field) => <field.FormInputNumber label='Failures before down' />}
+            children={(field) => (
+              <field.FormInputNumber
+                label='Max failures'
+                description='Consecutive failures before the service is considered down'
+              />
+            )}
           />
           <form.AppField
             name='retainCount'
-            children={(field) => <field.FormInputNumber label='Retain count' max={999999} />}
+            children={(field) => (
+              <field.FormInputNumber label='Retain count' max={999999} description='Number of history items to keep' />
+            )}
           />
           {/* FIXME: need a way to add groups */}
           <form.AppField
@@ -134,6 +166,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
                 label='Group'
                 mode='number'
                 options={groups.map(({ id, name }) => ({ label: name, value: id }))}
+                description='Parent group'
               />
             )}
           />
@@ -150,94 +183,190 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
                 label='Type'
                 mode='text'
                 options={monitorKinds.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
+                visibleFields={monitorFields}
+                description='Type of monitor to use'
               />
             )}
           />
-          <form.AppField name='params.address' children={(field) => <field.FormInputText label='Address' />} />
-          <Activity mode={monitorFields.has('params.port') ? 'visible' : 'hidden'}>
-            <form.AppField name='params.port' children={(field) => <field.FormInputNumber label='Port' />} />
-          </Activity>
-          <Activity mode={monitorFields.has('params.username') ? 'visible' : 'hidden'}>
-            <form.AppField name='params.username' children={(field) => <field.FormInputText label='Username' />} />
-          </Activity>
-          <Activity mode={monitorFields.has('params.password') ? 'visible' : 'hidden'}>
-            <form.AppField name='params.password' children={(field) => <field.FormInputPassword label='Password' />} />
-          </Activity>
-          <Activity mode={monitorFields.has('params.recordType') ? 'visible' : 'hidden'}>
-            <form.AppField
-              name='params.recordType'
-              children={(field) => (
-                <field.FormSelect
-                  label='Record Type'
-                  mode='text'
-                  options={dnsRecordTypes.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
-                />
-              )}
-            />
-          </Activity>
-          <Activity mode={monitorFields.has('params.resolver') ? 'visible' : 'hidden'}>
-            <form.AppField name='params.resolver' children={(field) => <field.FormInputText label='Resolver' />} />
-          </Activity>
-          <Activity mode={monitorFields.has('params.topic') ? 'visible' : 'hidden'}>
-            <form.AppField name='params.topic' children={(field) => <field.FormInputText label='Topic' />} />
-          </Activity>
+          <form.AppField
+            name='params.address'
+            children={(field) => (
+              <field.FormInputText
+                label='Address'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='URL, hostname, or IP'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.port'
+            children={(field) => (
+              <field.FormInputNumber
+                label='Port'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='TCP port number'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.username'
+            children={(field) => (
+              <field.FormInputText
+                label='Username'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Username for service'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.password'
+            children={(field) => (
+              <field.FormInputPassword
+                label='Password'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Password for service'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.recordType'
+            children={(field) => (
+              <field.FormSelect
+                label='Record Type'
+                mode='text'
+                options={dnsRecordTypes.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
+                visibleFields={monitorFields}
+                description='DNS record type'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.resolver'
+            children={(field) => (
+              <field.FormInputText
+                label='Resolver'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='DNS resolver'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.topic'
+            children={(field) => (
+              <field.FormInputText label='Topic' visibleFields={monitorFields} allowEmpty description='MQTT topic' />
+            )}
+          />
         </fieldset>
         <fieldset>
           <legend>Up when</legend>
-          <Activity mode={monitorFields.has('params.upWhen.days') ? 'visible' : 'hidden'}>
-            <form.AppField name='params.upWhen.days' children={(field) => <field.FormInputNumber label='Days' />} />
-          </Activity>
-          <Activity mode={monitorFields.has('params.upWhen.latency') ? 'visible' : 'hidden'}>
-            <form.AppField
-              name='params.upWhen.latency'
-              children={(field) => <field.FormInputNumber label='Latency' />}
-            />
-          </Activity>
-          <Activity mode={monitorFields.has('params.upWhen.length') ? 'visible' : 'hidden'}>
-            <form.AppField name='params.upWhen.length' children={(field) => <field.FormInputNumber label='Length' />} />
-          </Activity>
-          <Activity mode={monitorFields.has('params.upWhen.statusCode') ? 'visible' : 'hidden'}>
-            <form.AppField
-              name='params.upWhen.statusCode'
-              children={(field) => <field.FormInputNumber label='Status code' />}
-            />
-          </Activity>
-          <Activity mode={monitorFields.has('params.upWhen.successPercent') ? 'visible' : 'hidden'}>
-            <form.AppField
-              name='params.upWhen.successPercent'
-              children={(field) => <field.FormInputNumber label='Success percent' />}
-            />
-          </Activity>
-          {/* FIXME: this is a tristate */}
-          <Activity mode={monitorFields.has('params.upWhen.trusted') ? 'visible' : 'hidden'}>
-            <form.AppField name='params.upWhen.trusted' children={(field) => <field.FormSwitch label='Trusted' />} />
-          </Activity>
-          <Activity mode={monitorFields.has('params.upWhen.query.kind') ? 'visible' : 'hidden'}>
-            <form.AppField
-              name='params.upWhen.query.kind'
-              children={(field) => (
-                <field.FormSelect
-                  label='Query kind'
-                  options={queryKind.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
-                  mode='text'
-                />
-              )}
-            />
-          </Activity>
+          <form.AppField
+            name='params.upWhen.days'
+            children={(field) => (
+              <field.FormInputNumber
+                label='Days'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Min remaining days'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.upWhen.latency'
+            children={(field) => (
+              <field.FormInputNumber
+                label='Latency'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Max latency in millis'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.upWhen.length'
+            children={(field) => (
+              <field.FormInputNumber
+                label='Length'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Count of DNS records'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.upWhen.statusCode'
+            children={(field) => (
+              <field.FormInputNumber
+                label='Status code'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='HTTP status code'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.upWhen.successPercent'
+            children={(field) => (
+              <field.FormInputNumber
+                label='Success percent'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Min success percent'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.upWhen.trusted'
+            children={(field) => (
+              <field.FormSwitch
+                label='Trusted'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Is the certificate expected to be trusted'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.upWhen.query.kind'
+            children={(field) => (
+              <field.FormSelect
+                label='Query kind'
+                options={queryKind.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
+                mode='text'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Type of query to run against returned data'
+              />
+            )}
+          />
           {/* FIXME: textarea? */}
-          <Activity mode={monitorFields.has('params.upWhen.query.expression') ? 'visible' : 'hidden'}>
-            <form.AppField
-              name='params.upWhen.query.expression'
-              children={(field) => <field.FormInputText label='Query expression' />}
-            />
-          </Activity>
+          <form.AppField
+            name='params.upWhen.query.expression'
+            children={(field) => (
+              <field.FormInputText
+                label='Query expression'
+                visibleFields={monitorFields}
+                allowEmpty
+                description={`${lowerToSentenceCase((upWhenQuery?.kind ?? '') as string)} expression`}
+              />
+            )}
+          />
           {/* FIXME: this is boolean for regex and number|boolean|string for other. using z.coerce but the correct control would be better */}
-          <Activity mode={monitorFields.has('params.upWhen.query.expected') ? 'visible' : 'hidden'}>
-            <form.AppField
-              name='params.upWhen.query.expected'
-              children={(field) => <field.FormInputText label='Query expected' />}
-            />
-          </Activity>
+          <form.AppField
+            name='params.upWhen.query.expected'
+            children={(field) => (
+              <field.FormInputText
+                label='Query expected'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Expected query result'
+              />
+            )}
+          />
         </fieldset>
         <form.AppForm>
           <div className='col-span-full flex gap-8 justify-center'>

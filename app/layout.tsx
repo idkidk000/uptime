@@ -3,14 +3,18 @@ import '@/app/(ui)/globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { getGroups } from '@/actions/group';
+import { getNotifiers } from '@/actions/notifier';
 import { getServices } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStatusCounts } from '@/actions/state';
-import RootLayoutClient from '@/app/(ui)/layout-client';
+import RootLayoutClient from '@/app/layout-client';
 import { IsMobileProvider } from '@/hooks/mobile';
 import { SseProvider } from '@/hooks/sse';
 import { ToastProvider } from '@/hooks/toast';
 import { description, displayName } from '@/package.json';
+
+// next will otherwise compile in the queries inside the RootLayout function
+export const dynamic = 'force-dynamic';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -37,6 +41,7 @@ export default async function RootLayout({
   const states = await getServiceStates();
   const stateCounts = await getStatusCounts();
   const settings = await getSettings();
+  const notifiers = await getNotifiers();
   return (
     <html lang='en'>
       <body
@@ -51,6 +56,7 @@ export default async function RootLayout({
                 states={states}
                 statusCounts={stateCounts}
                 settings={settings}
+                notifiers={notifiers}
               >
                 {children}
               </RootLayoutClient>

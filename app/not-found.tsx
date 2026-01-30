@@ -2,7 +2,7 @@
 
 import { permanentRedirect } from 'next/navigation';
 import { useEffect } from 'react';
-import { PageWrapper } from '@/components/base/page-wrapper';
+import { PageWrapper } from '@/components/page-wrapper';
 
 const DELAY_MILLIS = 3_000;
 

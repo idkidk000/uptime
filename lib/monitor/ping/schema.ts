@@ -2,6 +2,7 @@ import z from 'zod';
 import { baseMonitorParamsSchema } from '@/lib/monitor';
 
 export const pingMonitorParamsSchema = baseMonitorParamsSchema.extend({
+  address: z.union([z.hostname(), z.ipv4(), z.ipv6()]),
   kind: z.literal('ping'),
   upWhen: z
     .object({

@@ -1,7 +1,7 @@
 FROM node:trixie-slim AS base
-ENV HOME=/home TZ=Europe/London PORT=3000 CONFIG_ROOT=/config PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/.local/bin TEMP_ROOT=/tmp DB_FILE_NAME=file:/config/data.db
+ENV HOME=/home TZ=Europe/London PORT=3000 CONFIG_ROOT=/config PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/.local/bin TEMP_ROOT=/tmp DB_FILE_NAME=file:/config/data.db HOSTNAME=0.0.0.0
 RUN apt update &&\
-  DEBIAN_FRONTEND=noninteractive apt install -y jq iputils-ping &&\
+  DEBIAN_FRONTEND=noninteractive apt install -y iputils-ping &&\
   apt distclean
 # single /home dir for all users
 RUN rm -rf "$HOME"; mkdir -p "$HOME" "$CONFIG_ROOT" "$TEMP_ROOT"
@@ -26,10 +26,11 @@ COPY --from=build /build/.next/standalone ./
 COPY --from=build /build/public ./public
 COPY --from=build /build/.next/static ./.next/static
 
-# drizzle-kit for db migrations. npm cannot install a single package and honour version constraints from package.json. copying the entire node_modules dir from build seems a bit much
-RUN npm install drizzle-kit@$(jq -r '.dependencies."drizzle-kit"' package.json)
+# drizzle-kit for db migrations
+COPY --from=build /build/node_modules ./node_modules
 COPY drizzle.config.ts ./
 COPY migrations ./migrations
+
 # container will be run as an arbitrary user. ensure they have permissions
 RUN chmod -R ugo+rwX "$HOME" "$CONFIG_ROOT" "$TEMP_ROOT"
 COPY --chmod=755 <<EOT /entrypoint.sh

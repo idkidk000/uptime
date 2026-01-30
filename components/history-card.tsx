@@ -3,8 +3,8 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { type ComponentProps, useCallback, useEffect, useRef, useState } from 'react';
-import { Button, ButtonGroup } from '@/components/base/button';
-import { Card } from '@/components/base/card';
+import { Button, ButtonGroup } from '@/components/button';
+import { Card } from '@/components/card';
 import { StatusBadge } from '@/components/status-badge';
 import { useServiceHistory } from '@/hooks/app-queries';
 import { toLocalIso } from '@/lib/date';

@@ -3,16 +3,22 @@
 I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd try to build my own for fun. It's very much a work in progress and there are a few janky bits which I'll tidy up later.
 
 ### What's missing
-- Forms to add and edit monitors
-- Tags
+- Controls on service forms for managing:
+  - string[] (DNS monitor expected records check)
+  - Record<string, string> (HTTP monitor headers)
+- Forms for managing:
+  - groups
+  - notifiers
+  - tags
 
 ### What's working
 - Frontend
+  - [Core UI components](components/): buttons, badges, popovers, modals, toasts, etc
+  - Responsive layout
   - Service list
   - Dashboard
-  - [Core UI components](components/): buttons, badges, popovers, modals, toasts, etc
-  - Settings page
-  - Responsive layout
+  - General settings page
+  - Service add / edit / clone forms
 - Backend
   - [Database](lib/drizzle/). [SQLite](https://sqlite.org/) and [Drizzle](https://orm.drizzle.team/) are very nice actually
   - [Workers](workers/)
@@ -53,8 +59,8 @@ Alternatively, you can run the app locally:
 - `npm run db:push` to create the db
 - `npm run db:seed` seeds the db with some services to monitor. If you added extras to your `.env`, they will be created
 - either:
-  - `npm run build && npm run start` to build and start production mode
-  - `npm run dev` to run in dev mode. The frontend is cluttered with `NextJS`, `Tanstack Query`, and `Tanstack` dev tools icons, and performance is degrated since all React hooks are run twice
+  - `npm run local` to build and start production mode
+  - `npm run dev` to run in dev mode. The frontend is cluttered with `NextJS`, `Tanstack Query`, and `Tanstack` dev tools icons, and performance is degrated since hot module reloading is active and all React hooks are run twice
   
 ### Environment variables
 If using docker, add them to the `docker run` command you'll find in `package.json` under `scripts/docker:run` in the format `-e VAR_NAME=VALUE`

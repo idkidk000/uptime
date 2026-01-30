@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { Badge, type BadgeVariant } from '@/components/base/badge';
+import { Badge, type BadgeVariant } from '@/components/badge';
 import { ServiceStatus } from '@/lib/drizzle/schema';
 
 const statusData: Record<ServiceStatus | 'fallback', { label: string; variant: BadgeVariant }> = {

@@ -22,7 +22,8 @@ export function BottomNav() {
           key={href}
           className={cn(
             'flex flex-col items-center rounded-md py-2 transition-[-moz-background-color] duration-150 [-moz-background-color:var(--color-background-head)]',
-            href === pathName && '[anchor-name:--bottom-nav-anchor] [-moz-background-color:var(--color-background)]'
+            pathName.startsWith(href) &&
+              '[anchor-name:--bottom-nav-anchor] [-moz-background-color:var(--color-background)]'
           )}
         >
           <Icon />

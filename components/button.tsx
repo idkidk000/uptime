@@ -36,7 +36,12 @@ export function Button<T extends ElementType = 'button'>({
   variant = 'up',
   as,
   ...props
-}: ComponentPropsWithoutRef<T> & { size?: ButtonSize; variant?: ButtonVariant; as?: T; ref?: RefObject<T> }) {
+}: ComponentPropsWithoutRef<T> & {
+  size?: ButtonSize;
+  variant?: ButtonVariant;
+  as?: T;
+  ref?: RefObject<HTMLElement | null>;
+}) {
   const Component = as ?? 'button';
   return (
     <Component type='button' className={cn(base, sizes[size], variants[variant], className)} {...props}>

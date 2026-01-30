@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePrefetchQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, type ReactNode, type RefObject, useContext, useEffect, useMemo, useRef } from 'react';
 import { getGroups } from '@/actions/group';
 import { getServiceHistory } from '@/actions/history';
@@ -9,8 +9,9 @@ import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStatusCounts, type StatusCounts } from '@/actions/state';
 import { useLogger } from '@/hooks/logger';
 import { useSse } from '@/hooks/sse';
-import type { GroupSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/schema';
+import type { GroupSelect, NotifierSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/schema';
 import type { Settings } from '@/lib/settings/schema';
+import { getNotifiers } from '@/actions/notifier';
 
 interface Context {
   groups: GroupSelect[];
@@ -19,6 +20,7 @@ interface Context {
   statusCounts: StatusCounts;
   settings: Settings;
   settingsRef: RefObject<Settings>;
+  notifiers: NotifierSelect[];
 }
 
 /*
@@ -47,6 +49,7 @@ export function AppQueriesProvider({
   states,
   statusCounts,
   settings,
+  notifiers,
 }: {
   children: ReactNode;
   groups: GroupSelect[];
@@ -54,6 +57,7 @@ export function AppQueriesProvider({
   states: StateSelect[];
   statusCounts: StatusCounts;
   settings: Settings;
+  notifiers: NotifierSelect[];
 }) {
   const queryClient = useQueryClient();
   const logger = useLogger(import.meta.url);
@@ -89,6 +93,12 @@ export function AppQueriesProvider({
     initialData: settings,
   });
 
+  const notifiersQuery = useQuery({
+    queryKey: ['notifier'],
+    queryFn: () => getNotifiers(),
+    initialData: notifiers,
+  });
+
   const settingsRef = useRef(settingsQuery.data);
 
   useEffect(() => {
@@ -103,8 +113,16 @@ export function AppQueriesProvider({
       statusCounts: statusCountsQuery.data,
       settings: settingsQuery.data,
       settingsRef,
+      notifiers: notifiersQuery.data,
     }),
-    [groupsQuery.data, servicesQuery.data, statesQuery.data, statusCountsQuery.data, settingsQuery.data]
+    [
+      groupsQuery.data,
+      servicesQuery.data,
+      statesQuery.data,
+      statusCountsQuery.data,
+      settingsQuery.data,
+      notifiersQuery.data,
+    ]
   );
 
   useEffect(() => {
@@ -161,7 +179,6 @@ export function useServiceWithState(id: number | null | undefined): ServiceWithS
   return { ...service, state };
 }
 
-// TODO: prefetch next page
 export function useServiceHistory(
   serviceId: number | null,
   page?: number
@@ -169,6 +186,13 @@ export function useServiceHistory(
   const query = useQuery({
     queryKey: ['service-history', serviceId ?? 'meta', { page }],
     queryFn: () => getServiceHistory(serviceId, { page: page }),
+  });
+  const nextPage =
+    typeof page === 'number' && typeof query.data?.pages === 'number' && page < query.data.pages - 1 ? page + 1 : page;
+  // prefetch the next page if there is one
+  void usePrefetchQuery({
+    queryKey: ['service-history', serviceId ?? 'meta', { page: nextPage }],
+    queryFn: () => getServiceHistory(serviceId, { page: nextPage }),
   });
   return query.data ?? null;
 }

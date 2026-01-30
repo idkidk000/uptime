@@ -12,7 +12,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { Button } from '@/components/base/button';
+import { Button } from '@/components/button';
 import { cn } from '@/lib/utils';
 
 const RE_DISPLAY =

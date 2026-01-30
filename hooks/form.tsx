@@ -1,5 +1,5 @@
 import { createFormHook, createFormHookContexts } from '@tanstack/react-form';
-import { Button } from '@/components/base/button';
+import { Button } from '@/components/button';
 import { FormInputDuration } from '@/components/form/input-duration';
 import { FormInputNumber } from '@/components/form/input-number';
 import { FormInputPassword } from '@/components/form/input-password';

@@ -1,3 +1,4 @@
+import z from 'zod';
 import { DAY_MILLIS, dateDiff, toLocalIso } from '@/lib/date';
 import { Monitor, MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
 import type { DomainMonitorParams } from '@/lib/monitor/domain/schema';
@@ -5,6 +6,8 @@ import { roundTo } from '@/lib/utils';
 import { name, version } from '@/package.json';
 
 const RE_BARE_HOST = /^(?:.*:\/\/)?(?<host>[a-z\d.]+)(:(?<port>\d+))?/;
+
+const schema = z.object({ events: z.array(z.object({ eventAction: z.string(), eventDate: z.coerce.date() })) });
 
 //FIXME: this could almost be a HttpMonitor jsonata query if i'd designed things a bit better
 export class DomainMonitor extends Monitor<DomainMonitorParams> {
@@ -45,31 +48,22 @@ export class DomainMonitor extends Monitor<DomainMonitorParams> {
       clearTimeout(timeout);
       resolve(null as never);
       const json = await response.json();
-      // TODO: probably could do with a zod/similar schema
-      const expirationDateString: string | undefined =
-        json &&
-        typeof json === 'object' &&
-        'events' in json &&
-        Array.isArray(json.events) &&
-        json.events.find(
-          (event: unknown) =>
-            event &&
-            typeof event === 'object' &&
-            'eventAction' in event &&
-            'eventDate' in event &&
-            typeof event.eventAction === 'string' &&
-            typeof event.eventDate === 'string' &&
-            event.eventAction === 'expiration'
-        )?.eventDate;
-      if (typeof expirationDateString === 'undefined')
+      const parsed = schema.safeParse(json);
+      if (!parsed.success)
         return {
           kind: 'domain',
           ok: false,
           reason: MonitorDownReason.InvalidResponse,
-          // openrdap.org redirects to the authoritative endpoint
-          message: `Could not parse response from ${response.url}`,
+          message: `Could not parse response: ${parsed.error}`,
         };
-      const expirationDate = new Date(expirationDateString);
+      const expirationDate = parsed.data.events.find((event) => event.eventAction === 'expiration')?.eventDate;
+      if (!expirationDate)
+        return {
+          kind: 'domain',
+          ok: false,
+          reason: MonitorDownReason.InvalidResponse,
+          message: `Could not find an expiration date in response`,
+        };
       const expirationDays = dateDiff(expirationDate) / DAY_MILLIS;
       if (expirationDays <= 0)
         return {

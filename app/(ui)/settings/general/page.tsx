@@ -1,9 +1,11 @@
 /** biome-ignore-all lint/correctness/noChildrenProp: not my library */
 
+'use client';
+
 import Link from 'next/link';
 import { useCallback } from 'react';
 import { updateSettings } from '@/actions/setting';
-import { Card } from '@/components/base/card';
+import { Card } from '@/components/card';
 import { useAppQueries } from '@/hooks/app-queries';
 import { useAppForm } from '@/hooks/form';
 import { useLogger } from '@/hooks/logger';
@@ -11,9 +13,7 @@ import { useToast } from '@/hooks/toast';
 import { ServiceStatus } from '@/lib/drizzle/schema';
 import { settingsSchema } from '@/lib/settings/schema';
 
-// https://tanstack.com/form/latest/docs/framework/react/quick-start
-
-export function SettingsForm() {
+export default function GeneralSettingsPage() {
   const logger = useLogger(import.meta.url);
   const { settings } = useAppQueries();
   const { showToast } = useToast();
@@ -50,19 +50,36 @@ export function SettingsForm() {
           <legend>Monitors</legend>
           <form.AppField
             name='monitor.defaultTimeout'
-            children={(field) => <field.FormInputDuration label='Timeout' mode='millis' />}
+            children={(field) => (
+              <field.FormInputDuration label='Timeout' mode='millis' description='Default timeout for monitors' />
+            )}
           />
           <form.AppField
             name='monitor.concurrency'
-            children={(field) => <field.FormInputNumber label='Concurrency' withButtons />}
+            children={(field) => (
+              <field.FormInputNumber
+                label='Concurrency'
+                withButtons
+                description='Number of monitors to check concurrently'
+              />
+            )}
           />
-          <form.AppField name='monitor.enable' children={(field) => <field.FormSwitch label='Enable' />} />
+          <form.AppField
+            name='monitor.enable'
+            children={(field) => <field.FormSwitch label='Enable' description='Scheduler override' />}
+          />
         </fieldset>
         <fieldset>
-          <legend>Misc</legend>
+          <legend>History</legend>
           <form.AppField
             name='history.summaryItems'
-            children={(field) => <field.FormInputNumber label='History summary items' withButtons />}
+            children={(field) => (
+              <field.FormInputNumber
+                label='Summary items'
+                withButtons
+                description='Number of ticks to show in bar graph'
+              />
+            )}
           />
         </fieldset>
         <form.AppForm>

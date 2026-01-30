@@ -4,6 +4,7 @@ import { baseMonitorParamsSchema } from '@/lib/monitor';
 export const queryKind = ['jsonata', 'xpath', 'regex'] as const;
 
 export const httpMonitorParamsSchema = baseMonitorParamsSchema.extend({
+  address: z.url({ protocol: /^https?$/ }),
   kind: z.literal('http'),
   headers: z.record(z.string(), z.string()).optional(),
   upWhen: z

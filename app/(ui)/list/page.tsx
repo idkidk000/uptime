@@ -1,7 +1,7 @@
 'use client';
 
 import { redirect } from 'next/navigation';
-import { PageWrapper } from '@/components/base/page-wrapper';
+import { PageWrapper } from '@/components/page-wrapper';
 import { ServiceList } from '@/components/service-list';
 import { useIsMobile } from '@/hooks/mobile';
 

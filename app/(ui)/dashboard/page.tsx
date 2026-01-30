@@ -1,8 +1,8 @@
 'use client';
 
-import { Card } from '@/components/base/card';
-import { PageWrapper } from '@/components/base/page-wrapper';
+import { Card } from '@/components/card';
 import { HistoryCard } from '@/components/history-card';
+import { PageWrapper } from '@/components/page-wrapper';
 import { useAppQueries } from '@/hooks/app-queries';
 import { ServiceStatus, serviceStatuses } from '@/lib/drizzle/schema';
 import { typedEntries } from '@/lib/utils';

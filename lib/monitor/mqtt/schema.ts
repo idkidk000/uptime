@@ -2,10 +2,11 @@ import z from 'zod';
 import { baseMonitorParamsSchema } from '@/lib/monitor';
 
 export const mqttMonitorParamsSchema = baseMonitorParamsSchema.extend({
+  address: z.hostname(),
   kind: z.literal('mqtt'),
   username: z.string().optional(),
   password: z.string().optional(),
-  port: z.int().min(1).default(1833),
+  port: z.int().min(1).max(65535).default(1883).optional(),
   topic: z.string(),
   upWhen: z
     .object({

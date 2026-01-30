@@ -36,6 +36,11 @@
   @apply starting:-translate-x-1/2 starting:scale-90 starting:opacity-0 translate-x-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-150 origin-left;
 }
 
+/* https://tailwindcss.com/docs/hover-focus-and-other-states#aria-states
+  setting aria-checked to undefined doesn't render the attrib
+*/
+@custom-variant aria-checked-indeterminate (&:not([aria-checked]));
+
 @layer base {
   input[type="number"] {
     appearance: textfield;

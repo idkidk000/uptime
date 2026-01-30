@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { PageWrapper } from '@/components/base/page-wrapper';
+import { PageWrapper } from '@/components/page-wrapper';
 import { ServiceForm } from '@/forms/service';
 
 export default function ClonePage() {

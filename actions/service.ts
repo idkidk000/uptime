@@ -32,12 +32,20 @@ export async function togglePaused(id: number, force?: boolean): Promise<void> {
     .update(serviceTable)
     .set({ active: typeof force === 'boolean' ? force : sql`iif(active, 0, 1)` })
     .where(eq(serviceTable.id, id));
-  messageClient.send({ cat: 'invalidation', kind: 'service-config', id });
+  messageClient.send({ cat: 'invalidation', kind: 'service-config', id }, { cat: 'action', kind: 'check-service', id });
 }
 
 export async function setPausedMulti(ids: number[], pause: boolean): Promise<void> {
   await db.update(serviceTable).set({ active: !pause }).where(inArray(serviceTable.id, ids));
-  messageClient.send(...ids.map((id) => ({ cat: 'invalidation', kind: 'service-config', id }) satisfies BusMessage));
+  messageClient.send(
+    ...ids.flatMap(
+      (id) =>
+        [
+          { cat: 'invalidation', kind: 'service-config', id },
+          { cat: 'action', kind: 'check-service', id },
+        ] satisfies BusMessage[]
+    )
+  );
 }
 
 export async function deleteService(id: number): Promise<void> {

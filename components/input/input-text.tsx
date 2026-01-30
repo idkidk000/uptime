@@ -1,22 +1,27 @@
 import { type ChangeEvent, type ComponentProps, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
-export function InputText({
+export function InputText<AllowEmpty extends boolean = false>({
   className,
   onValueChange,
   type = 'text',
+  allowEmpty,
+  value,
   ...props
-}: ComponentProps<'input'> & {
+}: Omit<ComponentProps<'input'>, 'value'> & {
   type?: Extract<ComponentProps<'input'>['type'], 'text' | 'search' | 'url' | 'email'>;
-} & {
-  onValueChange: (value: string) => void;
+  onValueChange: (value: AllowEmpty extends true ? string | undefined : string) => void;
   placeholder: string;
-  value: string;
+  value: AllowEmpty extends true ? string | undefined : string;
+  allowEmpty?: AllowEmpty;
 }) {
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => onValueChange(event.currentTarget.value),
-    [onValueChange]
-  );
+  // biome-ignore format: no
+  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.currentTarget.value;
+    onValueChange(
+      (allowEmpty && value === '' ? undefined : value) as AllowEmpty extends true ? string | undefined : string
+    );
+  }, [onValueChange, allowEmpty]);
 
   return (
     <input
@@ -26,6 +31,7 @@ export function InputText({
       )}
       onChange={handleChange}
       type={type}
+      value={value ?? ''}
       {...props}
     />
   );

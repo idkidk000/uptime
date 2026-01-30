@@ -1,6 +1,6 @@
 import { Trash } from 'lucide-react';
 import type { ReactElement } from 'react';
-import { Modal, ModalClose, ModalContent, ModalTrigger } from '@/components/base/modal';
+import { Modal, ModalClose, ModalContent, ModalTrigger } from '@/components/modal';
 
 export function ConfirmModal({
   message,

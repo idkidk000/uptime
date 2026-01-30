@@ -2,20 +2,26 @@ import { type ChangeEvent, type ComponentProps, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 //TODO: show password when focussed
-export function InputPassword({
+export function InputPassword<AllowEmpty extends boolean = false>({
   className,
   onValueChange,
   autoComplete = 'on',
+  allowEmpty,
+  value,
   ...props
-}: Omit<ComponentProps<'input'>, 'type'> & {
-  onValueChange: (value: string) => void;
+}: Omit<ComponentProps<'input'>, 'type' | 'value'> & {
+  onValueChange: (value: AllowEmpty extends true ? string | undefined : string) => void;
   placeholder: string;
-  value: string;
+  value: AllowEmpty extends true ? string | undefined : string;
+  allowEmpty?: AllowEmpty;
 }) {
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => onValueChange(event.currentTarget.value),
-    [onValueChange]
-  );
+  // biome-ignore format: no
+  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.currentTarget.value;
+    onValueChange(
+      (allowEmpty && value === '' ? undefined : value) as AllowEmpty extends true ? string | undefined : string
+    );
+  }, [onValueChange, allowEmpty]);
 
   return (
     <input
@@ -26,6 +32,7 @@ export function InputPassword({
       onChange={handleChange}
       type='password'
       autoComplete={autoComplete}
+      value={value ?? ''}
       {...props}
     />
   );

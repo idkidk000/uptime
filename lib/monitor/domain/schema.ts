@@ -2,6 +2,7 @@ import z from 'zod';
 import { baseMonitorParamsSchema } from '@/lib/monitor';
 
 export const domainMonitorParamsSchema = baseMonitorParamsSchema.extend({
+  address: z.hostname(),
   kind: z.literal('domain'),
   upWhen: z
     .object({

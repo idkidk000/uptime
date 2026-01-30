@@ -10,7 +10,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { Button } from '@/components/base/button';
+import { Button } from '@/components/button';
 import { cn } from '@/lib/utils';
 
 interface Context {

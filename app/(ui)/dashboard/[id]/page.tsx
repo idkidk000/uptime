@@ -7,11 +7,11 @@ import { useCallback, useEffect } from 'react';
 import { clearServiceHistory } from '@/actions/history';
 import { checkService, deleteService, togglePaused } from '@/actions/service';
 import { BarGraph } from '@/components/bar-graph';
-import { Button, ButtonGroup } from '@/components/base/button';
-import { Card } from '@/components/base/card';
-import { PageWrapper } from '@/components/base/page-wrapper';
+import { Button, ButtonGroup } from '@/components/button';
+import { Card } from '@/components/card';
 import { ConfirmModal, ConfirmModalTrigger } from '@/components/confirm-modal';
 import { HistoryCard } from '@/components/history-card';
+import { PageWrapper } from '@/components/page-wrapper';
 import { StatusBadge } from '@/components/status-badge';
 import { useServiceWithState } from '@/hooks/app-queries';
 import { toDuration, toLocalIso } from '@/lib/date';
@@ -85,7 +85,7 @@ export default function DetailPage() {
         <div className='flex flex-col gap-2'>
           <h4 className='text-xl'>Response</h4>
           <span className='text-xs text-foreground/50'>(Current)</span>
-          <span>{`${service.state?.miniHistory.items.at(0)?.latency ?? '-'} ms`}</span>
+          <span>{`${service.state?.miniHistory.items.at(-1)?.latency ?? '-'} ms`}</span>
         </div>
         <div className='flex flex-col gap-2'>
           <h4 className='text-xl'>Avg Response</h4>

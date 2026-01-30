@@ -13,7 +13,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Button } from '@/components/base/button';
+import { Button } from '@/components/button';
 import { useSse } from '@/hooks/sse';
 import { dateAdd, dateDiff, toLocalIso } from '@/lib/date';
 import { ServiceStatus, serviceStatuses } from '@/lib/drizzle/schema';

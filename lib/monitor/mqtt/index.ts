@@ -33,7 +33,7 @@ export class MqttMonitor extends Monitor<MqttMonitorParams> {
           reason: MonitorDownReason.Timeout,
           message: `Timed out after ${timeoutMs}ms`,
         });
-      });
+      }, timeoutMs);
       const client = mqtt.connect({
         password: this.params.password,
         auth: this.params.username,
@@ -58,7 +58,12 @@ export class MqttMonitor extends Monitor<MqttMonitorParams> {
           if (this.params.upWhen?.query) {
             switch (this.params.upWhen.query.kind) {
               case 'jsonata': {
-                const json = JSON.parse(text);
+                let json: unknown;
+                try {
+                  json = JSON.parse(text);
+                } catch {
+                  json = JSON.parse(`{"value": "${text}"}`);
+                }
                 const expression = jsonata(this.params.upWhen.query.expression);
                 const result = await expression.evaluate(json);
                 if (result !== this.params.upWhen.query.expected) {
