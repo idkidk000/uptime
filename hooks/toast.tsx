@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/button';
 import { useSse } from '@/hooks/sse';
 import { dateAdd, dateDiff, toLocalIso } from '@/lib/date';
-import { ServiceStatus, serviceStatuses } from '@/lib/drizzle/schema';
+import { ServiceStatus, serviceStatuses } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const MAX_TOASTS = 3;

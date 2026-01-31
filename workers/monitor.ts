@@ -8,19 +8,14 @@ import {
   type LatencySelect,
   type UptimeSelect,
 } from '@/lib/drizzle/queries';
-import {
-  historyTable,
-  ServiceStatus,
-  type ServiceWithState,
-  type StateInsert,
-  serviceTable,
-  stateTable,
-} from '@/lib/drizzle/schema';
+import { historyTable, serviceTable, stateTable } from '@/lib/drizzle/schema';
+import type { ServiceWithState, StateInsert } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 import type { Monitor } from '@/lib/monitor';
 import { getMonitor } from '@/lib/monitor/utils';
 import { SettingsClient } from '@/lib/settings';
+import { ServiceStatus } from '@/lib/types';
 import { concurrently } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);

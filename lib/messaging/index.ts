@@ -4,9 +4,9 @@ import { join, sep } from 'node:path';
 import { env } from 'node:process';
 import { createInterface } from 'node:readline';
 import SuperJSON from 'superjson';
-import type { ServiceStatus } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import type { MonitorDownReason } from '@/lib/monitor';
+import type { ServiceStatus } from '@/lib/types';
 import { name } from '@/package.json';
 
 // use a unix socket on systems which support it. fallback to tcp/ip and hope we don't have a port collision
@@ -19,7 +19,13 @@ const STARTUP_CACHE_MILLIS = 15_000;
 
 // actions which can only be carried out by the backend workers. most tasks should be fine in server actions
 export type ActionKind = 'check-service';
-export type InvalidationKind = 'group' | 'service-config' | 'service-history' | 'service-state' | 'settings';
+export type InvalidationKind =
+  | 'group'
+  | 'service-config'
+  | 'service-history'
+  | 'service-state'
+  | 'settings'
+  | 'notifier';
 export type ToastMessage =
   | {
       cat: 'toast';

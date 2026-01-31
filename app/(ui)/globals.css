@@ -47,13 +47,16 @@
     /* -moz-appearance: textfield; */
   }
   form {
-    @apply grid grid-cols-[1fr_3fr] md:grid-cols-[1fr_2fr] @2xl:grid-cols-[1fr_2fr_1fr_2fr] @8xl:grid-cols-[1fr_2fr_1fr_2fr_1fr_2fr] gap-4 items-center;
+    @apply grid grid-cols-[auto_3fr] @2xl:grid-cols-[auto_2fr_auto_2fr] @8xl:grid-cols-[auto_2fr_auto_2fr_auto_2fr] gap-4 items-center;
   }
   fieldset {
     @apply grid col-span-full grid-cols-subgrid gap-4 items-center;
   }
   legend {
     @apply col-span-full font-semibold text-xl mb-4;
+  }
+  html:has(dialog[open]) {
+    @apply overflow-hidden;
   }
 }
 

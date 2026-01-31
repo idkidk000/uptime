@@ -1,17 +1,11 @@
 import { env } from 'node:process';
 import { sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
-import {
-  type GroupSelect,
-  groupTable,
-  groupToNotifierTable,
-  notifierTable,
-  type ServiceInsert,
-  ServiceStatus,
-  serviceTable,
-} from '@/lib/drizzle/schema';
+import { groupTable, groupToNotifierTable, notifierTable, serviceTable } from '@/lib/drizzle/schema';
 import 'dotenv/config';
+import type { GroupSelect, ServiceInsert } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
+import { ServiceStatus } from '@/lib/types';
 
 const logger = new ServerLogger(import.meta.url);
 

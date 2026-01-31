@@ -3,18 +3,19 @@
 import { usePrefetchQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, type ReactNode, type RefObject, useContext, useEffect, useMemo, useRef } from 'react';
 import { getGroups } from '@/actions/group';
+import type { GroupSelectWithNotifiers } from '@/actions/group/schema';
 import { getServiceHistory } from '@/actions/history';
+import { getNotifiers } from '@/actions/notifier';
 import { getServices } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStatusCounts, type StatusCounts } from '@/actions/state';
 import { useLogger } from '@/hooks/logger';
 import { useSse } from '@/hooks/sse';
-import type { GroupSelect, NotifierSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/schema';
+import type { NotifierSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/zod/schema';
 import type { Settings } from '@/lib/settings/schema';
-import { getNotifiers } from '@/actions/notifier';
 
 interface Context {
-  groups: GroupSelect[];
+  groups: GroupSelectWithNotifiers[];
   services: ServiceSelect[];
   states: StateSelect[];
   statusCounts: StatusCounts;
@@ -52,7 +53,7 @@ export function AppQueriesProvider({
   notifiers,
 }: {
   children: ReactNode;
-  groups: GroupSelect[];
+  groups: GroupSelectWithNotifiers[];
   services: ServiceSelect[];
   states: StateSelect[];
   statusCounts: StatusCounts;

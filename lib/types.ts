@@ -1,3 +1,5 @@
+import { enumToObject } from '@/lib/utils';
+
 export type ApiResponse<Data> =
   | {
       ok: true;
@@ -13,3 +15,12 @@ export interface Paginated<Data> {
   pages: number;
   data: Data;
 }
+
+export enum ServiceStatus {
+  Up,
+  Down,
+  Pending,
+  Paused,
+}
+export type ServiceStatusName = keyof typeof ServiceStatus;
+export const serviceStatuses = enumToObject(ServiceStatus);

@@ -1,6 +1,6 @@
 import { Activity, type ComponentProps, useId } from 'react';
 import { InputDuration } from '@/components/input/input-duration';
-import { useFieldContext } from '@/hooks/form';
+import { useFieldContext } from '@/lib/form';
 
 export function FormInputDuration<AllowEmpty extends boolean>({
   label,
@@ -16,7 +16,6 @@ export function FormInputDuration<AllowEmpty extends boolean>({
 }) {
   const id = useId();
   const field = useFieldContext<AllowEmpty extends true ? number | undefined : number>();
-  const errors = field.state.meta.errors;
 
   return (
     <Activity mode={visibleFields && !visibleFields.has(field.name) ? 'hidden' : 'visible'}>
@@ -32,8 +31,10 @@ export function FormInputDuration<AllowEmpty extends boolean>({
           onBlur={field.handleBlur}
           {...props}
         />
-        {errors?.length ? (
-          <span className='col-start-2 text-down transition-in-up'>{errors.map((err) => err?.message).join('. ')}</span>
+        {!field.state.meta.isValid ? (
+          <span className='col-start-2 transition-in-up text-down text-sm' role='alert'>
+            {field.state.meta.errors.join('. ')}
+          </span>
         ) : description ? (
           <span className='col-start-2 transition-in-up text-unknown text-sm'>{description}</span>
         ) : null}

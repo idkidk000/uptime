@@ -1,15 +1,13 @@
 ![screenshot](res/screenshot.jpg)
 
-I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd try to build my own for fun. It's very much a work in progress and there are a few janky bits which I'll tidy up later.
+I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd try to build my own for fun
 
 ### What's missing
-- Controls on service forms for managing:
-  - string[] (DNS monitor expected records check)
-  - Record<string, string> (HTTP monitor headers)
-- Forms for managing:
-  - groups
-  - notifiers
-  - tags
+- Form control to assign Gotify priorites to service statuses
+- Tags
+- Some animations where browser support is bad:
+  - Modal close
+  - Modal backdrop fade in/out
 
 ### What's working
 - Frontend
@@ -19,6 +17,8 @@ I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd t
   - Dashboard
   - General settings page
   - Service add / edit / clone forms
+  - Group add / edit forms
+  - Notifier add / edit forms
 - Backend
   - [Database](lib/drizzle/). [SQLite](https://sqlite.org/) and [Drizzle](https://orm.drizzle.team/) are very nice actually
   - [Workers](workers/)
@@ -39,13 +39,15 @@ I like [Uptime Kuma](https://github.com/louislam/uptime-kuma) so I thought i'd t
   - Read-only JSON API for integration with your other services:
     - /api/history, /api/history[id]
     - /api/state, /api/state/[id]
-  - Badly behaved mock API for testing `http` monitor
+  - Badly behaved mock API at /api/mock/(json|xml) for testing `http` monitor
+  - Mock post handler at /api/mock for testing `webhook` notifier
 
 ### Requirements
 - Firefox 147+ / Chromium 125+ - [CSS Anchor Positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/anchor-name#browser_compatibility) of [Popover](components/popover.tsx). Older versions will position popovers incorrectly. Other browsers are untested
+
 Only if you want to run the backend locally (i.e. not in Docker):
-- `ping` - Ping monitor. Due to how ping works, I have to call the binary and parse its output. Your system's `ping` must accept [these args](lib/monitor/ping/index.ts#L22) and its output must be matched by [these regexes](lib/monitor/ping/index.ts#L6) to work. Most Linuxes should be fine. Other OSes are unknown. The project will eventually be a Docker container so this will be a non-issue
-- NodeJS 24+ - `Error.isError`. Deno and and the other one are likely fine but untested
+- `ping` - Ping monitor. Due to how ping works, I have to call the binary and parse its output. Your system's `ping` must accept [these args](lib/monitor/ping/index.ts#L22) and its output must be matched by [these regexes](lib/monitor/ping/index.ts#L6) to work. Most Linuxes should be fine. Other OSes are unknown
+- NodeJS 24+ - `Error.isError`. Deno and and the other one are untested
 
 ### To test
 - `git clone ...`
@@ -63,7 +65,7 @@ Alternatively, you can run the app locally:
   - `npm run dev` to run in dev mode. The frontend is cluttered with `NextJS`, `Tanstack Query`, and `Tanstack` dev tools icons, and performance is degrated since hot module reloading is active and all React hooks are run twice
   
 ### Environment variables
-If using docker, add them to the `docker run` command you'll find in `package.json` under `scripts/docker:run` in the format `-e VAR_NAME=VALUE`
+If using docker, add them to the `docker run` command you'll find in `package.json` under `scripts/docker:run` in the format `-e VAR_NAME=VALUE` 
 If running locally, either make a `.env` file and add lines in the format `VAR_NAME=VALUE`
 - `PORT` (only Docker): port on which to serve the app
 - `DB_FILE_NAME`: path to SQLite database. Defaults to `fille:.local/data.db` locally and `file:config/data.db` in Docker

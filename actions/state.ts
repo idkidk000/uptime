@@ -3,7 +3,9 @@
 
 import { count, eq, getTableColumns, inArray } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
-import { ServiceStatus, type StateSelect, serviceTable, stateTable } from '@/lib/drizzle/schema';
+import { serviceTable, stateTable } from '@/lib/drizzle/schema';
+import type { StateSelect } from '@/lib/drizzle/zod/schema';
+import { ServiceStatus } from '@/lib/types';
 import { enumEntries, pick } from '@/lib/utils';
 
 export async function getServiceStates(serviceIds?: number[]): Promise<StateSelect[]> {

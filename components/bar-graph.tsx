@@ -1,7 +1,8 @@
 import { RelativeDate } from '@/components/relative-date';
 import { useAppQueries } from '@/hooks/app-queries';
 import { toLocalIso } from '@/lib/date';
-import { type MiniHistory, ServiceStatus } from '@/lib/drizzle/schema';
+import type { MiniHistory } from '@/lib/drizzle/zod/schema';
+import { ServiceStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const statusClassNames: Record<ServiceStatus, string> = {

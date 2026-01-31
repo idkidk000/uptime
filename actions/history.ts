@@ -3,7 +3,8 @@
 
 import { count, eq } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
-import { type HistorySummarySelect, historySummaryView, historyTable, stateTable } from '@/lib/drizzle/schema';
+import { historySummaryView, historyTable, stateTable } from '@/lib/drizzle/schema';
+import type { HistorySummarySelect } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 import type { Paginated } from '@/lib/types';

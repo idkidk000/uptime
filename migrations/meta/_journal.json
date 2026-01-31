@@ -15,6 +15,13 @@
       "when": 1769708088471,
       "tag": "0001_seed-groups",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1769805364370,
+      "tag": "0002_red_outlaw_kid",
+      "breakpoints": true
     }
   ]
 }

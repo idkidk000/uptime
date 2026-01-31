@@ -15,13 +15,11 @@ export function IsMobileProvider({ children }: { children: ReactNode }) {
   const isMobileRef = useRef(isMobile);
 
   useEffect(() => {
-    isMobileRef.current = isMobile;
-  }, [isMobile]);
-
-  useEffect(() => {
     function update() {
       const next = window.innerWidth < breakpoint;
-      if (next !== isMobileRef.current) setIsMobile(next);
+      if (next === isMobileRef.current) return;
+      isMobileRef.current = next;
+      setIsMobile(next);
     }
     const controller = new AbortController();
     window.addEventListener('resize', update);

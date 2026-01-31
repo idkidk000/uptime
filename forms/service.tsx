@@ -3,68 +3,41 @@
 import { useStore } from '@tanstack/react-form';
 import Link from 'next/link';
 import { redirect, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo } from 'react';
-import type z from 'zod';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { init } from 'zod-empty';
 import { addService, editService } from '@/actions/service';
 import { Card } from '@/components/card';
 import { useAppQueries } from '@/hooks/app-queries';
-import { useAppForm } from '@/hooks/form';
 import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
-import { ServiceStatus, serviceInsertSchema } from '@/lib/drizzle/schema';
+import { type ServiceInsert, serviceInsertSchema } from '@/lib/drizzle/zod/schema';
+import { getJsonSchemaDiscUnionFields, makeZodValidator, useAppForm } from '@/lib/form';
 import { dnsRecordTypes } from '@/lib/monitor/dns/schema';
 import { queryKind } from '@/lib/monitor/http/schema';
-import { type MonitorKind, monitorKinds, monitorParamsSchema } from '@/lib/monitor/schema';
+import { monitorKinds, monitorParamsSchema } from '@/lib/monitor/schema';
+import { ServiceStatus } from '@/lib/types';
 import { lowerToSentenceCase } from '@/lib/utils';
 
-// https://tanstack.com/form/latest/docs/framework/react/quick-start
-
-const schema = serviceInsertSchema.omit({ params: true }).extend({ params: monitorParamsSchema });
-// can't get defaults back out of zod monitor schemas
-// zod does not provide a way. zod-empty is a very buggy 3p lib. `required()` and `prefault()` both give undefined. nullable int gives -Number.MAX_SAFE_INT. it only works on top level trivial parts of the schema
-const insertDefaults = init(schema);
-
-// a vile workaround so i can determine which fields to show. monitorParamsSchema is a z.discriminatedUnion
+// zod does not provide a way to get defaults back out of a schema. zod-empty is a very buggy 3p lib. `required()` and `prefault()` both give undefined. nullable int gives -Number.MAX_SAFE_INT. it only works on top level trivial parts of the schema
+const insertDefaults = init(serviceInsertSchema);
 const monitorParamsJsonSchema = monitorParamsSchema.toJSONSchema({ io: 'input', target: 'openapi-3.0' });
-function listMonitorFields(monitorKind: MonitorKind): Set<string> {
-  function recurse(fragment: Record<string, unknown>, path: string): undefined | string[] {
-    const type = 'type' in fragment ? fragment.type : 'oneOf' in fragment ? 'oneOf' : null;
-    if (type === null) return;
-    if (type === 'oneOf') {
-      if (!Array.isArray(fragment.oneOf)) return;
-      return fragment.oneOf
-        .flatMap((item) => recurse(item as Record<string, unknown>, path))
-        .filter((item) => typeof item !== 'undefined');
-    }
-    if (type === 'object') {
-      if (!('properties' in fragment)) return [path];
-      return Object.entries(fragment.properties as Record<string, Record<string, unknown>>)
-        .flatMap(([key, val]) => recurse(val, `${path}.${key}`))
-        .filter((item) => typeof item !== 'undefined');
-    }
-    return [path];
-  }
-  const narrowed = (monitorParamsJsonSchema.oneOf as unknown as { properties: { kind: { enum: string[] } } }[]).find(
-    (item) => item.properties.kind.enum.includes(monitorKind)
-  );
-  if (!narrowed) throw new Error(`could not narrow json schema to kind: ${monitorKind}`);
-  const set = new Set(recurse(narrowed as Record<string, unknown>, 'params'));
-  return set;
-}
 
 export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'edit' | 'clone'; id: number }) {
   const logger = useLogger(import.meta.url);
   const { groups, services } = useAppQueries();
   const { showToast } = useToast();
   const router = useRouter();
+  // calling router.push from useAppForm({onSubmit}) does nothing
+  const [navigateTo, setNavigateTo] = useState<string | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(services.find): using reactive data as form defaults would be very annoying
+  useEffect(() => {
+    if (navigateTo) router.push(navigateTo);
+  }, [navigateTo, router]);
+
   const defaultValues = useMemo(() => {
     if (props.mode !== 'add') {
       const item = services.find((item) => item.id === props.id);
       if (!item) {
-        // throw new Error(`id ${props.id} does not exist`);
         logger.error('id', props.id, 'does not exist');
         return null;
       }
@@ -72,7 +45,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
       return item;
     }
     return insertDefaults;
-  }, [props]) as z.infer<typeof schema> | null;
+  }, [props, services.find]) as ServiceInsert | null;
 
   if (defaultValues === null) redirect('/dashboard');
 
@@ -84,7 +57,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
         addService(form.value, true)
           .then((id) => {
             showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
-            router.push(`/dashboard/${id}`);
+            setNavigateTo(`/dashboard/${id}`);
           })
           .catch((err) => {
             logger.error('Error adding service', err);
@@ -94,7 +67,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
         editService({ ...form.value, id: props.id }, true)
           .then(() => {
             showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
-            router.push(`/dashboard/${props.id}`);
+            setNavigateTo(`/dashboard/${props.id}`);
           })
           .catch((err) => {
             logger.error('Error updating service', err);
@@ -102,13 +75,15 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
           });
     },
     validators: {
-      // @ts-expect-error: i think tanstack form is looking at schema['~standard'].type[0] (input shape) rather than output shape
-      onSubmitAsync: schema,
+      onSubmit: makeZodValidator(serviceInsertSchema, logger),
     },
   });
 
   const monitorKind = useStore(form.store, (state) => state.values.params.kind);
-  const monitorFields = useMemo(() => listMonitorFields(monitorKind), [monitorKind]);
+  const monitorFields = useMemo(
+    () => getJsonSchemaDiscUnionFields(monitorParamsJsonSchema, monitorKind),
+    [monitorKind]
+  );
 
   // clear upWhen.query when all its fields are undefined (type is Record<string,unknown>|undefined)
   const upWhenQuery = useStore(
@@ -158,7 +133,6 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
               <field.FormInputNumber label='Retain count' max={999999} description='Number of history items to keep' />
             )}
           />
-          {/* FIXME: need a way to add groups */}
           <form.AppField
             name='groupId'
             children={(field) => (
@@ -171,9 +145,6 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
             )}
           />
         </fieldset>
-        {/* BUG: different schemas can have different default values. could pull defaults out of narrowed json schema and coalesce them into field values on params.kind change */}
-        {/* FIXME: need a control to build Record<string,string> for params.headers */}
-        {/* FIXME: need a control to build string[] for params.upWhen.includes */}
         <fieldset>
           <legend>Monitor</legend>
           <form.AppField
@@ -261,6 +232,17 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
               <field.FormInputText label='Topic' visibleFields={monitorFields} allowEmpty description='MQTT topic' />
             )}
           />
+          <form.AppField
+            name='params.headers'
+            children={(field) => (
+              <field.FormInputRecord
+                label='HTTP headers'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Headers in the form: `header-name: header-value`'
+              />
+            )}
+          />
         </fieldset>
         <fieldset>
           <legend>Up when</legend>
@@ -283,6 +265,17 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
                 visibleFields={monitorFields}
                 allowEmpty
                 description='Max latency in millis'
+              />
+            )}
+          />
+          <form.AppField
+            name='params.upWhen.includes'
+            children={(field) => (
+              <field.FormInputArray
+                label='Includes'
+                visibleFields={monitorFields}
+                allowEmpty
+                description='Records required in response, one per line'
               />
             )}
           />
@@ -343,11 +336,10 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
               />
             )}
           />
-          {/* FIXME: textarea? */}
           <form.AppField
             name='params.upWhen.query.expression'
             children={(field) => (
-              <field.FormInputText
+              <field.FormInputTextArea
                 label='Query expression'
                 visibleFields={monitorFields}
                 allowEmpty
@@ -378,7 +370,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
             </form.Button>
             <form.Button
               as={Link}
-              href={props.mode === 'edit' ? `/dashboard/${props.id}` : '/dashboard'}
+              href={props.mode === 'add' ? '/dashboard' : `/dashboard/${props.id}`}
               variant='unknown'
             >
               Cancel

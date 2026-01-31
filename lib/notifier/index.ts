@@ -1,11 +1,11 @@
 import z from 'zod';
-import { serviceStatuses } from '@/lib/drizzle/schema';
 import type { StatusMessage } from '@/lib/messaging';
+import { ServiceStatus } from '@/lib/types';
 
 export const baseNotifierParamsSchema = z.object({
   kind: z.string(),
-  address: z.string(),
-  statuses: z.enum(serviceStatuses).array().optional(),
+  address: z.url({ protocol: /^https?$/ }),
+  statuses: z.enum(ServiceStatus).array().optional(),
 });
 
 export type BaseNotifierParams = z.infer<typeof baseNotifierParamsSchema>;

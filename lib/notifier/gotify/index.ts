@@ -1,8 +1,8 @@
-import { serviceStatuses } from '@/lib/drizzle/schema';
 import type { StatusMessage } from '@/lib/messaging';
 import { monitorDownReasons } from '@/lib/monitor';
 import { Notifier } from '@/lib/notifier';
 import type { GotifyNotifierParams } from '@/lib/notifier/gotify/schema';
+import { serviceStatuses } from '@/lib/types';
 import { pascalToSentenceCase } from '@/lib/utils';
 
 export class GotifyNotifier extends Notifier<GotifyNotifierParams> {

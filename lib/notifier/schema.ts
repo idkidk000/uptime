@@ -8,3 +8,7 @@ export const notifierParamsSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type NotifierParams = z.infer<typeof notifierParamsSchema>;
+
+export type NotifierKind = NotifierParams['kind'];
+
+export const notifierKinds: NotifierKind[] = ['gotify', 'webhook'];

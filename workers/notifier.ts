@@ -1,12 +1,7 @@
 import { and, eq, getTableColumns } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
-import {
-  groupTable,
-  groupToNotifierTable,
-  type NotifierSelect,
-  notifierTable,
-  serviceTable,
-} from '@/lib/drizzle/schema';
+import { groupTable, groupToNotifierTable, notifierTable, serviceTable } from '@/lib/drizzle/schema';
+import type { NotifierSelect } from '@/lib/drizzle/zod/schema';
 import { MessageClient } from '@/lib/messaging';
 import type { Notifier } from '@/lib/notifier';
 import { getNotifier } from '@/lib/notifier/utils';
@@ -28,7 +23,6 @@ export function start(): void {
   }
 
   messageClient.subscribe({ cat: 'status' }, async (message) => {
-    // FIXME: need to recurse groups
     const entries = await db
       .select(pick(getTableColumns(notifierTable), ['id', 'params', 'updatedAt']))
       .from(serviceTable)

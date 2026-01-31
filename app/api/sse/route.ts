@@ -5,18 +5,21 @@ import { getGroups } from '@/actions/group';
 import { getServices } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates } from '@/actions/state';
-import type { GroupSelect, ServiceSelect, StateSelect } from '@/lib/drizzle/schema';
+import type { NotifierSelect, ServiceSelect, StateSelect } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { type InvalidationKind as InvalidateKind, MessageClient } from '@/lib/messaging';
 import type { Settings } from '@/lib/settings/schema';
+import { getNotifiers } from '@/actions/notifier';
+import type { GroupSelectWithNotifiers } from '@/actions/group/schema';
 
 const THROTTLE_MILLIS = 100;
 
 export type Update = { ids: number[] } & (
-  | { kind: 'group'; data: GroupSelect[] }
+  | { kind: 'group'; data: GroupSelectWithNotifiers[] }
   | { kind: 'service-config'; data: ServiceSelect[] }
   | { kind: 'service-state'; data: StateSelect[] }
   | { kind: 'settings'; data: Settings }
+  | { kind: 'notifier'; data: NotifierSelect[] }
 );
 
 export interface Invalidate {
@@ -53,9 +56,10 @@ async function sendClientUpdates(destructuredInvalidations: { kind: InvalidateKi
       if (kind === 'group') messages.push(['update', { kind, ids, data: await getGroups(ids) }]);
       else if (kind === 'service-config') messages.push(['update', { kind, ids, data: await getServices(ids) }]);
       else if (kind === 'service-state') messages.push(['update', { kind, ids, data: await getServiceStates(ids) }]);
+      else if (kind === 'notifier') messages.push(['update', { kind, ids, data: await getNotifiers(ids) }]);
       else if (kind === 'service-history') messages.push(['invalidate', { kind, ids }]);
       else if (kind === 'settings') messages.push(['update', { kind, ids, data: await getSettings() }]);
-      else throw new Error(`unhandled invalidation kind: ${kind}`);
+      else throw new Error(`unhandled invalidation kind: ${kind satisfies never as string}`);
     }
     const messageString = messages
       .map(([event, data]) => `event: ${event}\ndata: ${SuperJSON.stringify(data)}\n\n`)

@@ -81,23 +81,23 @@ export default function DetailPage() {
           <span className='text-foreground/75'>{`Since ${toLocalIso(service.state?.changedAt, { endAt: 's' })}`}</span>
         </div>
       </Card>
-      <Card className='grid grid-cols-4 text-center gap-2'>
-        <div className='flex flex-col gap-2'>
+      <Card className='grid grid-cols-4 grid-rows-[auto_auto_auto] text-center items-center gap-2 grid-flow-col'>
+        <div className='contents'>
           <h4 className='text-xl'>Response</h4>
           <span className='text-xs text-foreground/50'>(Current)</span>
-          <span>{`${service.state?.miniHistory.items.at(-1)?.latency ?? '-'} ms`}</span>
+          <span>{`${service.state?.miniHistory.items.at(-1)?.latency ?? '-'} ms`}</span>{' '}
         </div>
-        <div className='flex flex-col gap-2'>
+        <div className='contents'>
           <h4 className='text-xl'>Avg Response</h4>
           <span className='text-xs text-foreground/50'>(24-hour)</span>
           <span>{`${service.state?.latency1d ?? '-'} ms`}</span>
         </div>
-        <div className='flex flex-col gap-2'>
+        <div className='contents'>
           <h4 className='text-xl'>Uptime</h4>
           <span className='text-xs text-foreground/50'>(24-hour)</span>
           <span>{`${service.state?.uptime1d ?? '-'} %`}</span>
         </div>
-        <div className='flex flex-col gap-2'>
+        <div className='contents'>
           <h4 className='text-xl'>Uptime</h4>
           <span className='text-xs text-foreground/50'>(30-day)</span>
           <span>{`${service.state?.uptime30d ?? '-'} %`}</span>

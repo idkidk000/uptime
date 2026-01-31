@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import { Badge, type BadgeVariant } from '@/components/badge';
-import { ServiceStatus } from '@/lib/drizzle/schema';
+import { ServiceStatus } from '@/lib/types';
 
 const statusData: Record<ServiceStatus | 'fallback', { label: string; variant: BadgeVariant }> = {
   [ServiceStatus.Up]: { label: 'Up', variant: 'up' },

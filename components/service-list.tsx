@@ -11,7 +11,8 @@ import { InputText } from '@/components/input/input-text';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/popover';
 import { StatusBadge } from '@/components/status-badge';
 import { useAppQueries, useServicesWithState } from '@/hooks/app-queries';
-import { ServiceStatus, type ServiceWithState } from '@/lib/drizzle/schema';
+import type { ServiceWithState } from '@/lib/drizzle/zod/schema';
+import { ServiceStatus } from '@/lib/types';
 import { cn, enumEntries } from '@/lib/utils';
 
 interface Filter {
@@ -77,14 +78,11 @@ function ServiceListItem({
   selection,
   setSelection,
 }: ServiceWithState & { selection: number[] | null; setSelection: Dispatch<SetStateAction<number[] | null>> }) {
+  // biome-ignore format: no
   // biome-ignore lint/correctness/useExhaustiveDependencies(setSelection): state setters are stable
-  const handleCheckChange = useCallback(
-    () =>
-      setSelection((prev) =>
-        prev === null ? null : prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-      ),
-    [id]
-  );
+  const handleCheckChange = useCallback(() => setSelection((prev) =>
+    prev === null ? null : prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  ), [id]);
 
   return (
     <li key={id} className={cn('grid grid-cols-subgrid col-start-2', selection === null ? 'col-span-3' : 'col-span-4')}>
@@ -99,7 +97,7 @@ function ServiceListItem({
           suppressHydrationWarning
         >{`${typeof state?.uptime1d === 'number' ? Math.round(state?.uptime1d) : '0'}%`}</StatusBadge>
         <h4 className='shrink-0 me-auto'>{name}</h4>
-        <BarGraph history={state?.miniHistory} />
+        <BarGraph history={state?.miniHistory} className='min-h-lh max-h-lh' />
       </Link>
     </li>
   );
@@ -163,8 +161,8 @@ export function ServiceList() {
   }, [filter, groups, services]);
 
   return (
-    <Card className='p-0 flex flex-col overflow-hidden'>
-      <section className='bg-background-head p-4 flex flex-col gap-2'>
+    <Card className='p-0 flex flex-col'>
+      <section className='bg-background-head p-4 flex flex-col gap-2 rounded-t-xl'>
         <div className='flex justify-between'>
           <Button variant='muted' onClick={handleSelectClick}>
             Select

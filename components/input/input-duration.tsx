@@ -97,21 +97,24 @@ export function InputDuration<AllowEmpty extends boolean>({
   }, [onValueChange, baseMultiplier]);
 
   return (
-    <div className='grid grid-cols-[2fr_1fr] gap-2'>
+    <div className='flex'>
       <InputNumber
         onValueChange={handlePeriodValueChange}
         value={periodValue as AllowEmpty extends true ? number | undefined : number}
-        withButtons
+        // withButtons
         allowEmpty={allowEmpty}
+        className='rounded-e-none border-e'
         {...props}
       />
-      <Select
+      <Select<number, AllowEmpty>
         mode='number'
         options={periods.map(({ label, multiplier }) => ({ label, value: multiplier }))}
         onValueChange={handlePeriodChange}
-        value={period?.multiplier}
+        value={period?.multiplier as number | (AllowEmpty extends true ? undefined : never)}
         allowEmpty={allowEmpty}
         placeholder='Period'
+        className='rounded-s-none border-s'
+        alignment='left'
       />
     </div>
   );

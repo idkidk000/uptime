@@ -7,11 +7,11 @@ import { useCallback } from 'react';
 import { updateSettings } from '@/actions/setting';
 import { Card } from '@/components/card';
 import { useAppQueries } from '@/hooks/app-queries';
-import { useAppForm } from '@/hooks/form';
 import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
-import { ServiceStatus } from '@/lib/drizzle/schema';
+import { makeZodValidator, useAppForm } from '@/lib/form';
 import { settingsSchema } from '@/lib/settings/schema';
+import { ServiceStatus } from '@/lib/types';
 
 export default function GeneralSettingsPage() {
   const logger = useLogger(import.meta.url);
@@ -30,14 +30,9 @@ export default function GeneralSettingsPage() {
           logger.error('error updating settings', form.value, err);
           showToast('Error updating settings', String(err), ServiceStatus.Down);
         });
-      // no point resetting
-      // form.formApi.reset();
     },
     validators: {
-      // @ts-expect-error: tanstack form thinks the schema can't handle undefined fields (it can and has defaults for all of them)
-      // settingsSchema.required() is not recursive so does not help
-      // FIXME: conflict seems to be in settingsSchema['~standard'].types, which is (tuple of shape in, shape out) | undefined. shape in allows undefined. shape out does not. tanstack form should be looking at shape out i think. maybe the type can be asserted. or maybe it would be easier to just write my own form hook idk
-      onSubmit: settingsSchema.required(),
+      onSubmit: makeZodValidator(settingsSchema, logger),
     },
   });
 

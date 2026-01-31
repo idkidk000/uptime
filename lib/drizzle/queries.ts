@@ -2,7 +2,8 @@ import type { ResultSet } from '@libsql/client';
 import { type SQL, sql, type TableRelationalConfig } from 'drizzle-orm';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
 import { db } from '@/lib/drizzle';
-import { type MiniHistory, ServiceStatus } from '@/lib/drizzle/schema';
+import type { MiniHistory } from '@/lib/drizzle/zod/schema';
+import { ServiceStatus } from '@/lib/types';
 
 // passing a typed query to (db|tx).(all|get) returns unknown. seems like a drizzle bug
 
@@ -68,15 +69,22 @@ export function getLatencySql(serviceId: number): SQL<LatencySelect> {
     )`;
 }
 
-const epochSecondsMapper = {
+export const epochSecondsMapper = {
   mapFromDriverValue(value: number) {
     return new Date(value * 1000);
   },
 };
 
-const jsonMapper = {
+export const jsonMapper = {
   mapFromDriverValue(value: string) {
     return JSON.parse(value);
+  },
+};
+
+export const numberArrayMapper = {
+  mapFromDriverValue(value: string) {
+    if (value === '[]') return [];
+    return value.split(',').map(Number);
   },
 };
 

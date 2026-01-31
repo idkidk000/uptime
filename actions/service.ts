@@ -3,14 +3,14 @@
 
 import { eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
+import { serviceTable } from '@/lib/drizzle/schema';
 import {
   type ServiceInsert,
   type ServiceSelect,
   type ServiceUpdate,
   serviceInsertSchema,
-  serviceTable,
   serviceUpdateSchema,
-} from '@/lib/drizzle/schema';
+} from '@/lib/drizzle/zod/schema';
 import { type BusMessage, MessageClient } from '@/lib/messaging';
 import { omit, pick } from '@/lib/utils';
 

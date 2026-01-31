@@ -1,22 +1,32 @@
 import { Activity, type ComponentProps, useId } from 'react';
-import { InputNumber } from '@/components/input/input-number';
+
+import { InputRecord } from '@/components/input/input-record';
 import { useFieldContext } from '@/lib/form';
 
-export function FormInputNumber<AllowEmpty extends boolean>({
+export function FormInputRecord<
+  AllowEmpty extends boolean,
+  KeyType extends 'string' | 'number',
+  ValueType extends 'string' | 'number',
+>({
   label,
   placeholder,
   description,
   visibleFields,
   ...props
-}: Omit<ComponentProps<typeof InputNumber<AllowEmpty>>, 'placeholder' | 'value' | 'onValueChange' | 'onBlur'> & {
+}: Omit<
+  ComponentProps<typeof InputRecord<AllowEmpty, KeyType, ValueType>>,
+  'placeholder' | 'value' | 'onValueChange' | 'onBlur'
+> & {
   label: string;
-  withButtons?: boolean;
   placeholder?: string;
   description?: string;
   visibleFields?: Set<string>;
 }) {
   const id = useId();
-  const field = useFieldContext<AllowEmpty extends true ? number | undefined : number>();
+  const field = useFieldContext<
+    | Record<KeyType extends 'number' ? number : string, ValueType extends 'number' ? number : string>
+    | (AllowEmpty extends true ? undefined : never)
+  >();
 
   return (
     <Activity mode={visibleFields && !visibleFields.has(field.name) ? 'hidden' : 'visible'}>
@@ -24,7 +34,7 @@ export function FormInputNumber<AllowEmpty extends boolean>({
         <label htmlFor={id} className='font-semibold'>
           {label}
         </label>
-        <InputNumber
+        <InputRecord
           id={id}
           value={field.state.value}
           onValueChange={field.handleChange}

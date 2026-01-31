@@ -38,6 +38,9 @@
     "enabled": true,
     "includes": ["**", "!playground/**"],
     "rules": {
+      "complexity": {
+        "useArrowFunction": "off"
+      },
       "correctness": {
         "noUnusedImports": {
           "fix": "safe",
@@ -50,7 +53,7 @@
             "hooks": [
               {
                 "name": "useModal",
-                "stableResult": ["modalRef"]
+                "stableResult": ["modalRef", "open", "close", "toggle"]
               },
               {
                 "name": "useLogger",

@@ -1,22 +1,21 @@
 import { Activity, type ComponentProps, useId } from 'react';
 import { InputPassword } from '@/components/input/input-password';
-import { useFieldContext } from '@/hooks/form';
+import { useFieldContext } from '@/lib/form';
 
-export function FormInputPassword<Undefined extends boolean>({
+export function FormInputPassword<AllowEmpty extends boolean>({
   label,
   placeholder,
   description,
   visibleFields,
   ...props
-}: Omit<ComponentProps<typeof InputPassword<Undefined>>, 'placeholder' | 'value' | 'onValueChange' | 'onBlur'> & {
+}: Omit<ComponentProps<typeof InputPassword<AllowEmpty>>, 'placeholder' | 'value' | 'onValueChange' | 'onBlur'> & {
   label: string;
   placeholder?: string;
   description?: string;
   visibleFields?: Set<string>;
 }) {
   const id = useId();
-  const field = useFieldContext<Undefined extends true ? string | undefined : string>();
-  const errors = field.state.meta.errors;
+  const field = useFieldContext<AllowEmpty extends true ? string | undefined : string>();
 
   return (
     <Activity mode={visibleFields && !visibleFields.has(field.name) ? 'hidden' : 'visible'}>
@@ -32,8 +31,10 @@ export function FormInputPassword<Undefined extends boolean>({
           placeholder={placeholder ?? label}
           {...props}
         />
-        {errors?.length ? (
-          <span className='col-start-2 text-down transition-in-up'>{errors.map((err) => err?.message).join('. ')}</span>
+        {!field.state.meta.isValid ? (
+          <span className='col-start-2 transition-in-up text-down text-sm' role='alert'>
+            {field.state.meta.errors.join('. ')}
+          </span>
         ) : description ? (
           <span className='col-start-2 transition-in-up text-unknown text-sm'>{description}</span>
         ) : null}
