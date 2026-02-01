@@ -1,5 +1,9 @@
-import { type ComponentProps, useCallback, useEffect, useRef, type FocusEvent } from 'react';
+import { type ComponentProps, type FocusEvent, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+
+export type ArrayValue<AllowEmpty extends boolean, ValueType extends 'string' | 'number'> =
+  | (ValueType extends 'number' ? number : string)[]
+  | (AllowEmpty extends true ? undefined : never);
 
 export function InputArray<AllowEmpty extends boolean = false, ValueType extends 'string' | 'number' = 'string'>({
   className,
@@ -12,11 +16,9 @@ export function InputArray<AllowEmpty extends boolean = false, ValueType extends
   onBlur,
   ...props
 }: Omit<ComponentProps<'textarea'>, 'value' | 'rows'> & {
-  onValueChange: (
-    value: (ValueType extends 'number' ? number : string)[] | (AllowEmpty extends true ? undefined : never)
-  ) => void;
+  onValueChange: (value: ArrayValue<AllowEmpty, ValueType>) => void;
   placeholder: string;
-  value: (ValueType extends 'number' ? number : string)[] | (AllowEmpty extends true ? undefined : never);
+  value: ArrayValue<AllowEmpty, ValueType>;
   allowEmpty?: AllowEmpty;
   valueType?: ValueType;
   rows?: number | 'auto';
@@ -40,24 +42,16 @@ export function InputArray<AllowEmpty extends boolean = false, ValueType extends
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line.length)
-      .map((line) => (valueType === 'number' ? Number(line) : line)) as (ValueType extends 'number'
-      ? number
-      : string)[];
-    onValueChange(
-      (allowEmpty && parsed.length === 0 ? undefined : parsed) as
-        | (ValueType extends 'number' ? number : string)[]
-        | (AllowEmpty extends true ? undefined : never)
-    );
+      .map((line) => (valueType === 'number' ? Number(line) : line)) as ArrayValue<false, ValueType>;
+    onValueChange((allowEmpty && parsed.length === 0 ? undefined : parsed) as ArrayValue<AllowEmpty, ValueType>);
     updateControl(parsed);
   }, [allowEmpty, onValueChange, updateControl, valueType]);
 
-  const handleBlur = useCallback(
-    (event: FocusEvent<HTMLTextAreaElement>) => {
-      handleUpdate();
-      onBlur?.(event);
-    },
-    [onBlur, handleUpdate]
-  );
+  // biome-ignore format: no
+  const handleBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
+    handleUpdate();
+    onBlur?.(event);
+  }, [onBlur, handleUpdate]);
 
   const handleChange = useCallback(() => {
     if (rows !== 'auto' || !ref.current) return;

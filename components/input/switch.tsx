@@ -2,6 +2,8 @@ import { type ComponentProps, type MouseEvent, type RefObject, useCallback, useE
 import { Button } from '@/components/button';
 import { cn } from '@/lib/utils';
 
+export type SwitchValue<AllowEmpty extends boolean> = boolean | (AllowEmpty extends true ? undefined : never);
+
 export function Switch<AllowEmpty extends boolean = false>({
   value,
   onValueChange,
@@ -12,8 +14,8 @@ export function Switch<AllowEmpty extends boolean = false>({
   allowEmpty,
   ...props
 }: Omit<ComponentProps<typeof Button<'button'>>, 'value'> & {
-  value: AllowEmpty extends true ? boolean | undefined : boolean;
-  onValueChange: (value: AllowEmpty extends true ? boolean | undefined : boolean) => void;
+  value: SwitchValue<AllowEmpty>;
+  onValueChange: (value: SwitchValue<AllowEmpty>) => void;
   allowEmpty?: AllowEmpty;
 }) {
   const valueRef = useRef(value);
@@ -34,7 +36,7 @@ export function Switch<AllowEmpty extends boolean = false>({
           : valueRef.current === true
             ? false
             : undefined
-    ) as AllowEmpty extends true ? boolean | undefined : boolean;
+    ) as SwitchValue<AllowEmpty>;
     onValueChange(value);
     valueRef.current = value;
     onClick?.(event);

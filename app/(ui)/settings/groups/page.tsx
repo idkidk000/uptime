@@ -10,6 +10,7 @@ import {
   type GroupUpdateWithNotifiers,
   groupUpdateWithNotifiersSchema,
 } from '@/actions/group/schema';
+import { Badge } from '@/components/badge';
 import { Card } from '@/components/card';
 import { ConfirmModal, ConfirmModalTrigger } from '@/components/confirm-modal';
 import { Modal, ModalContent, ModalTrigger, useModal } from '@/components/modal';
@@ -18,7 +19,6 @@ import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
 import { makeZodValidator, useAppForm } from '@/lib/form';
 import { ServiceStatus } from '@/lib/types';
-import { Badge } from '@/components/badge';
 
 // preserve id so same logic can be used for add and edit
 const schema = groupUpdateWithNotifiersSchema.extend({ id: z.int().min(1).optional() });
@@ -83,7 +83,9 @@ function GroupForm({ id }: { id?: number }) {
             label='Notifiers'
             description='Notifiers to use'
             multi
-            options={notifiers.map(({ id, name }) => ({ label: name, value: id }))}
+            options={notifiers
+              .toSorted((a, b) => a.name.localeCompare(b.name))
+              .map(({ id, name }) => ({ label: name, value: id }))}
             mode='number'
           />
         )}
@@ -150,15 +152,12 @@ export default function GroupsSettingsPage() {
   const handleAddClick = useCallback(() => setId(undefined), []);
 
   return (
-    <Card className='flex flex-col gap-4'>
-      <Modal>
+    <Modal>
+      <Card className='flex flex-col gap-4'>
         <ModalTrigger className='me-auto' size='lg' onClick={handleAddClick}>
           <Plus />
           Add a new group
         </ModalTrigger>
-        <ModalContent closedBy='none'>
-          <GroupForm id={id} />
-        </ModalContent>
         <div className='grid gap-4 grid-cols-[max-content_max-content_max-content] items-center'>
           <div className='contents font-semibold'>
             <div>Name</div>
@@ -173,12 +172,16 @@ export default function GroupsSettingsPage() {
                 {...group}
                 notifiers={group.notifiers
                   .map((id) => notifiers.find((item) => item.id === id))
-                  .filter((item) => typeof item !== 'undefined')}
+                  .filter((item) => typeof item !== 'undefined')
+                  .toSorted((a, b) => a.name.localeCompare(b.name))}
                 setId={setId}
               />
             ))}
         </div>
-      </Modal>
-    </Card>
+      </Card>
+      <ModalContent closedBy='none'>
+        <GroupForm id={id} />
+      </ModalContent>
+    </Modal>
   );
 }

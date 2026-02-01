@@ -1,9 +1,12 @@
 import { ChevronDown } from 'lucide-react';
 import { type ComponentProps, type MouseEvent, useCallback } from 'react';
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/popover';
-import { useLogger } from '@/hooks/logger';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/badge';
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/popover';
+import { cn } from '@/lib/utils';
+
+type SelectValue<ValueType extends string | number, AllowEmpty extends boolean, Multi extends boolean> =
+  | (Multi extends true ? ValueType[] : ValueType)
+  | (AllowEmpty extends true ? undefined : never);
 
 /** custom component because firefox does not support styling <select> */
 export function Select<
@@ -24,10 +27,8 @@ export function Select<
   alignment = 'center',
   ...props
 }: {
-  onValueChange: (
-    value: (Multi extends true ? ValueType[] : ValueType) | (AllowEmpty extends true ? undefined : never)
-  ) => void;
-  value: (Multi extends true ? ValueType[] : ValueType) | (AllowEmpty extends true ? undefined : never);
+  onValueChange: (value: SelectValue<ValueType, AllowEmpty, Multi>) => void;
+  value: SelectValue<ValueType, AllowEmpty, Multi>;
   placeholder: string;
   mode: ValueType extends string ? 'text' : ValueType extends number ? 'number' : never;
   options: { value: ValueType; label: string }[];
@@ -35,20 +36,16 @@ export function Select<
   multi?: Multi;
   alignment?: ComponentProps<typeof PopoverContent>['alignment'];
 } & Omit<ComponentProps<typeof PopoverTrigger>, 'role' | 'aria-valuenow' | 'value'>) {
-  const logger = useLogger(import.meta.url);
-
   const selected = options.filter(
     (item) => (Array.isArray(value) && value.includes(item.value)) || item.value === value
   );
 
-  logger.debugLow({ multi, allowEmpty }, 'value', value, 'selected', selected);
-
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const clicked = event.currentTarget.dataset.value;
-      const typed = (allowEmpty && clicked === 'undefined' ? undefined : mode === 'text' ? clicked : Number(clicked)) as
-        | (Multi extends true ? ValueType[] : ValueType)
-        | (AllowEmpty extends true ? undefined : never);
+      const typed = (
+        allowEmpty && clicked === 'undefined' ? undefined : mode === 'text' ? clicked : Number(clicked)
+      ) as SelectValue<ValueType, AllowEmpty, Multi>;
       if (multi) {
         const typedValue = (value ?? []) as ValueType[];
         const typedClicked = typed as ValueType;
@@ -56,9 +53,7 @@ export function Select<
           ? typedValue.filter((item) => item !== typedClicked)
           : [...typedValue, typedClicked];
         onValueChange(
-          (next.length === 0 && allowEmpty ? undefined : next) as
-            | (Multi extends true ? ValueType[] : ValueType)
-            | (AllowEmpty extends true ? undefined : never)
+          (next.length === 0 && allowEmpty ? undefined : next) as SelectValue<ValueType, AllowEmpty, Multi>
         );
       } else onValueChange(typed);
     },

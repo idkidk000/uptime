@@ -14,14 +14,16 @@ export function ConfirmModal({
   return (
     <Modal>
       {children}
-      <ModalContent className='flex flex-col gap-4'>
-        <h3 className='text-lg font-semibold'>{message}</h3>
-        <div className='flex justify-around'>
-          <ModalClose variant='down' onClick={onConfirm}>
-            <Trash />
-            Yes
-          </ModalClose>
-          <ModalClose variant='muted'>Cancel</ModalClose>
+      <ModalContent>
+        <div className='flex flex-col gap-4'>
+          <h3 className='text-lg font-semibold'>{message}</h3>
+          <div className='flex justify-around'>
+            <ModalClose variant='down' onClick={onConfirm}>
+              <Trash />
+              Yes
+            </ModalClose>
+            <ModalClose variant='muted'>Cancel</ModalClose>
+          </div>
         </div>
       </ModalContent>
     </Modal>

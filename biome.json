@@ -14,7 +14,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build", "!samples"]
+    "includes": ["**", "!!node_modules", "!!.next", "!!dist", "!!build", "!!samples", "!!migrations"]
   },
   "formatter": {
     "enabled": true,
@@ -73,7 +73,7 @@
               },
               {
                 "name": "usePopover",
-                "stableResult": ["setOpen"]
+                "stableResult": ["setIsOpen", "open", "close", "toggle"]
               }
             ],
             "reportMissingDependenciesArray": true

@@ -1,43 +1,49 @@
 import { Activity, type ComponentProps, useId } from 'react';
-import { InputNumber } from '@/components/input/input-number';
-import { useFieldContext } from '@/lib/form';
+import { InputNumber, type NumberValue } from '@/components/input/input-number';
+import { type FieldsMeta, useFieldContext } from '@/lib/form';
+import { camelToSentenceCase } from '@/lib/utils';
 
 export function FormInputNumber<AllowEmpty extends boolean>({
   label,
   placeholder,
   description,
-  visibleFields,
+  fieldsMeta,
   ...props
 }: Omit<ComponentProps<typeof InputNumber<AllowEmpty>>, 'placeholder' | 'value' | 'onValueChange' | 'onBlur'> & {
-  label: string;
+  label?: string;
   withButtons?: boolean;
   placeholder?: string;
   description?: string;
-  visibleFields?: Set<string>;
+  fieldsMeta?: FieldsMeta;
 }) {
   const id = useId();
-  const field = useFieldContext<AllowEmpty extends true ? number | undefined : number>();
+  const field = useFieldContext<NumberValue<AllowEmpty>>();
+  const fieldMeta = fieldsMeta?.get(field.name);
+  const fieldDescription =
+    description ??
+    (fieldMeta?.description ? `${fieldMeta.description}${fieldMeta.required ? '' : ' (optional)'}` : undefined);
+  const fieldLabel = label ?? camelToSentenceCase(field.name.split('.').toReversed()[0]);
 
   return (
-    <Activity mode={visibleFields && !visibleFields.has(field.name) ? 'hidden' : 'visible'}>
-      <div className='grid grid-cols-subgrid col-span-2 items-center gap-x-4 gap-y-2 transition-in-up'>
+    <Activity mode={fieldsMeta && !fieldsMeta.has(field.name) ? 'hidden' : 'visible'}>
+      <div className='grid grid-cols-subgrid col-span-2 items-center gap-y-2 transition-in-up'>
         <label htmlFor={id} className='font-semibold'>
-          {label}
+          {fieldLabel}
         </label>
         <InputNumber
           id={id}
           value={field.state.value}
           onValueChange={field.handleChange}
           onBlur={field.handleBlur}
-          placeholder={placeholder ?? label}
+          placeholder={placeholder ?? fieldLabel}
           {...props}
         />
         {!field.state.meta.isValid ? (
           <span className='col-start-2 transition-in-up text-down text-sm' role='alert'>
             {field.state.meta.errors.join('. ')}
           </span>
-        ) : description ? (
-          <span className='col-start-2 transition-in-up text-unknown text-sm'>{description}</span>
+        ) : fieldDescription ? (
+          <span className='col-start-2 transition-in-up text-unknown text-sm'>{fieldDescription}</span>
         ) : null}
       </div>
     </Activity>

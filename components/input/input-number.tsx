@@ -3,6 +3,8 @@ import { type ChangeEvent, type ComponentProps, useCallback, useEffect, useRef }
 import { Button, ButtonGroup } from '@/components/button';
 import { cn } from '@/lib/utils';
 
+export type NumberValue<AllowEmpty extends boolean> = number | (AllowEmpty extends true ? undefined : never);
+
 export function InputNumber<AllowEmpty extends boolean = false>({
   className,
   onValueChange,
@@ -14,9 +16,9 @@ export function InputNumber<AllowEmpty extends boolean = false>({
   allowEmpty,
   ...props
 }: Omit<ComponentProps<'input'>, 'type' | 'value'> & {
-  onValueChange: (value: AllowEmpty extends true ? number | undefined : number) => void;
+  onValueChange: (value: NumberValue<AllowEmpty>) => void;
   placeholder: string;
-  value: AllowEmpty extends true ? number | undefined : number;
+  value: NumberValue<AllowEmpty>;
   withButtons?: boolean;
   min?: number;
   max?: number;
@@ -33,9 +35,7 @@ export function InputNumber<AllowEmpty extends boolean = false>({
   const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const value = event.currentTarget.value;
     onValueChange(
-      (allowEmpty && value === '' ? undefined : Number(value)) as AllowEmpty extends true
-        ? number | undefined
-        : number
+      (allowEmpty && value === '' ? undefined : Number(value)) as NumberValue<AllowEmpty>
     );
   }, [onValueChange, allowEmpty]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { usePrefetchQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, type ReactNode, type RefObject, useContext, useEffect, useMemo, useRef } from 'react';
 import { getGroups } from '@/actions/group';
 import type { GroupSelectWithNotifiers } from '@/actions/group/schema';
@@ -32,7 +32,7 @@ interface Context {
 
   sse sends type `Update` for 'group', 'service-config', and 'service-state' kinds. this includes the new data, which is patched into the Tanstack Query cache by `handleUpdate`. the `meta` subkeys are invalidated and will then be refetched by Tanstack Query when needed
 
-  'service-history' is a special case since it is never fully fetched - it's selected by service id or all, filtered server-side for only state (stauts, result kind, result message) changes, and paginated. so for these, sse sends down an `Invalidation` type and the entire query key is invalidated. Tanstack Query will then refetch data when it's needed
+  'service-history' is a special case since it is never fully fetched - it's selected by service id or all, filtered server-side for only state (status, result kind, result message) changes, and paginated. so for these, sse sends down an `Invalidation` type and the entire query key is invalidated. Tanstack Query will then refetch data when it's needed
 
   query defaults to prevent auto refetching etc are set on the `QueryClientProvider` in `layout-client.tsx`
 
@@ -130,6 +130,7 @@ export function AppQueriesProvider({
     const unsubscribers = [
       subscribe('invalidate', (message) => {
         logger.debugLow('sse invalidate', message);
+        // refetch active queries and mark inactive as stale. those inactive queries will then be refetched on render according to default settings in layout-client.tsx
         for (const subkey of ['meta', ...message.ids])
           queryClient.invalidateQueries({ queryKey: [message.kind, subkey] });
       }),
@@ -188,12 +189,14 @@ export function useServiceHistory(
     queryKey: ['service-history', serviceId ?? 'meta', { page }],
     queryFn: () => getServiceHistory(serviceId, { page: page }),
   });
-  const nextPage =
-    typeof page === 'number' && typeof query.data?.pages === 'number' && page < query.data.pages - 1 ? page + 1 : page;
-  // prefetch the next page if there is one
-  void usePrefetchQuery({
-    queryKey: ['service-history', serviceId ?? 'meta', { page: nextPage }],
-    queryFn: () => getServiceHistory(serviceId, { page: nextPage }),
-  });
+  // docs show to use `usePrefetchQuery` here, but next complains i'm setting state in a render function. calling the method on the queryClient inside a timeout is a workaround
+  const client = useQueryClient();
+  if (typeof page === 'number' && typeof query.data?.pages === 'number' && page < query.data.pages - 1)
+    setTimeout(() =>
+      client.prefetchQuery({
+        queryKey: ['service-history', serviceId ?? 'meta', { page: page + 1 }],
+        queryFn: () => getServiceHistory(serviceId, { page: page + 1 }),
+      })
+    );
   return query.data ?? null;
 }

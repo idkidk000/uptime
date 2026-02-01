@@ -1,5 +1,13 @@
-import { type ComponentProps, useCallback, useRef, type FocusEvent, useEffect } from 'react';
+import { type ComponentProps, type FocusEvent, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+
+export type RecordValue<
+  AllowEmpty extends boolean,
+  KeyType extends 'string' | 'number',
+  ValueType extends 'string' | 'number',
+> =
+  | Record<KeyType extends 'number' ? number : string, ValueType extends 'number' ? number : string>
+  | (AllowEmpty extends true ? undefined : never);
 
 const RE_MATCH = /^\s*(?<key>[^:\s]+)\s*:\s*(?<val>.+)\s*$/gm;
 
@@ -19,15 +27,9 @@ export function InputRecord<
   onBlur,
   ...props
 }: Omit<ComponentProps<'textarea'>, 'value' | 'rows'> & {
-  onValueChange: (
-    value:
-      | Record<KeyType extends 'number' ? number : string, ValueType extends 'number' ? number : string>
-      | (AllowEmpty extends true ? undefined : never)
-  ) => void;
+  onValueChange: (value: RecordValue<AllowEmpty, KeyType, ValueType>) => void;
   placeholder: string;
-  value:
-    | Record<KeyType extends 'number' ? number : string, ValueType extends 'number' ? number : string>
-    | (AllowEmpty extends true ? undefined : never);
+  value: RecordValue<AllowEmpty, KeyType, ValueType>;
   allowEmpty?: AllowEmpty;
   keyType?: KeyType;
   valueType?: ValueType;
@@ -69,11 +71,13 @@ export function InputRecord<
           const { key, val } = match.groups;
           return [keyType === 'number' ? Number(key) : key, valueType === 'number' ? Number(val) : val];
         })
-    ) as Record<KeyType extends 'number' ? number : string, ValueType extends 'number' ? number : string>;
+    ) as RecordValue<false, KeyType, ValueType>;
     onValueChange(
-      (allowEmpty && Object.keys(parsed).length === 0 ? undefined : parsed) as
-        | Record<KeyType extends 'number' ? number : string, ValueType extends 'number' ? number : string>
-        | (AllowEmpty extends true ? undefined : never)
+      (allowEmpty && Object.keys(parsed).length === 0 ? undefined : parsed) as RecordValue<
+        AllowEmpty,
+        KeyType,
+        ValueType
+      >
     );
     updateControl(parsed);
   }, [allowEmpty, onValueChange, keyType, updateControl, valueType]);

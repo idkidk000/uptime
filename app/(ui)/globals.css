@@ -36,6 +36,10 @@
   @apply starting:-translate-x-1/2 starting:scale-90 starting:opacity-0 translate-x-0 scale-100 opacity-100 transition-[translate,scale,opacity,display] transition-discrete duration-150 origin-left;
 }
 
+@utility form-lg {
+  @apply @7xl:grid-cols-[auto_2fr_auto_2fr_auto_2fr];
+}
+
 /* https://tailwindcss.com/docs/hover-focus-and-other-states#aria-states
   setting aria-checked to undefined doesn't render the attrib
 */
@@ -44,13 +48,15 @@
 @layer base {
   input[type="number"] {
     appearance: textfield;
-    /* -moz-appearance: textfield; */
   }
+  /* use form-lg on large forms */
   form {
-    @apply grid grid-cols-[auto_3fr] @2xl:grid-cols-[auto_2fr_auto_2fr] @8xl:grid-cols-[auto_2fr_auto_2fr_auto_2fr] gap-4 items-center;
+    @apply grid grid-cols-[auto_3fr] @2xl:grid-cols-[auto_2fr_auto_2fr] gap-4 items-start;
   }
+  /* chromium only applies non size-gated (@media) grid-template-columns to subgrid */
   fieldset {
-    @apply grid col-span-full grid-cols-subgrid gap-4 items-center;
+    /* @apply grid col-span-full grid-cols-subgrid items-start; */
+    @apply contents;
   }
   legend {
     @apply col-span-full font-semibold text-xl mb-4;

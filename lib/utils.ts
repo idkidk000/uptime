@@ -100,3 +100,25 @@ export function pascalToTitleCase(value: string): string {
 export function lowerToSentenceCase(value: string): string {
   return value.length ? `${value[0].toLocaleUpperCase()}${value.slice(1)}` : value;
 }
+
+export function camelToSentenceCase(value: string): string {
+  return value
+    .split(/([A-Z][^A-Z]+)/)
+    .filter((token) => token.length)
+    .map((token, i) =>
+      i === 0
+        ? `${token[0].toLocaleUpperCase()}${token.slice(1)}`
+        : i > 0 && !RE_UPPER.exec(token[token.length - 1])
+          ? token.toLocaleLowerCase()
+          : token
+    )
+    .join(' ');
+}
+
+export function camelToTitleCase(value: string): string {
+  return value
+    .split(/([A-Z][^A-Z]+)/)
+    .filter((token) => token.length)
+    .map((token) => `${token[0].toLocaleUpperCase()}${token.slice(1)}`)
+    .join(' ');
+}

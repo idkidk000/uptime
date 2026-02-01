@@ -97,40 +97,23 @@ function NotifierForm({ id }: { id: number | undefined }) {
         <form.AppField name='params.kind'>
           {(field) => (
             <field.FormSelect
-              label='Type'
               mode='text'
               options={notifierKinds.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
-              visibleFields={notifierFields}
+              fieldsMeta={notifierFields}
               description='Type of monitor to use'
             />
           )}
         </form.AppField>
         <form.AppField name='params.address'>
-          {(field) => (
-            <field.FormInputText
-              label='Address'
-              visibleFields={notifierFields}
-              allowEmpty
-              description='URL, hostname, or IP'
-            />
-          )}
+          {(field) => <field.FormInputText fieldsMeta={notifierFields} allowEmpty />}
         </form.AppField>
         <form.AppField name='params.token'>
-          {(field) => (
-            <field.FormInputPassword
-              label='Token'
-              visibleFields={notifierFields}
-              allowEmpty
-              description='Authentication token'
-            />
-          )}
+          {(field) => <field.FormInputPassword fieldsMeta={notifierFields} allowEmpty />}
         </form.AppField>
         <form.AppField name='params.statuses'>
           {(field) => (
             <field.FormSelect
-              label='Statuses'
-              visibleFields={notifierFields}
-              description='Statuses for which notifications should be sent'
+              fieldsMeta={notifierFields}
               multi
               mode='number'
               options={enumEntries(ServiceStatus).map(([label, value]) => ({ label, value }))}
@@ -139,14 +122,7 @@ function NotifierForm({ id }: { id: number | undefined }) {
         </form.AppField>
         <form.AppField name='params.headers'>
           {(field) => (
-            <field.FormInputRecord
-              label='Headers'
-              visibleFields={notifierFields}
-              description='Headers in the form: `header-name: header-value`'
-              keyType='string'
-              valueType='string'
-              allowEmpty
-            />
+            <field.FormInputRecord fieldsMeta={notifierFields} keyType='string' valueType='string' allowEmpty />
           )}
         </form.AppField>
       </fieldset>
@@ -231,7 +207,6 @@ function NotifierRow({
   );
 }
 
-// BUG: this modal doesn't animate out but the nested confirm modal does
 export default function NotifiersSettingsPage() {
   const { notifiers } = useAppQueries();
   const [id, setId] = useState<number | undefined>(undefined);
@@ -239,15 +214,12 @@ export default function NotifiersSettingsPage() {
   const [checkResults, setCheckResults] = useState<Map<number, boolean>>(new Map());
 
   return (
-    <Card className='flex flex-col gap-4'>
-      <Modal>
+    <Modal>
+      <Card className='flex flex-col gap-4'>
         <ModalTrigger className='me-auto' size='lg' onClick={handleAddClick}>
           <Plus />
           Add a new notifier
         </ModalTrigger>
-        <ModalContent closedBy='none'>
-          <NotifierForm id={id} />
-        </ModalContent>
         <div className='grid gap-4 grid-cols-[max-content_max-content_max-content_max-content_max-content] items-center'>
           <div className='contents font-semibold'>
             <div>Name</div>
@@ -256,17 +228,22 @@ export default function NotifiersSettingsPage() {
             <div />
             <div />
           </div>
-          {notifiers.map((notifier) => (
-            <NotifierRow
-              key={notifier.id}
-              {...notifier}
-              setId={setId}
-              checkResult={checkResults.get(notifier.id)}
-              setCheckResults={setCheckResults}
-            />
-          ))}
+          {notifiers
+            .toSorted((a, b) => a.name.localeCompare(b.name))
+            .map((notifier) => (
+              <NotifierRow
+                key={notifier.id}
+                {...notifier}
+                setId={setId}
+                checkResult={checkResults.get(notifier.id)}
+                setCheckResults={setCheckResults}
+              />
+            ))}
         </div>
-      </Modal>
-    </Card>
+      </Card>
+      <ModalContent closedBy='none'>
+        <NotifierForm id={id} />
+      </ModalContent>
+    </Modal>
   );
 }

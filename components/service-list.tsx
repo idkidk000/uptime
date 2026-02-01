@@ -149,14 +149,22 @@ export function ServiceList() {
       .filter(
         (service) =>
           (filter.active.length === 0 || filter.active.includes(service.active)) &&
-          (filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1)) &&
-          (filter.search === null || service.name.toLocaleLowerCase().includes(filter.search.toLocaleLowerCase()))
+          (filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1))
       )
       .toSorted((a, b) => a.name.localeCompare(b.name));
 
     return groups
       .toSorted((a, b) => a.name.localeCompare(b.name))
-      .map((group) => ({ ...group, services: visibleServices.filter((service) => service.groupId === group.id) }))
+      .map((group) => ({
+        ...group,
+        services: visibleServices.filter(
+          (service) =>
+            service.groupId === group.id &&
+            (filter.search === null ||
+              group.name.toLocaleLowerCase().includes(filter.search.toLocaleLowerCase()) ||
+              service.name.toLocaleLowerCase().includes(filter.search.toLocaleLowerCase()))
+        ),
+      }))
       .filter((group) => group.services.length);
   }, [filter, groups, services]);
 
@@ -172,6 +180,7 @@ export function ServiceList() {
             type='search'
             placeholder='Search'
             value={filter.search ?? ''}
+            withClear
           />
         </div>
         <div className='flex gap-2'>

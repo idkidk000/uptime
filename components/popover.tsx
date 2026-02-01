@@ -20,8 +20,12 @@ const RE_DISPLAY =
 
 interface Context {
   popoverId: string;
-  open: boolean;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  isOpen: boolean;
+  /** called from the popover's onToggle event so that data-open can be applied to the trigger in order to style it. setting this will not toggle the popover */
+  setIsOpen: Dispatch<SetStateAction<boolean>>;
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
 }
 
 const Context = createContext<Context | null>(null);
@@ -29,8 +33,24 @@ const Context = createContext<Context | null>(null);
 export function Popover({ children }: { children: [ReactNode, ReactNode] }) {
   const popoverId = useId();
   // there is no way to style a popover trigger based on the open state of its target
-  const [open, setOpen] = useState(false);
-  const value: Context = useMemo(() => ({ popoverId, open, setOpen }), [popoverId, open]);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // biome-ignore format: no
+  const value: Context = useMemo(() => ({
+    popoverId,
+    isOpen,
+    setIsOpen,
+    open() {
+      document.getElementById(popoverId)?.showPopover();
+    },
+    close() {
+      document.getElementById(popoverId)?.hidePopover();
+    },
+    toggle() {
+      document.getElementById(popoverId)?.togglePopover();
+    },
+  }), [popoverId, isOpen]);
+
   return <Context value={value}>{children}</Context>;
 }
 
@@ -46,7 +66,7 @@ export function PopoverTrigger({
   className,
   ...props
 }: Omit<ComponentProps<typeof Button<'button'>>, 'as' | 'type' | 'popoverTarget'>) {
-  const { open, popoverId } = usePopover();
+  const { isOpen, popoverId } = usePopover();
 
   // biome-ignore format: no
   const style: CSSProperties = useMemo(() => ({
@@ -60,7 +80,7 @@ export function PopoverTrigger({
       popoverTargetAction={popoverTargetAction}
       popoverTarget={popoverId}
       style={style}
-      data-open={open || undefined}
+      data-open={isOpen || undefined}
       className={cn('data-open:border-up', className)}
       {...props}
     >
@@ -99,30 +119,26 @@ export function PopoverContent({
   popover = 'auto',
   alignment = 'center',
   onToggle,
+  ...props
 }: ComponentProps<'div'> & { alignment?: 'left' | 'center' | 'right' }) {
-  const { popoverId, setOpen } = usePopover();
+  const { popoverId, setIsOpen } = usePopover();
 
   // biome-ignore format: no
   const style: CSSProperties = useMemo(() => ({
     positionAnchor: `--trigger-${popoverId}`,
-    // tailwind isn't generating a class for this
-    // ...(alignment === 'full' ? {width: 'anchor-size(width)'} : {}),
   }), [popoverId]);
 
-  const handleToggle = useCallback(
-    (event: ToggleEvent<HTMLDivElement>) => {
-      setOpen(event.newState === 'open');
-      onToggle?.(event);
-    },
-    [onToggle]
-  );
+  // biome-ignore format: no
+  const handleToggle = useCallback((event: ToggleEvent<HTMLDivElement>) => {
+    setIsOpen(event.newState === 'open');
+    onToggle?.(event);
+  }, [onToggle]);
 
   const merged = cn(
     'top-[anchor(bottom)] p-2 rounded-xl shadow border-foreground/10 bg-background-card border-2 opacity-0 -translate-y-1/2 scale-90 open:opacity-100 open:translate-y-0 open:scale-100 starting:open:opacity-0 starting:open:-translate-y-1/2 starting:open:scale-90 transition-all transition-discrete duration-150 ',
     alignment === 'center' && '[justify-self:anchor-center]',
     alignment === 'left' && 'left-[anchor(left)]',
     alignment === 'right' && 'right-[anchor(right)]',
-    // alignment === 'full' && 'left-[anchor(left)] right-[anchor(right)] width-[anchor-size(width)]',
     className
   );
   const match = RE_DISPLAY.exec(merged);
@@ -132,7 +148,7 @@ export function PopoverContent({
     );
 
   return (
-    <div id={popoverId} popover={popover} className={merged} style={style} onToggle={handleToggle}>
+    <div id={popoverId} popover={popover} className={merged} style={style} onToggle={handleToggle} {...props}>
       {children}
     </div>
   );

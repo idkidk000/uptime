@@ -1,7 +1,6 @@
 CREATE TABLE `group` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
-	`active` integer NOT NULL,
 	`createdAt` integer DEFAULT (unixepoch()) NOT NULL,
 	`updatedAt` integer NOT NULL
 );
@@ -71,7 +70,7 @@ CREATE TABLE `state` (
 	FOREIGN KEY (`id`) REFERENCES `service`(`id`) ON UPDATE cascade ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE VIEW `historySummary` AS 
+CREATE VIEW `historySummary` AS
     select
       name,
       id,
@@ -102,3 +101,14 @@ CREATE VIEW `historySummary` AS
         )
       )
     order by createdAt desc;
+--> statement-breakpoint
+insert into "group"(
+  id,
+  name,
+  updatedAt
+)
+values (
+  1,
+  'Default group',
+  unixepoch()
+);

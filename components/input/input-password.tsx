@@ -1,5 +1,7 @@
-import { type ChangeEvent, type ComponentProps, useCallback, useRef, type FocusEvent } from 'react';
+import { type ChangeEvent, type ComponentProps, type FocusEvent, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
+
+export type PasswordValue<AllowEmpty extends boolean> = AllowEmpty extends true ? string | undefined : string;
 
 export function InputPassword<AllowEmpty extends boolean = false>({
   className,
@@ -11,9 +13,9 @@ export function InputPassword<AllowEmpty extends boolean = false>({
   onBlur,
   ...props
 }: Omit<ComponentProps<'input'>, 'type' | 'value'> & {
-  onValueChange: (value: AllowEmpty extends true ? string | undefined : string) => void;
+  onValueChange: (value: PasswordValue<AllowEmpty>) => void;
   placeholder: string;
-  value: AllowEmpty extends true ? string | undefined : string;
+  value: PasswordValue<AllowEmpty>;
   allowEmpty?: AllowEmpty;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
@@ -22,7 +24,7 @@ export function InputPassword<AllowEmpty extends boolean = false>({
   const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const value = event.currentTarget.value;
     onValueChange(
-      (allowEmpty && value === '' ? undefined : value) as AllowEmpty extends true ? string | undefined : string
+      (allowEmpty && value === '' ? undefined : value) as PasswordValue<AllowEmpty>
     );
   }, [onValueChange, allowEmpty]);
 

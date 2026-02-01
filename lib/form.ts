@@ -1,14 +1,14 @@
 import { createFormHook, createFormHookContexts } from '@tanstack/react-form';
 import { Button } from '@/components/button';
+import { FormInputArray } from '@/components/form/input-array';
 import { FormInputDuration } from '@/components/form/input-duration';
 import { FormInputNumber } from '@/components/form/input-number';
 import { FormInputPassword } from '@/components/form/input-password';
+import { FormInputRecord } from '@/components/form/input-record';
 import { FormInputText } from '@/components/form/input-text';
+import { FormInputTextArea } from '@/components/form/input-textarea';
 import { FormSelect } from '@/components/form/select';
 import { FormSwitch } from '@/components/form/switch';
-import { FormInputTextArea } from '@/components/form/input-textarea';
-import { FormInputRecord } from '@/components/form/input-record';
-import { FormInputArray } from '@/components/form/input-array';
 import type { ClientLogger } from '@/lib/logger/client';
 
 // https://tanstack.com/form/latest/docs/framework/react/guides/form-composition
@@ -34,38 +34,67 @@ export const { useAppForm } = createFormHook({
   },
 });
 
-/** accepts a zod disc union exported as a json schema, and a discriminator. returns the narrowed schema's field names in dot notation */
-export function getJsonSchemaDiscUnionFields(openApiJsonSchema: { oneOf?: unknown }, kind: string): Set<string> {
-  function recurse(fragment: Record<string, unknown>, path: string): undefined | string[] {
+type DottedFieldPath = string & {};
+export type FieldsMeta = Map<DottedFieldPath, { description: string | undefined; required: boolean }>;
+
+/**
+ * @param openApiJsonSchema Zod discriminated union exported to JSON schema in OpenAPI 3 format
+ * @param kind the discriminator
+ * @returns `Map<field name in dot notation, { description: string | undefined, required: boolean }>` for the narrowed schema
+ */
+export function getJsonSchemaFields(openApiJsonSchema: Record<string, unknown>, rootPath?: string): FieldsMeta {
+  function recurse(
+    fragment: Record<string, unknown>,
+    path?: string,
+    description?: string | undefined,
+    required?: boolean | undefined
+  ): undefined | { path: string; description: string | undefined; required: boolean }[] {
     const type =
       'type' in fragment ? fragment.type : 'oneOf' in fragment ? 'oneOf' : 'anyOf' in fragment ? 'anyOf' : null;
+    description ??= 'description' in fragment ? (fragment.description as string) : undefined;
+    // logger.debugMed({path,type,description,required})
     if (type === null) return;
     if (type === 'anyOf') {
       if (!Array.isArray(fragment.anyOf)) return;
       return fragment.anyOf
-        .flatMap((item) => recurse(item as Record<string, unknown>, path))
+        .flatMap((item) => recurse(item as Record<string, unknown>, path, description, required))
         .filter((item) => typeof item !== 'undefined');
     }
     if (type === 'oneOf') {
       if (!Array.isArray(fragment.oneOf)) return;
       return fragment.oneOf
-        .flatMap((item) => recurse(item as Record<string, unknown>, path))
+        .flatMap((item) => recurse(item as Record<string, unknown>, path, description, required))
         .filter((item) => typeof item !== 'undefined');
     }
     if (type === 'object') {
-      if (!('properties' in fragment)) return [path];
+      if (!('properties' in fragment)) {
+        if (!path) throw new Error('found record at root level');
+        return [{ path, description, required: required ?? false }];
+      }
+      const reqFields = 'required' in fragment ? (fragment.required as string[]) : undefined;
       return Object.entries(fragment.properties as Record<string, Record<string, unknown>>)
-        .flatMap(([key, val]) => recurse(val, `${path}.${key}`))
+        .flatMap(([key, val]) =>
+          recurse(val, path ? `${path}.${key}` : key, description, reqFields?.includes(key) ?? required)
+        )
         .filter((item) => typeof item !== 'undefined');
     }
-    return [path];
+    if (!path) throw new Error('root element is not an object');
+    return [{ path, description, required: required ?? false }];
   }
+  return new Map(recurse(openApiJsonSchema, rootPath)?.map(({ path, ...rest }) => [path, rest]));
+}
+
+/**
+ * @param openApiJsonSchema Zod discriminated union exported to JSON schema in OpenAPI 3 format
+ * @param kind the discriminator
+ * @returns `Map<field name in dot notation, { description: string | undefined, required: boolean }>` for the narrowed schema
+ */
+export function getJsonSchemaDiscUnionFields(openApiJsonSchema: { oneOf?: unknown }, kind: string): FieldsMeta {
   const narrowed = (openApiJsonSchema.oneOf as unknown as { properties: { kind: { enum: string[] } } }[]).find((item) =>
     item.properties.kind.enum.includes(kind)
   );
   if (!narrowed) throw new Error(`could not narrow json schema to kind: ${kind}`);
-  const set = new Set(recurse(narrowed as Record<string, unknown>, 'params'));
-  return set;
+  return getJsonSchemaFields(narrowed, 'params');
 }
 
 /** wraps a zod schema to help with tanstack form's anger issues */

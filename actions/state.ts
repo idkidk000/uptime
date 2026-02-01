@@ -17,7 +17,6 @@ export async function getServiceStates(serviceIds?: number[]): Promise<StateSele
 
 export type StatusCounts = Record<ServiceStatus | -1, number>;
 
-// FIXME: this is horrendous
 export async function getStatusCounts(): Promise<StatusCounts> {
   const counts = await db
     .select({ ...pick(getTableColumns(stateTable), ['status']), count: count() })

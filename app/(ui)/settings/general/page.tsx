@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/correctness/noChildrenProp: not my library */
-
 'use client';
 
 import Link from 'next/link';
@@ -9,14 +7,18 @@ import { Card } from '@/components/card';
 import { useAppQueries } from '@/hooks/app-queries';
 import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
-import { makeZodValidator, useAppForm } from '@/lib/form';
+import { getJsonSchemaFields, makeZodValidator, useAppForm } from '@/lib/form';
 import { settingsSchema } from '@/lib/settings/schema';
 import { ServiceStatus } from '@/lib/types';
+
+const fieldsMeta = getJsonSchemaFields(settingsSchema.toJSONSchema({ io: 'input', target: 'openapi-3.0' }));
 
 export default function GeneralSettingsPage() {
   const logger = useLogger(import.meta.url);
   const { settings } = useAppQueries();
   const { showToast } = useToast();
+
+  logger.info(fieldsMeta);
 
   const form = useAppForm({
     defaultValues: settings,
@@ -40,42 +42,28 @@ export default function GeneralSettingsPage() {
 
   return (
     <Card>
-      <form>
+      <form className='form-lg'>
         <fieldset>
           <legend>Monitors</legend>
-          <form.AppField
-            name='monitor.defaultTimeout'
-            children={(field) => (
-              <field.FormInputDuration label='Timeout' mode='millis' description='Default timeout for monitors' />
-            )}
-          />
-          <form.AppField
-            name='monitor.concurrency'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Concurrency'
-                withButtons
-                description='Number of monitors to check concurrently'
-              />
-            )}
-          />
-          <form.AppField
-            name='monitor.enable'
-            children={(field) => <field.FormSwitch label='Enable' description='Scheduler override' />}
-          />
+          <form.AppField name='monitor.defaultTimeout'>
+            {(field) => <field.FormInputDuration mode='millis' fieldsMeta={fieldsMeta} />}
+          </form.AppField>
+          <form.AppField name='monitor.concurrency'>
+            {(field) => <field.FormInputNumber withButtons fieldsMeta={fieldsMeta} />}
+          </form.AppField>
+          <form.AppField name='monitor.enable'>{(field) => <field.FormSwitch fieldsMeta={fieldsMeta} />}</form.AppField>
         </fieldset>
         <fieldset>
           <legend>History</legend>
-          <form.AppField
-            name='history.summaryItems'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Summary items'
-                withButtons
-                description='Number of ticks to show in bar graph'
-              />
-            )}
-          />
+          <form.AppField name='history.summaryItems'>
+            {(field) => <field.FormInputNumber withButtons fieldsMeta={fieldsMeta} />}
+          </form.AppField>
+        </fieldset>
+        <fieldset>
+          <legend>Server sent events</legend>
+          <form.AppField name='sse.throttle'>
+            {(field) => <field.FormInputDuration fieldsMeta={fieldsMeta} mode='millis' />}
+          </form.AppField>
         </fieldset>
         <form.AppForm>
           <div className='col-span-full flex gap-8 justify-center'>

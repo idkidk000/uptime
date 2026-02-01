@@ -10,7 +10,6 @@ export function Card({
   return (
     <section
       className={cn(
-        '@container',
         variant === 'standard' && 'rounded-xl bg-background-card shadow-xl p-4 transition-in-up',
         variant === 'ghost' && 'transition-in-left',
         className

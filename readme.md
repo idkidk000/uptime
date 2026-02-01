@@ -58,7 +58,7 @@ Alternatively, you can run the app locally:
 - `npm install`
 - optionally set up some environment variables as outlined in the `Environment variables` section below
 - `md .local`
-- `npm run db:push` to create the db
+- `npm run db:migrate` to create the db
 - `npm run db:seed` seeds the db with some services to monitor. If you added extras to your `.env`, they will be created
 - either:
   - `npm run local` to build and start production mode

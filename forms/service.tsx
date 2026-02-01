@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/correctness/noChildrenProp: not my library */
-
 import { useStore } from '@tanstack/react-form';
 import Link from 'next/link';
 import { redirect, useRouter } from 'next/navigation';
@@ -18,8 +16,9 @@ import { monitorKinds, monitorParamsSchema } from '@/lib/monitor/schema';
 import { ServiceStatus } from '@/lib/types';
 import { lowerToSentenceCase } from '@/lib/utils';
 
-// zod does not provide a way to get defaults back out of a schema. zod-empty is a very buggy 3p lib. `required()` and `prefault()` both give undefined. nullable int gives -Number.MAX_SAFE_INT. it only works on top level trivial parts of the schema
+// zod does not provide a way to get defaults back out of a schema. zod-empty is a very buggy 3p lib. `required()` and `prefault()` both give undefined. nullable int gives -Number.MAX_SAFE_INT. it mostly only works on top level trivial parts of the schema
 const insertDefaults = init(serviceInsertSchema);
+insertDefaults.params.upWhen = undefined;
 const monitorParamsJsonSchema = monitorParamsSchema.toJSONSchema({ io: 'input', target: 'openapi-3.0' });
 
 export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'edit' | 'clone'; id: number }) {
@@ -80,7 +79,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
   });
 
   const monitorKind = useStore(form.store, (state) => state.values.params.kind);
-  const monitorFields = useMemo(
+  const paramsFieldsMeta = useMemo(
     () => getJsonSchemaDiscUnionFields(monitorParamsJsonSchema, monitorKind),
     [monitorKind]
   );
@@ -101,41 +100,33 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
 
   return (
     <Card>
-      <form>
+      <form className='form-lg'>
         <fieldset>
           <legend>Service</legend>
-          <form.AppField
-            name='name'
-            children={(field) => <field.FormInputText label='Name' description='Unique name' />}
-          />
-          <form.AppField
-            name='active'
-            children={(field) => <field.FormSwitch label='Active' description='Enable monitoring' />}
-          />
-          <form.AppField
-            name='checkSeconds'
-            children={(field) => (
-              <field.FormInputDuration label='Check frequency' description='How often to monitor service' />
-            )}
-          />
-          <form.AppField
-            name='failuresBeforeDown'
-            children={(field) => (
+          <form.AppField name='name'>
+            {(field) => <field.FormInputText label='Name' description='Unique name' />}
+          </form.AppField>
+          <form.AppField name='active'>
+            {(field) => <field.FormSwitch label='Active' description='Enable monitoring' />}
+          </form.AppField>
+          <form.AppField name='checkSeconds'>
+            {(field) => <field.FormInputDuration label='Check frequency' description='How often to monitor service' />}
+          </form.AppField>
+          <form.AppField name='failuresBeforeDown'>
+            {(field) => (
               <field.FormInputNumber
                 label='Max failures'
                 description='Consecutive failures before the service is considered down'
               />
             )}
-          />
-          <form.AppField
-            name='retainCount'
-            children={(field) => (
+          </form.AppField>
+          <form.AppField name='retainCount'>
+            {(field) => (
               <field.FormInputNumber label='Retain count' max={999999} description='Number of history items to keep' />
             )}
-          />
-          <form.AppField
-            name='groupId'
-            children={(field) => (
+          </form.AppField>
+          <form.AppField name='groupId'>
+            {(field) => (
               <field.FormSelect
                 label='Group'
                 mode='number'
@@ -143,222 +134,97 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
                 description='Parent group'
               />
             )}
-          />
+          </form.AppField>
         </fieldset>
         <fieldset>
           <legend>Monitor</legend>
-          <form.AppField
-            name='params.kind'
-            children={(field) => (
+          <form.AppField name='params.kind'>
+            {(field) => (
               <field.FormSelect
-                label='Type'
                 mode='text'
                 options={monitorKinds.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
-                visibleFields={monitorFields}
+                fieldsMeta={paramsFieldsMeta}
                 description='Type of monitor to use'
               />
             )}
-          />
-          <form.AppField
-            name='params.address'
-            children={(field) => (
-              <field.FormInputText
-                label='Address'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='URL, hostname, or IP'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.port'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Port'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='TCP port number'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.username'
-            children={(field) => (
-              <field.FormInputText
-                label='Username'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Username for service'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.password'
-            children={(field) => (
-              <field.FormInputPassword
-                label='Password'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Password for service'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.recordType'
-            children={(field) => (
+          </form.AppField>
+          <form.AppField name='params.address'>
+            {(field) => <field.FormInputText fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.port'>
+            {(field) => <field.FormInputNumber fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.username'>
+            {(field) => <field.FormInputText fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.password'>
+            {(field) => <field.FormInputPassword fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.recordType'>
+            {(field) => (
               <field.FormSelect
-                label='Record Type'
                 mode='text'
                 options={dnsRecordTypes.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
-                visibleFields={monitorFields}
-                description='DNS record type'
+                fieldsMeta={paramsFieldsMeta}
               />
             )}
-          />
-          <form.AppField
-            name='params.resolver'
-            children={(field) => (
-              <field.FormInputText
-                label='Resolver'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='DNS resolver'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.topic'
-            children={(field) => (
-              <field.FormInputText label='Topic' visibleFields={monitorFields} allowEmpty description='MQTT topic' />
-            )}
-          />
-          <form.AppField
-            name='params.headers'
-            children={(field) => (
-              <field.FormInputRecord
-                label='HTTP headers'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Headers in the form: `header-name: header-value`'
-              />
-            )}
-          />
+          </form.AppField>
+          <form.AppField name='params.resolver'>
+            {(field) => <field.FormInputText fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.topic'>
+            {(field) => <field.FormInputText fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.headers'>
+            {(field) => <field.FormInputRecord fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
         </fieldset>
         <fieldset>
           <legend>Up when</legend>
-          <form.AppField
-            name='params.upWhen.days'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Days'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Min remaining days'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.upWhen.latency'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Latency'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Max latency in millis'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.upWhen.includes'
-            children={(field) => (
-              <field.FormInputArray
-                label='Includes'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Records required in response, one per line'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.upWhen.length'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Length'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Count of DNS records'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.upWhen.statusCode'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Status code'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='HTTP status code'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.upWhen.successPercent'
-            children={(field) => (
-              <field.FormInputNumber
-                label='Success percent'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Min success percent'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.upWhen.trusted'
-            children={(field) => (
-              <field.FormSwitch
-                label='Trusted'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Is the certificate expected to be trusted'
-              />
-            )}
-          />
-          <form.AppField
-            name='params.upWhen.query.kind'
-            children={(field) => (
+          <form.AppField name='params.upWhen.days'>
+            {(field) => <field.FormInputNumber fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.upWhen.latency'>
+            {(field) => <field.FormInputNumber fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.upWhen.includes'>
+            {(field) => <field.FormInputArray fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.upWhen.length'>
+            {(field) => <field.FormInputNumber fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.upWhen.statusCode'>
+            {(field) => <field.FormInputNumber fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.upWhen.successPercent'>
+            {(field) => <field.FormInputNumber fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.upWhen.trusted'>
+            {(field) => <field.FormSwitch fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
+          <form.AppField name='params.upWhen.query.kind'>
+            {(field) => (
               <field.FormSelect
-                label='Query kind'
                 options={queryKind.map((value) => ({ value, label: lowerToSentenceCase(value) }))}
                 mode='text'
-                visibleFields={monitorFields}
+                fieldsMeta={paramsFieldsMeta}
                 allowEmpty
-                description='Type of query to run against returned data'
               />
             )}
-          />
-          <form.AppField
-            name='params.upWhen.query.expression'
-            children={(field) => (
+          </form.AppField>
+          <form.AppField name='params.upWhen.query.expression'>
+            {(field) => (
               <field.FormInputTextArea
-                label='Query expression'
-                visibleFields={monitorFields}
+                fieldsMeta={paramsFieldsMeta}
                 allowEmpty
-                description={`${lowerToSentenceCase((upWhenQuery?.kind ?? '') as string)} expression`}
+                description={`${lowerToSentenceCase((upWhenQuery?.kind ?? 'Query') as string)} expression`}
               />
             )}
-          />
-          {/* FIXME: this is boolean for regex and number|boolean|string for other. using z.coerce but the correct control would be better */}
-          <form.AppField
-            name='params.upWhen.query.expected'
-            children={(field) => (
-              <field.FormInputText
-                label='Query expected'
-                visibleFields={monitorFields}
-                allowEmpty
-                description='Expected query result'
-              />
-            )}
-          />
+          </form.AppField>
+          {/* FIXME: this is boolean for regex and number|boolean|string for other. using a union of z.coerce which is quite problematic */}
+          <form.AppField name='params.upWhen.query.expected'>
+            {(field) => <field.FormInputText fieldsMeta={paramsFieldsMeta} allowEmpty />}
+          </form.AppField>
         </fieldset>
         <form.AppForm>
           <div className='col-span-full flex gap-8 justify-center'>

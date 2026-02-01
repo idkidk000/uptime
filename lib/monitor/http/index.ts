@@ -22,6 +22,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
       // fetch will throw on abort signal, though it may not be immediate (i.e. if the remote does not respond at all)
       // Promise.race works around this and leaves the fetch dangling until it hits some unknown timeout
       const response = await Promise.race([
+        // NODE_TLS_REJECT_UNAUTHORIZED='0' is set in instrumentation-node.ts since fetch does not have a rejectUnauthorized boolean param like tls and https.get seems to be completely broken
         fetch(this.params.address, {
           headers: { 'User-Agent': `${name} ${version}`, ...this.params.headers },
           signal: controller.signal,
@@ -48,13 +49,14 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
           message: `Connected in ${latency}ms`,
         };
       if (this.params.upWhen?.query) {
+        const text = await response.text();
         switch (this.params.upWhen.query.kind) {
           case 'jsonata': {
             let json: unknown;
             try {
-              json = await response.json();
+              json = JSON.parse(text);
             } catch {
-              json = JSON.parse(`{"value": "${await response.text()}"}`);
+              json = JSON.parse(`{"value": "${text}"}`);
             }
             const expression = jsonata(this.params.upWhen.query.expression);
             const result = await expression.evaluate(json);
@@ -69,7 +71,6 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
             break;
           }
           case 'regex': {
-            const text = await response.text();
             const rawResult = parseRegex(this.params.upWhen.query.expression).exec(text);
             const result = !!rawResult;
             if (result !== this.params.upWhen.query.expected)
@@ -82,7 +83,6 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
             break;
           }
           case 'xpath': {
-            const text = await response.text();
             const dom = new DOMParser({
               errorHandler: () => {
                 /* spams errors to stdout otherwise. i don't care if the source has syntax errors */

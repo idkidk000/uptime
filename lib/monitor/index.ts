@@ -10,6 +10,7 @@ export enum MonitorDownReason {
   InvalidResponse,
   PacketLoss,
   Expired,
+  Down,
   // other unhandled
   Error = 63,
 }

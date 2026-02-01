@@ -2,17 +2,16 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import SuperJSON from 'superjson';
 import { getGroups } from '@/actions/group';
+import type { GroupSelectWithNotifiers } from '@/actions/group/schema';
+import { getNotifiers } from '@/actions/notifier';
 import { getServices } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates } from '@/actions/state';
 import type { NotifierSelect, ServiceSelect, StateSelect } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { type InvalidationKind as InvalidateKind, MessageClient } from '@/lib/messaging';
+import { SettingsClient } from '@/lib/settings';
 import type { Settings } from '@/lib/settings/schema';
-import { getNotifiers } from '@/actions/notifier';
-import type { GroupSelectWithNotifiers } from '@/actions/group/schema';
-
-const THROTTLE_MILLIS = 100;
 
 export type Update = { ids: number[] } & (
   | { kind: 'group'; data: GroupSelectWithNotifiers[] }
@@ -28,6 +27,7 @@ export interface Invalidate {
 }
 
 const messageClient = new MessageClient(import.meta.url);
+const settingsClient = await SettingsClient.newAsync(import.meta.url, messageClient);
 const logger = new ServerLogger(import.meta.url);
 const streamControllers = new Set<ReadableStreamDefaultController<unknown>>();
 /** only used in sync code */
@@ -67,7 +67,7 @@ async function sendClientUpdates(destructuredInvalidations: { kind: InvalidateKi
     for (const controller of streamControllers) controller.enqueue(messageString);
   } finally {
     // re-trigger if there are new invalidations since we blocked the timeout from being set
-    if (invalidations.size) timeout = setTimeout(timeoutCallback, THROTTLE_MILLIS);
+    if (invalidations.size) timeout = setTimeout(timeoutCallback, settingsClient.current.sse.throttle);
     else timeout = null;
   }
 }
@@ -80,7 +80,7 @@ messageClient.subscribe({ cat: 'invalidation' }, (message) => {
     return;
   }
   if (!invalidations.get(message.kind)?.add(message.id)) invalidations.set(message.kind, new Set([message.id]));
-  timeout ??= setTimeout(timeoutCallback, THROTTLE_MILLIS);
+  timeout ??= setTimeout(timeoutCallback, settingsClient.current.sse.throttle);
 });
 
 // toasts are sent immediately

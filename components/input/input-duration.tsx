@@ -2,6 +2,8 @@ import { type ComponentProps, useCallback, useEffect, useRef, useState } from 'r
 import { InputNumber } from '@/components/input/input-number';
 import { Select } from '@/components/input/select';
 
+export type DurationValue<AllowEmpty extends boolean> = number | (AllowEmpty extends true ? undefined : never);
+
 const periods = [
   { label: 'Milli', multiplier: 0.001 },
   { label: 'Second', multiplier: 1 },
@@ -20,9 +22,9 @@ export function InputDuration<AllowEmpty extends boolean>({
   allowEmpty,
   ...props
 }: Omit<ComponentProps<typeof InputNumber<AllowEmpty>>, 'value' | 'onValueChange'> & {
-  onValueChange: (value: AllowEmpty extends true ? number | undefined : number) => void;
+  onValueChange: (value: DurationValue<AllowEmpty>) => void;
   placeholder: string;
-  value: AllowEmpty extends true ? number | undefined : number;
+  value: DurationValue<AllowEmpty>;
   mode?: 'seconds' | 'millis';
 }) {
   const baseMultiplier = mode === 'millis' ? 1000 : 1;
@@ -76,7 +78,7 @@ export function InputDuration<AllowEmpty extends boolean>({
     onValueChange(
       (typeof value === 'undefined' || typeof state.current.period === 'undefined'
         ? undefined
-        : state.current.period.multiplier * value * baseMultiplier) as AllowEmpty extends true ? number | undefined : number
+        : state.current.period.multiplier * value * baseMultiplier) as DurationValue<AllowEmpty>
     );
   }, [onValueChange, baseMultiplier]);
 
@@ -92,7 +94,7 @@ export function InputDuration<AllowEmpty extends boolean>({
     onValueChange(
       (typeof period === 'undefined' || typeof state.current.periodValue === 'undefined'
         ? undefined
-        : period.multiplier * state.current.periodValue * baseMultiplier) as AllowEmpty extends true ? number | undefined : number
+        : period.multiplier * state.current.periodValue * baseMultiplier) as DurationValue<AllowEmpty>
     );
   }, [onValueChange, baseMultiplier]);
 
@@ -100,7 +102,7 @@ export function InputDuration<AllowEmpty extends boolean>({
     <div className='flex'>
       <InputNumber
         onValueChange={handlePeriodValueChange}
-        value={periodValue as AllowEmpty extends true ? number | undefined : number}
+        value={periodValue as DurationValue<AllowEmpty>}
         // withButtons
         allowEmpty={allowEmpty}
         className='rounded-e-none border-e'
@@ -110,7 +112,7 @@ export function InputDuration<AllowEmpty extends boolean>({
         mode='number'
         options={periods.map(({ label, multiplier }) => ({ label, value: multiplier }))}
         onValueChange={handlePeriodChange}
-        value={period?.multiplier as number | (AllowEmpty extends true ? undefined : never)}
+        value={period?.multiplier as DurationValue<AllowEmpty>}
         allowEmpty={allowEmpty}
         placeholder='Period'
         className='rounded-s-none border-s'

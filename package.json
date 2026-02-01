@@ -54,6 +54,7 @@
     "docker:build": "docker build --tag uptime-blahaj:latest --progress plain .",
     "docker:start": "docker run --name uptime-blahaj -h uptime-blahaj -it --rm -p 3000:3000 -v ./.local:/config -u 1000:1000 uptime-blahaj:latest",
     "format": "biome format --write",
+    "format:full": "biome check --write",
     "lint": "biome lint --reporter=summary",
     "lint:full": "biome lint",
     "local": "npm run build && npm run start",

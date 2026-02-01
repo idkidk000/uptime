@@ -4,8 +4,8 @@ import { ServiceStatus } from '@/lib/types';
 
 export const baseNotifierParamsSchema = z.object({
   kind: z.string(),
-  address: z.url({ protocol: /^https?$/ }),
-  statuses: z.enum(ServiceStatus).array().optional(),
+  address: z.url({ protocol: /^https?$/ }).describe('Service URL'),
+  statuses: z.enum(ServiceStatus).array().optional().describe('Statuses at which notifications should be sent'),
 });
 
 export type BaseNotifierParams = z.infer<typeof baseNotifierParamsSchema>;

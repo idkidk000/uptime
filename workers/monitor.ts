@@ -111,7 +111,6 @@ async function checkService(service: ServiceWithState): Promise<void> {
       kind: updated.status,
       id: service.id,
       name: service.name,
-      // FIXME: kind of jank
       message: updated.current?.message ?? 'Monitor is paused',
       ...(updated.current && 'reason' in updated.current ? { reason: updated.current.reason } : {}),
     });

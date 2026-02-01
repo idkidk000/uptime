@@ -1,4 +1,4 @@
-import process from 'node:process';
+import process, { env } from 'node:process';
 import { ServerLogger } from '@/lib/logger/server';
 import * as Messaging from '@/workers/messaging';
 import * as Monitor from '@/workers/monitor';
@@ -16,6 +16,8 @@ function stop() {
 }
 
 function main() {
+  // don't validate certificates (this could have just been a fetch param)
+  env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   try {
     Messaging.start();
     Notifier.start();

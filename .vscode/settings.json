@@ -1,20 +1,30 @@
 {
   "[css]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": null
   },
   "[typescript]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": null
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": null
   },
+  "biome.lspBin": "node_modules/@biomejs/cli-linux-x64/biome",
   "editor.codeActionsOnSave": {
-    "source.fixAll.biome": "explicit",
+    "source.addMissingImports.ts": "never",
+    "source.biome": "never",
+    "source.fixAll.biome": "never",
+    "source.fixAll.ts": "never",
     "source.organizeImports": "never",
-    "source.organizeImports.biome": "explicit",
-    "source.sort.json": "explicit"
+    "source.organizeImports.biome": "never",
+    "source.organizeLinkDefinitions": "never",
+    "source.removeUnused.ts": "never",
+    "source.removeUnusedImports": "never",
+    "source.sort.json": "explicit",
+    "source.sortImports": "never"
   },
+  "editor.formatOnPaste": false,
   "editor.formatOnSaveMode": "file",
+  "editor.formatOnType": false,
   "files.associations": {
     "*.css": "tailwindcss"
   },

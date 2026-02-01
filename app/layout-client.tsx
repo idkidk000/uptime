@@ -19,9 +19,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: Infinity,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
+      // these options are actually refetch on x **if stale** (i.e. they were inactive then were invalidated via sse)
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: 'always',
     },
   },
 });
@@ -39,7 +40,7 @@ export default function RootLayoutClient({
           <TopNav />
           <main className='grid grid-cols-1 md:grid-cols-[minmax(0,26rem)_1fr] p-4 md:gap-4 md:mt-4'>
             <Activity mode={isMobile ? 'hidden' : 'visible'}>
-              <section className='flex flex-col gap-4'>
+              <section className='flex flex-col gap-4 @container/sidebar'>
                 <Button className='me-auto' as={Link} href='/add' size='lg'>
                   <Plus />
                   Add New Service

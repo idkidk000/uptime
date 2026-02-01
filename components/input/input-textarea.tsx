@@ -1,6 +1,8 @@
 import { type ChangeEvent, type ComponentProps, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
+export type TextAreaValue<AllowEmpty extends boolean> = string | (AllowEmpty extends true ? undefined : never);
+
 export function InputTextArea<AllowEmpty extends boolean = false>({
   className,
   onValueChange,
@@ -10,16 +12,16 @@ export function InputTextArea<AllowEmpty extends boolean = false>({
   cols = 1,
   ...props
 }: Omit<ComponentProps<'textarea'>, 'value'> & {
-  onValueChange: (value: AllowEmpty extends true ? string | undefined : string) => void;
+  onValueChange: (value: TextAreaValue<AllowEmpty>) => void;
   placeholder: string;
-  value: AllowEmpty extends true ? string | undefined : string;
+  value: TextAreaValue<AllowEmpty>;
   allowEmpty?: AllowEmpty;
 }) {
   // biome-ignore format: no
   const handleChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
     const value = event.currentTarget.value;
     onValueChange(
-      (allowEmpty && value === '' ? undefined : value) as AllowEmpty extends true ? string | undefined : string
+      (allowEmpty && value === '' ? undefined : value) as TextAreaValue<AllowEmpty>
     );
   }, [onValueChange, allowEmpty]);
 
