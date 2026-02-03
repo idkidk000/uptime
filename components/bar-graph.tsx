@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { RelativeDate } from '@/components/relative-date';
 import { useAppQueries } from '@/hooks/app-queries';
 import { toLocalIso } from '@/lib/date';
@@ -6,14 +7,13 @@ import { ServiceStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const statusClassNames: Record<ServiceStatus, string> = {
-  [ServiceStatus.Up]: 'fill-up',
-  [ServiceStatus.Down]: 'fill-down',
-  [ServiceStatus.Pending]: 'fill-pending',
-  [ServiceStatus.Paused]: 'fill-paused',
+  [ServiceStatus.Up]: 'stroke-up',
+  [ServiceStatus.Down]: 'stroke-down',
+  [ServiceStatus.Pending]: 'stroke-pending',
+  [ServiceStatus.Paused]: 'stroke-paused',
 };
 
 const viewboxHeight = 100;
-const radius = 10;
 const itemViewboxWidth = 40;
 
 export function BarGraph({
@@ -29,47 +29,46 @@ export function BarGraph({
 }) {
   const { settings } = useAppQueries();
   const viewboxWidth = itemViewboxWidth * settings.history.summaryItems;
-  const maxLatency =
-    history?.items
-      ?.filter((item): item is Required<MiniHistory['items'][number]> => typeof item.latency === 'number')
-      .reduce((acc, item) => Math.max(acc, item.latency), 0) ?? 0;
-  const mostCommonStatus = (history?.items
-    .reduce<number[]>((acc, item) => {
-      acc[item.status] = (acc[item.status] ?? 0) + 1;
-      return acc;
-    }, [])
-    .map((count, status) => ({ count, status }))
-    .toSorted((a, b) => b.count - a.count)
-    .at(0)?.status ?? ServiceStatus.Up) as ServiceStatus;
+  const strokeWidth = (viewboxWidth / settings.history.summaryItems) * barWidth;
+
+  const statusPaths = useMemo(() => {
+    const maxLatency =
+      history?.items
+        ?.filter((item): item is Required<MiniHistory['items'][number]> => typeof item.latency === 'number')
+        .reduce((acc, item) => Math.max(acc, item.latency), 0) ?? 0;
+
+    const itemGeoms =
+      history?.items.map(({ status, latency }, i) => ({
+        status,
+        x: (viewboxWidth / settings.history.summaryItems) * (i + 0.5),
+        height:
+          typeof latency === 'undefined'
+            ? viewboxHeight - strokeWidth
+            : (Math.ceil((10 * latency) / maxLatency) / 10) * (viewboxHeight - strokeWidth),
+      })) ?? [];
+
+    return [...new Set(itemGeoms?.map((item) => item.status))].map((status) => ({
+      status,
+      path: itemGeoms
+        .filter((item) => item.status === status)
+        .map(({ x, height }) => `M${x},${viewboxHeight - strokeWidth / 2} v${-height}`)
+        .join(' '),
+    }));
+  }, [history?.items, settings.history.summaryItems, strokeWidth, viewboxWidth]);
 
   return (
-    <div className={cn('flex flex-col w-full', className)}>
+    <div className={cn('flex flex-col w-full justify-center', className)}>
       <svg
         viewBox={`0 0 ${viewboxWidth} ${viewboxHeight}`}
         preserveAspectRatio='xMidYMid meet'
-        className={statusClassNames[mostCommonStatus]}
+        strokeLinecap='round'
+        strokeWidth={strokeWidth}
       >
         <title
           suppressHydrationWarning
         >{`History graph${history ? ` from ${toLocalIso(history.from, { endAt: 's' })} to ${toLocalIso(history.to, { endAt: 's' })}` : ''}`}</title>
-        {history?.items.map((item, i) => (
-          <rect
-            key={item.id}
-            width={Math.round((viewboxWidth / settings.history.summaryItems) * barWidth)}
-            height={Math.round(
-              typeof item.latency === 'undefined' ? viewboxHeight : (viewboxHeight / maxLatency) * item.latency
-            )}
-            x={Math.round(
-              (viewboxWidth / settings.history.summaryItems) *
-                (settings.history.summaryItems - history.items.length + i)
-            )}
-            y={Math.round(
-              typeof item.latency === 'undefined' ? 0 : viewboxHeight - (viewboxHeight / maxLatency) * item.latency
-            )}
-            rx={radius}
-            className={item.status === mostCommonStatus ? undefined : statusClassNames[item.status]}
-            suppressHydrationWarning
-          />
+        {statusPaths?.map(({ status, path }) => (
+          <path key={status} className={statusClassNames[status]} d={path} />
         ))}
       </svg>
       {withLabels && history && (

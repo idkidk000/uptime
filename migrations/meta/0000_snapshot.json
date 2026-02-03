@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "113c8899-0ca3-4b47-85b1-5e389629cc30",
+  "id": "a2993bca-fc2d-4eb9-89e5-6132caced12e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "group": {
@@ -40,7 +40,9 @@
       "indexes": {
         "group_name_unique": {
           "name": "group_name_unique",
-          "columns": ["name"],
+          "columns": [
+            "name"
+          ],
           "isUnique": true
         }
       },
@@ -73,8 +75,12 @@
           "name": "groupToNotifier_groupId_group_id_fk",
           "tableFrom": "groupToNotifier",
           "tableTo": "group",
-          "columnsFrom": ["groupId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "groupId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -82,15 +88,22 @@
           "name": "groupToNotifier_notifierId_notifier_id_fk",
           "tableFrom": "groupToNotifier",
           "tableTo": "notifier",
-          "columnsFrom": ["notifierId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "notifierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
         "groupToNotifier_groupId_notifierId_pk": {
-          "columns": ["groupId", "notifierId"],
+          "columns": [
+            "groupId",
+            "notifierId"
+          ],
           "name": "groupToNotifier_groupId_notifierId_pk"
         }
       },
@@ -140,7 +153,10 @@
       "indexes": {
         "ix_serviceId_createdAt": {
           "name": "ix_serviceId_createdAt",
-          "columns": ["serviceId", "createdAt"],
+          "columns": [
+            "serviceId",
+            "createdAt"
+          ],
           "isUnique": false
         }
       },
@@ -149,8 +165,12 @@
           "name": "history_serviceId_service_id_fk",
           "tableFrom": "history",
           "tableTo": "service",
-          "columnsFrom": ["serviceId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -233,7 +253,9 @@
       "indexes": {
         "notifier_name_unique": {
           "name": "notifier_name_unique",
-          "columns": ["name"],
+          "columns": [
+            "name"
+          ],
           "isUnique": true
         }
       },
@@ -295,6 +317,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "successesBeforeUp": {
+          "name": "successesBeforeUp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "retainCount": {
           "name": "retainCount",
           "type": "integer",
@@ -321,7 +350,9 @@
       "indexes": {
         "service_name_unique": {
           "name": "service_name_unique",
-          "columns": ["name"],
+          "columns": [
+            "name"
+          ],
           "isUnique": true
         }
       },
@@ -330,13 +361,76 @@
           "name": "service_groupId_group_id_fk",
           "tableFrom": "service",
           "tableTo": "group",
-          "columnsFrom": ["groupId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "groupId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set default",
           "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "serviceToTag": {
+      "name": "serviceToTag",
+      "columns": {
+        "serviceId": {
+          "name": "serviceId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tagId": {
+          "name": "tagId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "serviceToTag_serviceId_service_id_fk": {
+          "name": "serviceToTag_serviceId_service_id_fk",
+          "tableFrom": "serviceToTag",
+          "tableTo": "service",
+          "columnsFrom": [
+            "serviceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "serviceToTag_tagId_tag_id_fk": {
+          "name": "serviceToTag_tagId_tag_id_fk",
+          "tableFrom": "serviceToTag",
+          "tableTo": "tag",
+          "columnsFrom": [
+            "tagId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "serviceToTag_serviceId_tagId_pk": {
+          "columns": [
+            "serviceId",
+            "tagId"
+          ],
+          "name": "serviceToTag_serviceId_tagId_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
@@ -359,6 +453,13 @@
         },
         "failures": {
           "name": "failures",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "successes": {
+          "name": "successes",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -436,12 +537,48 @@
           "name": "state_id_service_id_fk",
           "tableFrom": "state",
           "tableTo": "service",
-          "columnsFrom": ["id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "tag": {
+      "name": "tag",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "tag_name_unique": {
+          "name": "tag_name_unique",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}

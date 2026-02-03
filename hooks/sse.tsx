@@ -4,7 +4,7 @@ import { createContext, type ReactNode, useContext, useEffect, useEffectEvent, u
 import SuperJSON from 'superjson';
 import type { Invalidate, Update } from '@/app/api/sse/route';
 import { useLogger } from '@/hooks/logger';
-import type { ToastMessage } from '@/lib/messaging';
+import type { ClientActionMessage, ToastMessage } from '@/lib/messaging';
 
 const RECONNECT_MILLIS = 15_000;
 const MAX_SSE_ERRORS = 3;
@@ -13,7 +13,7 @@ interface Context {
   subscribe<Kind extends SseMessageKind>(kind: Kind, callback: (message: SseMessage<Kind>) => void): () => void;
 }
 
-export type SseMessageKind = 'update' | 'invalidate' | 'toast' | 'reconnect';
+export type SseMessageKind = 'update' | 'invalidate' | 'toast' | 'reconnect' | 'client-action';
 export type SseMessage<Kind extends SseMessageKind> = Kind extends 'update'
   ? Update
   : Kind extends 'invalidate'
@@ -22,7 +22,9 @@ export type SseMessage<Kind extends SseMessageKind> = Kind extends 'update'
       ? ToastMessage
       : Kind extends 'reconnect'
         ? null
-        : never;
+        : Kind extends 'client-action'
+          ? ClientActionMessage
+          : never;
 
 // this is a bit jank because i don't have a way to narrow SseMessage in `callbacksRef`
 type Callback = (message: SseMessage<SseMessageKind>) => void;
@@ -80,7 +82,7 @@ export function SseProvider({ children }: { children: ReactNode }) {
       beginReconnectInterval();
       eventSource.close();
     });
-    for (const kind of ['invalidate', 'toast', 'update'] satisfies SseMessageKind[]) {
+    for (const kind of ['invalidate', 'toast', 'update', 'client-action'] satisfies SseMessageKind[]) {
       eventSource.addEventListener(kind, (event) => {
         const message: SseMessage<typeof kind> = SuperJSON.parse(event.data);
         for (const callback of callbacksRef.current.get(kind) ?? []) callback(message);
@@ -97,6 +99,14 @@ export function SseProvider({ children }: { children: ReactNode }) {
       return () => callbacksRef.current.get(kind)?.delete(untyped);
     },
   }), []);
+
+  // biome-ignore format: no
+  useEffect(() =>
+    value.subscribe('client-action', (message) => {
+      if (message.kind !== 'reload') return;
+      logger.info('received', message, 'reloading...');
+      window.location.reload();
+    }), [value]);
 
   return <Context value={value}>{children}</Context>;
 }

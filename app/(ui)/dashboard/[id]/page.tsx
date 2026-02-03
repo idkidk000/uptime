@@ -6,6 +6,7 @@ import { redirect, useParams } from 'next/navigation';
 import { useCallback, useEffect } from 'react';
 import { clearServiceHistory } from '@/actions/history';
 import { checkService, deleteService, togglePaused } from '@/actions/service';
+import { Badge } from '@/components/badge';
 import { BarGraph } from '@/components/bar-graph';
 import { Button, ButtonGroup } from '@/components/button';
 import { Card } from '@/components/card';
@@ -45,6 +46,15 @@ export default function DetailPage() {
           </a>
         )) || (
           <span className='font-semibold text-up'>{`${service.params.kind}: ${'recordType' in service.params ? `${service.params.recordType}: ` : ''}${service.params.address}${'port' in service.params ? `:${service.params.port}` : ''}`}</span>
+        )}
+        {service.tags.length && (
+          <span className='flex gap-4'>
+            {service.tags.map((tag) => (
+              <Badge size='sm' key={tag.id} variant='muted'>
+                {tag.name}
+              </Badge>
+            ))}
+          </span>
         )}
         <ConfirmModal message={`Are you sure you want to delete ${service.name}?`} onConfirm={handleDeleteClick}>
           <ButtonGroup className='max-md:*:px-0 max-md:*:grow'>

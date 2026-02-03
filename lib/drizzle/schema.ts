@@ -51,6 +51,7 @@ export const serviceTable = sqliteTable('service', {
   params: text({ mode: 'json' }).notNull().$type<MonitorParams>(),
   checkSeconds: integer().notNull(),
   failuresBeforeDown: integer().notNull(),
+  successesBeforeUp: integer().notNull(),
   retainCount: integer().notNull(),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer({ mode: 'timestamp' })
@@ -58,17 +59,22 @@ export const serviceTable = sqliteTable('service', {
     .$onUpdate(() => sql`(unixepoch())`),
 });
 
-/* export const tagTable = sqliteTable('tag',{
-  id: integer().primaryKey({autoIncrement:true}),
-  name:text().notNull().unique(),
-})
-
-export const serviceToTagTable = sqliteTable('serviceToTag',{
-  serviceId:integer().notNull().references(()=>serviceTable.id,{onDelete:'cascade',onUpdate:'cascade'}),
-  tagId:integer().notNull().references(()=>tagTable.id,{onDelete:'cascade',onUpdate:'cascade'}),
-},(table)=>[
-  primaryKey({columns:[table.serviceId,table.tagId]})
-]) */
+export const tagTable = sqliteTable('tag', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  name: text().notNull().unique(),
+});
+export const serviceToTagTable = sqliteTable(
+  'serviceToTag',
+  {
+    serviceId: integer()
+      .notNull()
+      .references(() => serviceTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    tagId: integer()
+      .notNull()
+      .references(() => tagTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.serviceId, table.tagId] })]
+);
 
 // biome-ignore format: no
 export const historyTable = sqliteTable('history', {
@@ -88,6 +94,7 @@ export const stateTable = sqliteTable('state', {
     .references(() => serviceTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   nextCheckAt: integer({ mode: 'timestamp' }).notNull(),
   failures: integer().notNull(),
+  successes: integer().notNull(),
   current: text({ mode: 'json' }).$type<MonitorResponse | null>(),
   uptime1d: real().notNull(),
   uptime30d: real().notNull(),

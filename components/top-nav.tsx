@@ -6,9 +6,11 @@ import { description, displayName } from '@/package.json';
 export function TopNav() {
   return (
     <nav className='flex justify-center bg-background-head p-4 items-center gap-2 shadow-md top-0 sticky z-10'>
-      <img src='/mascot.png' className='h-lh' alt={description} />
-      <h1 className='text-2xl font-semibold'>{displayName}</h1>
-      <Button as={Link} href='/' size='lg' className='ms-auto hidden md:inline-flex'>
+      <Link className='contents' href='/dashboard'>
+        <img src='/mascot.png' className='h-lh' alt={description} />
+        <h1 className='text-2xl font-semibold'>{displayName}</h1>
+      </Link>
+      <Button as={Link} href='/dashboard' size='lg' className='ms-auto hidden md:inline-flex'>
         <Gauge />
         Dashboard
       </Button>

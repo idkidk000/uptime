@@ -38,6 +38,7 @@
     "enabled": true,
     "includes": ["**", "!playground/**"],
     "rules": {
+      "a11y": "warn",
       "complexity": {
         "useArrowFunction": "off"
       },

@@ -2,6 +2,8 @@
 
 :root {
   color-scheme: light dark;
+  /* mozilla pls */
+  interpolate-size: allow-keywords;
 }
 
 @theme inline {
@@ -63,6 +65,12 @@
   }
   html:has(dialog[open]) {
     @apply overflow-hidden;
+  }
+  ::details-content {
+    @apply h-0 overflow-clip transition-[height,content-visibility] transition-discrete;
+  }
+  [open]::details-content {
+    height: auto;
   }
 }
 

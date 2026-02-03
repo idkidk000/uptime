@@ -18,14 +18,16 @@ const SOCKET_FALLBACK_ADDR = '127.0.0.1';
 const STARTUP_CACHE_MILLIS = 15_000;
 
 // actions which can only be carried out by the backend workers. most tasks should be fine in server actions
-export type ActionKind = 'check-service';
+export type ServerActionKind = 'check-service';
+export type ClientActionKind = 'reload';
 export type InvalidationKind =
   | 'group'
   | 'service-config'
   | 'service-history'
   | 'service-state'
   | 'settings'
-  | 'notifier';
+  | 'notifier'
+  | 'tag';
 export type ToastMessage =
   | {
       cat: 'toast';
@@ -49,10 +51,14 @@ export type StatusMessage = {
   reason?: MonitorDownReason;
   message: string;
 };
+export type ClientActionMessage = {
+  cat: 'client-action';
+  kind: ClientActionKind;
+};
 export type BusMessage =
   | {
-      cat: 'action';
-      kind: ActionKind;
+      cat: 'server-action';
+      kind: ServerActionKind;
       id: number;
     }
   | {
@@ -61,7 +67,8 @@ export type BusMessage =
       id: number;
     }
   | ToastMessage
-  | StatusMessage;
+  | StatusMessage
+  | ClientActionMessage;
 
 // FIXME: the generated type is correct but the def is horrible and keys have to be asserted, which defeats the point of this. may need to refactor Message
 type SubscriptionKey = BusMessage extends infer M

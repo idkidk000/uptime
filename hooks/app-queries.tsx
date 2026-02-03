@@ -6,22 +6,24 @@ import { getGroups } from '@/actions/group';
 import type { GroupSelectWithNotifiers } from '@/actions/group/schema';
 import { getServiceHistory } from '@/actions/history';
 import { getNotifiers } from '@/actions/notifier';
-import { getServices } from '@/actions/service';
+import { getServices, type ServiceSelectWithTagIds } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStatusCounts, type StatusCounts } from '@/actions/state';
+import { getTags } from '@/actions/tag';
 import { useLogger } from '@/hooks/logger';
 import { useSse } from '@/hooks/sse';
-import type { NotifierSelect, ServiceSelect, ServiceWithState, StateSelect } from '@/lib/drizzle/zod/schema';
+import type { NotifierSelect, ServiceWithState, StateSelect, TagSelect } from '@/lib/drizzle/zod/schema';
 import type { Settings } from '@/lib/settings/schema';
 
 interface Context {
   groups: GroupSelectWithNotifiers[];
-  services: ServiceSelect[];
+  services: ServiceSelectWithTagIds[];
   states: StateSelect[];
   statusCounts: StatusCounts;
   settings: Settings;
   settingsRef: RefObject<Settings>;
   notifiers: NotifierSelect[];
+  tags: TagSelect[];
 }
 
 /*
@@ -51,14 +53,16 @@ export function AppQueriesProvider({
   statusCounts,
   settings,
   notifiers,
+  tags,
 }: {
   children: ReactNode;
   groups: GroupSelectWithNotifiers[];
-  services: ServiceSelect[];
+  services: ServiceSelectWithTagIds[];
   states: StateSelect[];
   statusCounts: StatusCounts;
   settings: Settings;
   notifiers: NotifierSelect[];
+  tags: TagSelect[];
 }) {
   const queryClient = useQueryClient();
   const logger = useLogger(import.meta.url);
@@ -100,6 +104,12 @@ export function AppQueriesProvider({
     initialData: notifiers,
   });
 
+  const tagsQuery = useQuery({
+    queryKey: ['tag'],
+    queryFn: () => getTags(),
+    initialData: tags,
+  });
+
   const settingsRef = useRef(settingsQuery.data);
 
   useEffect(() => {
@@ -115,6 +125,7 @@ export function AppQueriesProvider({
       settings: settingsQuery.data,
       settingsRef,
       notifiers: notifiersQuery.data,
+      tags: tagsQuery.data,
     }),
     [
       groupsQuery.data,
@@ -123,6 +134,7 @@ export function AppQueriesProvider({
       statusCountsQuery.data,
       settingsQuery.data,
       notifiersQuery.data,
+      tagsQuery.data,
     ]
   );
 
@@ -163,22 +175,35 @@ export function useAppQueries(): Context {
   return context;
 }
 
-export function useServicesWithState(): ServiceWithState[] {
-  const { services, states } = useAppQueries();
-  const statesMap = useMemo(() => new Map((states ?? []).map((item) => [item.id, item])), [states]);
-  return useMemo(() => {
-    if (!services) return [];
-    return services.map((item) => ({ ...item, state: statesMap.get(item.id) ?? null }));
-  }, [services, statesMap]);
+export interface ServiceWithStateAndTags extends ServiceWithState {
+  tags: TagSelect[];
 }
 
-export function useServiceWithState(id: number | null | undefined): ServiceWithState | undefined {
-  const { services, states } = useAppQueries();
-  if (typeof id !== 'number') return;
-  const service = services.find((item) => item.id === id);
-  if (!service) return;
-  const state = states.find((item) => item.id === id) ?? null;
-  return { ...service, state };
+export function useServicesWithState(): ServiceWithStateAndTags[] {
+  const { services, states, tags } = useAppQueries();
+  const statesMap = useMemo(() => new Map((states ?? []).map((item) => [item.id, item])), [states]);
+  const tagsMap = useMemo(() => new Map((tags ?? []).map((item) => [item.id, item])), [tags]);
+  return useMemo(() => {
+    if (!services) return [];
+    return services.map((item) => ({
+      ...item,
+      state: statesMap.get(item.id) ?? null,
+      tags: item.tags.map((id) => tagsMap.get(id)).filter((tag) => typeof tag !== 'undefined'),
+    }));
+  }, [services, statesMap, tagsMap]);
+}
+
+export function useServiceWithState(id: number | null | undefined): ServiceWithStateAndTags | undefined {
+  const { services, states, tags } = useAppQueries();
+  const result = useMemo(() => {
+    if (typeof id !== 'number') return;
+    const service = services.find((item) => item.id === id);
+    if (!service) return;
+    const state = states.find((item) => item.id === id) ?? null;
+    const serviceTags = tags.filter((item) => service.tags.includes(item.id));
+    return { ...service, state, tags: serviceTags };
+  }, [id, services, states, tags]);
+  return result;
 }
 
 export function useServiceHistory(

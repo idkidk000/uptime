@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getStateApi, type StateApiSelect } from '@/lib/drizzle/queries';
+import { getStatusApi, type StatusApiSelect } from '@/lib/drizzle/queries';
 import type { ApiResponse } from '@/lib/types';
 
-export async function GET(): Promise<NextResponse<ApiResponse<StateApiSelect[]>>> {
+export async function GET(): Promise<NextResponse<ApiResponse<StatusApiSelect[]>>> {
   try {
-    const data = await getStateApi();
+    const data = await getStatusApi();
     return NextResponse.json({ ok: true, data });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });

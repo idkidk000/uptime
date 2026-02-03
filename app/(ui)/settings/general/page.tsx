@@ -17,9 +17,6 @@ export default function GeneralSettingsPage() {
   const logger = useLogger(import.meta.url);
   const { settings } = useAppQueries();
   const { showToast } = useToast();
-
-  logger.info(fieldsMeta);
-
   const form = useAppForm({
     defaultValues: settings,
     onSubmit(form) {

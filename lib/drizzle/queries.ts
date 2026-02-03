@@ -1,10 +1,11 @@
 import type { ResultSet } from '@libsql/client';
-import { type SQL, sql, type TableRelationalConfig } from 'drizzle-orm';
+import { eq, getTableColumns, type SQL, sql, type TableRelationalConfig } from 'drizzle-orm';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
 import { db } from '@/lib/drizzle';
-import type { MiniHistory } from '@/lib/drizzle/zod/schema';
-import { ServiceStatus } from '@/lib/types';
-
+import { groupTable, serviceTable, stateTable } from '@/lib/drizzle/schema';
+import type { MiniHistory, ServiceSelect, StateSelect } from '@/lib/drizzle/zod/schema';
+import { type Nullable, ServiceStatus } from '@/lib/types';
+import { omit } from '@/lib/utils';
 // passing a typed query to (db|tx).(all|get) returns unknown. seems like a drizzle bug
 
 export interface UptimeSelect {
@@ -121,4 +122,45 @@ export function getMiniHistory(
         order by createdAt asc
     )`)
     .then(([row]) => row);
+}
+
+export type StatusApiSelect = {
+  status: ServiceStatus;
+  names: string[];
+  count: number;
+};
+
+export function getStatusApi(): Promise<StatusApiSelect[]> {
+  return db
+    .select({
+      status: sql<ServiceStatus>`status`,
+      names: sql<string[]>`json_group_array(name)`.mapWith(jsonMapper),
+      count: sql<number>`count(1)`,
+    })
+    .from(sql`
+    (
+      select
+        sv.name,
+        st.status
+      from service as sv
+      inner join state as st
+        on st.id=sv.id
+    )`)
+    .groupBy(sql`status`);
+}
+
+export type StateApiSelect = Omit<ServiceSelect, 'params' | 'updatedAt'> &
+  Nullable<Omit<StateSelect, 'createdAt' | 'id' | 'miniHistory'>> & { groupName: string };
+
+export function getStateApi(serviceId?: number): Promise<StateApiSelect[]> {
+  return db
+    .select({
+      ...omit(getTableColumns(serviceTable), ['params', 'updatedAt']),
+      ...omit(getTableColumns(stateTable), ['createdAt', 'id', 'miniHistory']),
+      groupName: groupTable.name,
+    })
+    .from(serviceTable)
+    .innerJoin(groupTable, eq(groupTable.id, serviceTable.groupId))
+    .leftJoin(stateTable, eq(stateTable.id, serviceTable.id))
+    .where(typeof serviceId === 'number' ? eq(serviceTable.id, serviceId) : undefined);
 }

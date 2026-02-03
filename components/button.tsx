@@ -15,7 +15,7 @@ const variants = {
     'border-transparent bg-unknown hover:bg-unknown/75 active:bg-unknown/50 disabled:bg-unknown/25 disabled:text-dark/75 text-dark',
   muted:
     'border-foreground/10 bg-background-card hover:bg-background-card/75 active:bg-background-card/50 disabled:bg-background-card/25 disabled:text-foreground/75 text-foreground',
-  transparent: 'border-foreground/10',
+  ghost: 'border-foreground/10',
 } as const;
 
 export type ButtonVariant = keyof typeof variants;

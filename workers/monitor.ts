@@ -40,12 +40,13 @@ async function checkService(service: ServiceWithState): Promise<void> {
   const instance = getInstance(service);
   const current = instance ? await instance.check() : null;
   const failures = current?.ok ? 0 : (service.state?.failures ?? 0) + (current === null ? 0 : 1);
+  const successes = current?.ok ? (service.state?.successes ?? 0) + (current === null ? 0 : 1) : 0;
   const status =
     current === null
       ? ServiceStatus.Paused
-      : current.ok
+      : current.ok && successes >= service.successesBeforeUp
         ? ServiceStatus.Up
-        : failures >= service.failuresBeforeDown
+        : !current.ok && failures >= service.failuresBeforeDown
           ? ServiceStatus.Down
           : ServiceStatus.Pending;
 
@@ -70,6 +71,7 @@ async function checkService(service: ServiceWithState): Promise<void> {
     const row: Omit<StateInsert, 'id'> = {
       current,
       failures,
+      successes,
       miniHistory,
       nextCheckAt,
       latency1d,
@@ -144,7 +146,7 @@ export function start(): void {
     interval = setInterval(checkServices, POLL_MILLIS);
   }, STARTUP_DELAY_MILLIS);
 
-  messageClient.subscribe({ cat: 'action', kind: 'check-service' }, ({ id }) => checkServiceById(id));
+  messageClient.subscribe({ cat: 'server-action', kind: 'check-service' }, ({ id }) => checkServiceById(id));
 }
 
 export function stop(): void {

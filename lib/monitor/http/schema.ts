@@ -1,5 +1,5 @@
 import z from 'zod';
-import { baseMonitorParamsSchema } from '@/lib/monitor';
+import { baseMonitorParamsSchema, booleanNumberStringUnion } from '@/lib/monitor';
 
 export const queryKind = ['jsonata', 'xpath', 'regex'] as const;
 
@@ -16,7 +16,7 @@ export const httpMonitorParamsSchema = baseMonitorParamsSchema.extend({
           z.object({
             kind: z.enum(['jsonata', 'xpath']).describe('Query kind'),
             expression: z.string().describe('Query expression'),
-            expected: z.union([z.coerce.number(), z.coerce.boolean(), z.string()]).describe('Expected query result'),
+            expected: booleanNumberStringUnion,
           }),
           z.object({
             kind: z.literal('regex').describe('Query kind'),

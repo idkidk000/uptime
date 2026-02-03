@@ -1,5 +1,5 @@
 import z from 'zod';
-import { baseMonitorParamsSchema } from '@/lib/monitor';
+import { baseMonitorParamsSchema, booleanNumberStringUnion } from '@/lib/monitor';
 
 export const mqttMonitorParamsSchema = baseMonitorParamsSchema.extend({
   address: z.union([z.hostname(), z.ipv4(), z.ipv6()]).describe('Hostname or IP'),
@@ -16,7 +16,7 @@ export const mqttMonitorParamsSchema = baseMonitorParamsSchema.extend({
           z.object({
             kind: z.enum(['jsonata', 'xpath']).describe('Query kind'),
             expression: z.string().describe('Query expression'),
-            expected: z.union([z.coerce.number(), z.coerce.boolean(), z.string()]).describe('Expected query result'),
+            expected: booleanNumberStringUnion,
           }),
           z.object({
             kind: z.literal('regex').describe('Query kind'),

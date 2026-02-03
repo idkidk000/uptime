@@ -48,7 +48,7 @@ export function InputText<AllowEmpty extends boolean = false>({
       {withClear && value && (
         <Button
           className='col-start-1 row-start-1 ms-auto me-2 shadow-none border-0 text-foreground/50 hover:text-foreground'
-          variant='transparent'
+          variant='ghost'
           size='icon'
           onClick={handleClear}
         >

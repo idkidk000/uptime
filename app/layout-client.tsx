@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Activity, type ComponentProps, type ReactNode } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { ServiceList } from '@/components/service-list';
 import { TopNav } from '@/components/top-nav';
 import { AppQueriesProvider } from '@/hooks/app-queries';
@@ -40,13 +41,15 @@ export default function RootLayoutClient({
           <TopNav />
           <main className='grid grid-cols-1 md:grid-cols-[minmax(0,26rem)_1fr] p-4 md:gap-4 md:mt-4'>
             <Activity mode={isMobile ? 'hidden' : 'visible'}>
-              <section className='flex flex-col gap-4 @container/sidebar'>
-                <Button className='me-auto' as={Link} href='/add' size='lg'>
-                  <Plus />
-                  Add New Service
-                </Button>
+              <article className='flex flex-col gap-4 @container/sidebar'>
+                <Card variant='ghost' className='shrink-0'>
+                  <Button className='me-auto' as={Link} href='/add' size='lg'>
+                    <Plus />
+                    Add New Service
+                  </Button>
+                </Card>
                 <ServiceList />
-              </section>
+              </article>
             </Activity>
             {children}
           </main>

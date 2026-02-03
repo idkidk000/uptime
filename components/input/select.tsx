@@ -19,12 +19,14 @@ export function Select<
   placeholder,
   mode,
   options,
-  variant = 'transparent',
+  variant = 'ghost',
   className,
   children,
   allowEmpty,
   multi,
   alignment = 'center',
+  contain,
+  hideValue,
   ...props
 }: {
   onValueChange: (value: SelectValue<ValueType, AllowEmpty, Multi>) => void;
@@ -35,30 +37,30 @@ export function Select<
   allowEmpty?: AllowEmpty;
   multi?: Multi;
   alignment?: ComponentProps<typeof PopoverContent>['alignment'];
+  contain?: boolean;
+  hideValue?: boolean;
 } & Omit<ComponentProps<typeof PopoverTrigger>, 'role' | 'aria-valuenow' | 'value'>) {
   const selected = options.filter(
     (item) => (Array.isArray(value) && value.includes(item.value)) || item.value === value
   );
 
-  const handleClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      const clicked = event.currentTarget.dataset.value;
-      const typed = (
-        allowEmpty && clicked === 'undefined' ? undefined : mode === 'text' ? clicked : Number(clicked)
-      ) as SelectValue<ValueType, AllowEmpty, Multi>;
-      if (multi) {
-        const typedValue = (value ?? []) as ValueType[];
-        const typedClicked = typed as ValueType;
-        const next = typedValue.includes(typedClicked)
-          ? typedValue.filter((item) => item !== typedClicked)
-          : [...typedValue, typedClicked];
-        onValueChange(
-          (next.length === 0 && allowEmpty ? undefined : next) as SelectValue<ValueType, AllowEmpty, Multi>
-        );
-      } else onValueChange(typed);
-    },
-    [mode, onValueChange, allowEmpty, multi, value]
-  );
+  // biome-ignore format: no
+  const handleClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    const clicked = event.currentTarget.dataset.value;
+    const typed = (
+      allowEmpty && clicked === 'undefined' ? undefined : mode === 'text' ? clicked : Number(clicked)
+    ) as SelectValue<ValueType, AllowEmpty, Multi>;
+    if (multi) {
+      const typedValue = (value ?? []) as ValueType[];
+      const typedClicked = typed as ValueType;
+      const next = typedValue.includes(typedClicked)
+        ? typedValue.filter((item) => item !== typedClicked)
+        : [...typedValue, typedClicked];
+      onValueChange(
+        (next.length === 0 && allowEmpty ? undefined : next) as SelectValue<ValueType, AllowEmpty, Multi>
+      );
+    } else onValueChange(typed);
+  }, [mode, onValueChange, allowEmpty, multi, value]);
 
   return (
     <Popover>
@@ -69,30 +71,41 @@ export function Select<
         className={cn(selected.length === 0 && 'text-foreground/65', className)}
         {...props}
       >
-        {multi && selected.length
-          ? selected.map((item) => (
+        {hideValue ? (
+          placeholder
+        ) : multi && selected.length ? (
+          selected.length === options.length ? (
+            <Badge size='sm' variant='muted'>
+              All
+            </Badge>
+          ) : (
+            selected.map((item) => (
               <Badge key={item.value} size='sm' variant='muted'>
                 {item.label}
               </Badge>
             ))
-          : selected.length
-            ? selected.map((item) => item.label).join(', ')
-            : placeholder}
+          )
+        ) : selected.length ? (
+          selected.map((item) => item.label).join(', ')
+        ) : (
+          placeholder
+        )}
         <ChevronDown className='ms-auto' />
       </PopoverTrigger>
       <PopoverContent
         role='listbox'
         alignment={alignment}
         className={cn(
-          'open:flex flex-col gap-2 rounded-t-none border-t-0',
-          alignment === 'center' ? 'w-[calc(anchor-size(width)-2em)]' : 'w-[calc(anchor-size(width)-1em)]'
+          'open:flex flex-col gap-2',
+          contain && 'rounded-t-none border-t-0',
+          contain && (alignment === 'center' ? 'w-[calc(anchor-size(width)-2em)]' : 'w-[calc(anchor-size(width)-1em)]')
         )}
       >
         {[...(allowEmpty && !multi ? [{ label: '-', value: 'undefined' }] : []), ...options].map(({ label, value }) => (
           <PopoverClose
             key={value}
             data-value={value}
-            variant='transparent'
+            variant='ghost'
             onClick={handleClick}
             role='listitem'
             className={cn(

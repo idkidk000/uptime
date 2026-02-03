@@ -9,20 +9,9 @@
     "editor.defaultFormatter": null
   },
   "biome.lspBin": "node_modules/@biomejs/cli-linux-x64/biome",
-  "editor.codeActionsOnSave": {
-    "source.addMissingImports.ts": "never",
-    "source.biome": "never",
-    "source.fixAll.biome": "never",
-    "source.fixAll.ts": "never",
-    "source.organizeImports": "never",
-    "source.organizeImports.biome": "never",
-    "source.organizeLinkDefinitions": "never",
-    "source.removeUnused.ts": "never",
-    "source.removeUnusedImports": "never",
-    "source.sort.json": "explicit",
-    "source.sortImports": "never"
-  },
+  "editor.codeActionsOnSave": [],
   "editor.formatOnPaste": false,
+  "editor.formatOnSave": false,
   "editor.formatOnSaveMode": "file",
   "editor.formatOnType": false,
   "files.associations": {

@@ -27,6 +27,18 @@ export const baseMonitorParamsSchema = z.object({
     .optional(),
 });
 
+const RE_NUMBER = /^-?\d+(?:\.\d+)?$/;
+
+export const booleanNumberStringUnion = z.union([z.boolean(), z.number(), z.string()]).transform((value) => {
+  if (typeof value === 'boolean' || typeof value === 'number') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  if (RE_NUMBER.exec(value)) return Number(value);
+  if (value.startsWith('"') && value.endsWith('"')) return value.slice(1, value.length - 1);
+  if (value.startsWith("'") && value.endsWith("'")) return value.slice(1, value.length - 1);
+  return value;
+});
+
 export type BaseMonitorParams = z.infer<typeof baseMonitorParamsSchema>;
 
 export type MonitorResponse<Kind extends string = string> = { kind: Kind; message: string } & (

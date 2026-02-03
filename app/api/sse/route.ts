@@ -4,10 +4,11 @@ import SuperJSON from 'superjson';
 import { getGroups } from '@/actions/group';
 import type { GroupSelectWithNotifiers } from '@/actions/group/schema';
 import { getNotifiers } from '@/actions/notifier';
-import { getServices } from '@/actions/service';
+import { getServices, type ServiceSelectWithTagIds } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates } from '@/actions/state';
-import type { NotifierSelect, ServiceSelect, StateSelect } from '@/lib/drizzle/zod/schema';
+import { getTags } from '@/actions/tag';
+import type { NotifierSelect, StateSelect, TagSelect } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { type InvalidationKind as InvalidateKind, MessageClient } from '@/lib/messaging';
 import { SettingsClient } from '@/lib/settings';
@@ -15,10 +16,11 @@ import type { Settings } from '@/lib/settings/schema';
 
 export type Update = { ids: number[] } & (
   | { kind: 'group'; data: GroupSelectWithNotifiers[] }
-  | { kind: 'service-config'; data: ServiceSelect[] }
+  | { kind: 'service-config'; data: ServiceSelectWithTagIds[] }
   | { kind: 'service-state'; data: StateSelect[] }
   | { kind: 'settings'; data: Settings }
   | { kind: 'notifier'; data: NotifierSelect[] }
+  | { kind: 'tag'; data: TagSelect[] }
 );
 
 export interface Invalidate {
@@ -59,6 +61,7 @@ async function sendClientUpdates(destructuredInvalidations: { kind: InvalidateKi
       else if (kind === 'notifier') messages.push(['update', { kind, ids, data: await getNotifiers(ids) }]);
       else if (kind === 'service-history') messages.push(['invalidate', { kind, ids }]);
       else if (kind === 'settings') messages.push(['update', { kind, ids, data: await getSettings() }]);
+      else if (kind === 'tag') messages.push(['update', { kind, ids, data: await getTags(ids) }]);
       else throw new Error(`unhandled invalidation kind: ${kind satisfies never as string}`);
     }
     const messageString = messages
@@ -87,6 +90,13 @@ messageClient.subscribe({ cat: 'invalidation' }, (message) => {
 messageClient.subscribe({ cat: 'toast' }, (message) => {
   if (!streamControllers.size) return;
   const messageString = `event: toast\ndata: ${SuperJSON.stringify(message)}\n\n`;
+  for (const controller of streamControllers) controller.enqueue(messageString);
+});
+
+// as are client actions (reload)
+messageClient.subscribe({ cat: 'client-action' }, (message) => {
+  if (!streamControllers.size) return;
+  const messageString = `event: client-action\ndata: ${SuperJSON.stringify(message)}\n\n`;
   for (const controller of streamControllers) controller.enqueue(messageString);
 });
 

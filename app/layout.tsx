@@ -7,6 +7,7 @@ import { getNotifiers } from '@/actions/notifier';
 import { getServices } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStatusCounts } from '@/actions/state';
+import { getTags } from '@/actions/tag';
 import RootLayoutClient from '@/app/layout-client';
 import { IsMobileProvider } from '@/hooks/mobile';
 import { SseProvider } from '@/hooks/sse';
@@ -42,6 +43,7 @@ export default async function RootLayout({
   const stateCounts = await getStatusCounts();
   const settings = await getSettings();
   const notifiers = await getNotifiers();
+  const tags = await getTags();
   return (
     <html lang='en'>
       <body
@@ -57,6 +59,7 @@ export default async function RootLayout({
                 statusCounts={stateCounts}
                 settings={settings}
                 notifiers={notifiers}
+                tags={tags}
               >
                 {children}
               </RootLayoutClient>

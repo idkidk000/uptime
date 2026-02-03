@@ -1,115 +1,34 @@
 'use client';
 
-import { ChevronDown, ListFilter, Pause, Play } from 'lucide-react';
+import { ChevronUp, ListFilter, Pause, Play } from 'lucide-react';
 import Link from 'next/link';
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { setPausedMulti } from '@/actions/service';
+import { Badge } from '@/components/badge';
 import { BarGraph } from '@/components/bar-graph';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { InputText } from '@/components/input/input-text';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/popover';
+import { Select } from '@/components/input/select';
 import { StatusBadge } from '@/components/status-badge';
 import { useAppQueries, useServicesWithState } from '@/hooks/app-queries';
-import type { ServiceWithState } from '@/lib/drizzle/zod/schema';
 import { ServiceStatus } from '@/lib/types';
 import { cn, enumEntries } from '@/lib/utils';
 
 interface Filter {
   search: string | null;
   status: ServiceStatus[];
-  active: boolean[];
-}
-
-function FilterStateButton({
-  filter,
-  setFilter,
-  label,
-  status,
-}: {
-  filter: Filter;
-  setFilter: Dispatch<SetStateAction<Filter>>;
-  label: string;
-  status: ServiceStatus;
-}) {
-  // biome-ignore lint/correctness/useExhaustiveDependencies(setFilter): state setters are stable
-  const handleClick = useCallback(() => {
-    setFilter((prev) => ({
-      ...prev,
-      status: prev.status.includes(status) ? prev.status.filter((item) => item !== status) : [...prev.status, status],
-    }));
-  }, [status]);
-
-  return (
-    <Button variant={filter.status.includes(status) ? 'up' : 'muted'} onClick={handleClick} className='py-0'>
-      {label}
-    </Button>
-  );
-}
-
-function FilterActiveButton({
-  filter,
-  setFilter,
-  active,
-}: {
-  filter: Filter;
-  setFilter: Dispatch<SetStateAction<Filter>>;
-  active: boolean;
-}) {
-  // biome-ignore lint/correctness/useExhaustiveDependencies(setFilter): state setters are stable
-  const handleClick = useCallback(() => {
-    setFilter((prev) => ({
-      ...prev,
-      active: prev.active.includes(active) ? prev.active.filter((item) => item !== active) : [...prev.active, active],
-    }));
-  }, [active]);
-
-  return (
-    <Button variant={filter.active.includes(active) ? 'up' : 'muted'} onClick={handleClick} className='py-0'>
-      {(active && 'Active') || 'Paused'}
-    </Button>
-  );
-}
-
-function ServiceListItem({
-  id,
-  state,
-  name,
-  selection,
-  setSelection,
-}: ServiceWithState & { selection: number[] | null; setSelection: Dispatch<SetStateAction<number[] | null>> }) {
-  // biome-ignore format: no
-  // biome-ignore lint/correctness/useExhaustiveDependencies(setSelection): state setters are stable
-  const handleCheckChange = useCallback(() => setSelection((prev) =>
-    prev === null ? null : prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-  ), [id]);
-
-  return (
-    <li key={id} className={cn('grid grid-cols-subgrid col-start-2', selection === null ? 'col-span-3' : 'col-span-4')}>
-      {selection !== null && (
-        <input type='checkbox' checked={selection?.includes(id) ?? false} onChange={handleCheckChange} />
-      )}
-      <Link href={`/dashboard/${id}`} className='grid grid-cols-subgrid items-center col-span-3'>
-        <StatusBadge
-          size='sm'
-          status={state?.status}
-          className='me-auto'
-          suppressHydrationWarning
-        >{`${typeof state?.uptime1d === 'number' ? Math.round(state?.uptime1d) : '0'}%`}</StatusBadge>
-        <h4 className='shrink-0 me-auto'>{name}</h4>
-        <BarGraph history={state?.miniHistory} className='min-h-lh max-h-lh' />
-      </Link>
-    </li>
-  );
+  tags: number[];
 }
 
 export function ServiceList() {
+  const { groups, tags } = useAppQueries();
   const services = useServicesWithState();
-  const { groups } = useAppQueries();
-  const [filter, setFilter] = useState<Filter>({ active: [], search: null, status: [] });
+  const [filter, setFilter] = useState<Filter>({ search: null, status: [], tags: [] });
   const [selection, setSelection] = useState<number[] | null>(null);
   const selectionRef = useRef(selection);
   const servicesRef = useRef(services);
+  const ulRef = useRef<HTMLUListElement | null>(null);
 
   useEffect(() => {
     selectionRef.current = selection;
@@ -117,20 +36,18 @@ export function ServiceList() {
   useEffect(() => {
     servicesRef.current = services;
   }, [services]);
-
   const handleSelectClick = useCallback(() => setSelection((prev) => (prev === null ? [] : null)), []);
 
   const handleSearchChange = useCallback((search: string) => {
     setFilter((prev) => ({ ...prev, search: search || null }));
   }, []);
 
-  const handleClearFilterClick = useCallback(() => setFilter({ active: [], search: null, status: [] }), []);
+  const handleClearFilterClick = useCallback(() => setFilter({ search: null, status: [], tags: [] }), []);
 
-  const handleSelectAllClick = useCallback(
-    () =>
-      setSelection((prev) => (prev === null ? null : prev.length ? [] : servicesRef.current.map((item) => item.id))),
-    []
-  );
+  // biome-ignore format: no
+  const handleSelectAllClick = useCallback(() =>
+    setSelection((prev) => (prev === null ? null : prev.length ? [] : servicesRef.current.map((item) => item.id))),
+  []);
 
   const handlePauseSelectionClick = useCallback(() => {
     if (!selectionRef.current?.length) return;
@@ -144,12 +61,33 @@ export function ServiceList() {
     setSelection(null);
   }, []);
 
+  // biome-ignore format: no
+  const handleStatusFilterChange = useCallback((status: ServiceStatus[]) =>
+    setFilter((prev) => ({ ...prev, status })),
+  []);
+
+  // biome-ignore format: no
+  const handleTagFilterChange = useCallback((tags: number[]) =>
+    setFilter((prev) => ({ ...prev, tags })),
+  []);
+
+  const handleGroupSelectChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const id = Number(event.currentTarget.dataset.id);
+    setSelection((prev) => (prev?.includes(id) ? prev.filter((item) => item !== id) : [...(prev ?? []), id]));
+  }, []);
+
+  const handleDetailsToggle = useCallback(() => {
+    if (!ulRef.current) return;
+    const elems = [...ulRef.current.querySelectorAll<HTMLDetailsElement>('details')];
+    if (elems.some((elem) => elem.open)) return;
+    elems[0].open = true;
+  }, []);
+
   const groupsWithServices = useMemo(() => {
+    const search = filter.search?.toLocaleLowerCase();
     const visibleServices = services
       .filter(
-        (service) =>
-          (filter.active.length === 0 || filter.active.includes(service.active)) &&
-          (filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1))
+        (service) => filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1)
       )
       .toSorted((a, b) => a.name.localeCompare(b.name));
 
@@ -160,18 +98,19 @@ export function ServiceList() {
         services: visibleServices.filter(
           (service) =>
             service.groupId === group.id &&
-            (filter.search === null ||
-              group.name.toLocaleLowerCase().includes(filter.search.toLocaleLowerCase()) ||
-              service.name.toLocaleLowerCase().includes(filter.search.toLocaleLowerCase()))
+            (typeof search === 'undefined' ||
+              group.name.toLocaleLowerCase().includes(search) ||
+              service.name.toLocaleLowerCase().includes(search) ||
+              service.tags.some((tag) => tag.name.toLocaleLowerCase().includes(search)))
         ),
       }))
       .filter((group) => group.services.length);
   }, [filter, groups, services]);
 
   return (
-    <Card className='p-0 flex flex-col'>
-      <section className='bg-background-head p-4 flex flex-col gap-2 rounded-t-xl'>
-        <div className='flex justify-between'>
+    <Card className='p-0 flex-col group' data-select={selection !== null || undefined}>
+      <header className='bg-background-head p-4 flex flex-col gap-2 rounded-t-xl'>
+        <div className='flex gap-4 justify-between'>
           <Button variant='muted' onClick={handleSelectClick}>
             Select
           </Button>
@@ -181,74 +120,97 @@ export function ServiceList() {
             placeholder='Search'
             value={filter.search ?? ''}
             withClear
+            size={18}
+            className='grow shrink'
           />
         </div>
         <div className='flex gap-2'>
           <Button
             variant='muted'
-            // aspect-square doesn't work in chromium
-            className={cn((filter.active.length || filter.search !== null || filter.status.length) && 'border-up')}
+            className={cn((filter.search !== null || filter.status.length) && 'border-up')}
             size='icon'
             onClick={handleClearFilterClick}
           >
             <ListFilter />
           </Button>
-          <Popover>
-            <PopoverTrigger variant='muted' className={filter.status.length ? 'border-up' : undefined}>
-              Status
-              <ChevronDown />
-            </PopoverTrigger>
-            <PopoverContent className='open:flex flex-col gap-2'>
-              {enumEntries(ServiceStatus).map(([label, status]) => (
-                <FilterStateButton key={status} filter={filter} label={label} setFilter={setFilter} status={status} />
-              ))}
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger variant='muted' className={filter.active.length ? 'border-up' : undefined}>
-              Active
-              <ChevronDown />
-            </PopoverTrigger>
-            <PopoverContent className='open:flex flex-col gap-2'>
-              {[true, false].map((active) => (
-                <FilterActiveButton key={Number(active)} active={active} filter={filter} setFilter={setFilter} />
-              ))}
-            </PopoverContent>
-          </Popover>
-          <Button variant='muted'>Tags</Button>
+          <Select
+            mode='number'
+            multi
+            onValueChange={handleStatusFilterChange}
+            options={enumEntries(ServiceStatus).map(([label, value]) => ({ label, value }))}
+            value={filter.status}
+            placeholder='Status'
+            variant='muted'
+            className={cn(filter.status.length && 'border-up')}
+            hideValue
+          />
+          <Select
+            mode='number'
+            multi
+            onValueChange={handleTagFilterChange}
+            options={tags.map(({ id, name }) => ({ label: name, value: id }))}
+            value={filter.tags}
+            placeholder='Tags'
+            variant='muted'
+            className={cn(filter.tags.length && 'border-up')}
+            hideValue
+          />
         </div>
-        {selection !== null && (
-          <div className={cn('flex gap-2 items-center transition-in-right')}>
-            <input type='checkbox' checked={selection?.length > 0} onChange={handleSelectAllClick} />
-            <Button variant='muted' onClick={handlePauseSelectionClick}>
-              <Pause />
-              Pause
-            </Button>
-            <Button variant='muted' onClick={handleResumeSelectionClick}>
-              <Play />
-              Resume
-            </Button>
-            <span className='text-foreground/75'>{`${selection?.length ?? 0} selected`}</span>
-          </div>
-        )}
-      </section>
-      <ul
-        //TODO: transition height on filter
-        className={cn(
-          'grid p-4 overflow-y-auto gap-4',
-          selection === null ? 'grid-cols-[auto_auto_auto_1fr]' : 'grid-cols-[auto_auto_auto_auto_1fr]'
-        )}
-      >
-        {groupsWithServices.map((group) => {
-          return (
-            <div className='contents' key={group.id}>
-              <li className='col-span-full font-semibold'>{group.name}</li>
-              {group.services.map((service) => (
-                <ServiceListItem key={service.id} {...service} selection={selection} setSelection={setSelection} />
-              ))}
-            </div>
-          );
-        })}
+        <div className='hidden gap-2 items-center transition-in-right group-data-select:flex'>
+          <input type='checkbox' checked={Boolean(selection?.length)} onChange={handleSelectAllClick} />
+          <Button variant='muted' onClick={handlePauseSelectionClick}>
+            <Pause />
+            Pause
+          </Button>
+          <Button variant='muted' onClick={handleResumeSelectionClick}>
+            <Play />
+            Resume
+          </Button>
+          <span className='text-foreground/75'>{`${selection?.length ?? 0} selected`}</span>
+        </div>
+      </header>
+      <ul className='flex flex-col gap-2 group p-4 select-none' ref={ulRef}>
+        {groupsWithServices.map((group, i) => (
+          <li key={group.id}>
+            <details
+              open={i === 0 || undefined}
+              className='group max-h-lh open:max-h-full transion-[max-height] duration-500'
+              name='services'
+              onToggle={handleDetailsToggle}
+            >
+              <summary className='font-semibold flex gap-4 -ms-[5px]'>
+                <ChevronUp className='in-open:rotate-180 transition-[rotate] duration-150' />
+                {group.name}
+                <Badge variant='muted' size='sm'>
+                  {group.services.length}
+                </Badge>
+              </summary>
+              <ul className='grid grid-cols-[auto_auto_2fr_3fr] gap-4 pt-2'>
+                {group.services.map((service) => (
+                  <li key={service.id} className='contents'>
+                    <input
+                      type='checkbox'
+                      className='invisible opacity-0 group-data-select:visible group-data-select:opacity-100 transition-[opacity,visibility] transition-discrete duration-150'
+                      data-id={service.id}
+                      onChange={handleGroupSelectChange}
+                      checked={selection?.includes(service.id) ?? false}
+                    />
+                    <Link href={`/dashboard/${service.id}`} className='contents'>
+                      <StatusBadge
+                        size='sm'
+                        status={service.state?.status}
+                        className='me-auto'
+                      >{`${typeof service.state?.uptime1d === 'number' ? Math.round(service.state?.uptime1d) : '0'}%`}</StatusBadge>
+                      <h4 className='truncate'>{service.name}</h4>
+                      {/* TODO: show tags. maybe wrap h4 in an outer and anchor to top right of inner so they can overlap the bar graph */}
+                      <BarGraph history={service.state?.miniHistory} className='min-h-lh max-h-lh' />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </li>
+        ))}
       </ul>
     </Card>
   );

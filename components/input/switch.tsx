@@ -9,7 +9,7 @@ export function Switch<AllowEmpty extends boolean = false>({
   onValueChange,
   onClick,
   className,
-  variant = 'transparent',
+  variant = 'ghost',
   size = 'icon',
   allowEmpty,
   ...props

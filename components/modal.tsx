@@ -163,6 +163,7 @@ export function ModalContent({
     );
 
   return (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: be less silly
     <dialog
       ref={modalRef}
       className={merged}

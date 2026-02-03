@@ -120,6 +120,14 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
               />
             )}
           </form.AppField>
+          <form.AppField name='successesBeforeUp'>
+            {(field) => (
+              <field.FormInputNumber
+                label='Min successes'
+                description='Consecutive successes before the service is considered up'
+              />
+            )}
+          </form.AppField>
           <form.AppField name='retainCount'>
             {(field) => (
               <field.FormInputNumber label='Retain count' max={999999} description='Number of history items to keep' />
@@ -221,7 +229,6 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
               />
             )}
           </form.AppField>
-          {/* FIXME: this is boolean for regex and number|boolean|string for other. using a union of z.coerce which is quite problematic */}
           <form.AppField name='params.upWhen.query.expected'>
             {(field) => <field.FormInputText fieldsMeta={paramsFieldsMeta} allowEmpty />}
           </form.AppField>

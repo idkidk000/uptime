@@ -3,7 +3,8 @@
 
 import { eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle';
-import { serviceTable } from '@/lib/drizzle/schema';
+import { jsonMapper } from '@/lib/drizzle/queries';
+import { serviceTable, serviceToTagTable } from '@/lib/drizzle/schema';
 import {
   type ServiceInsert,
   type ServiceSelect,
@@ -16,15 +17,24 @@ import { omit, pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 
-export async function getServices(serviceIds?: number[]): Promise<ServiceSelect[]> {
+export interface ServiceSelectWithTagIds extends ServiceSelect {
+  tags: number[];
+}
+
+export async function getServices(serviceIds?: number[]): Promise<ServiceSelectWithTagIds[]> {
   return await db
-    .select()
+    .select({
+      ...getTableColumns(serviceTable),
+      tags: sql<number[]>`json_group_array(${serviceToTagTable.tagId})`.mapWith(jsonMapper),
+    })
     .from(serviceTable)
-    .where(serviceIds ? inArray(serviceTable.id, serviceIds) : undefined);
+    .leftJoin(serviceToTagTable, eq(serviceToTagTable.serviceId, serviceTable.id))
+    .where(serviceIds ? inArray(serviceTable.id, serviceIds) : undefined)
+    .groupBy(serviceTable.id);
 }
 
 export async function checkService(id: number): Promise<void> {
-  messageClient.send({ cat: 'action', kind: 'check-service', id });
+  messageClient.send({ cat: 'server-action', kind: 'check-service', id });
 }
 
 export async function togglePaused(id: number, force?: boolean): Promise<void> {
@@ -32,7 +42,10 @@ export async function togglePaused(id: number, force?: boolean): Promise<void> {
     .update(serviceTable)
     .set({ active: typeof force === 'boolean' ? force : sql`iif(active, 0, 1)` })
     .where(eq(serviceTable.id, id));
-  messageClient.send({ cat: 'invalidation', kind: 'service-config', id }, { cat: 'action', kind: 'check-service', id });
+  messageClient.send(
+    { cat: 'invalidation', kind: 'service-config', id },
+    { cat: 'server-action', kind: 'check-service', id }
+  );
 }
 
 export async function setPausedMulti(ids: number[], pause: boolean): Promise<void> {
@@ -42,7 +55,7 @@ export async function setPausedMulti(ids: number[], pause: boolean): Promise<voi
       (id) =>
         [
           { cat: 'invalidation', kind: 'service-config', id },
-          { cat: 'action', kind: 'check-service', id },
+          { cat: 'server-action', kind: 'check-service', id },
         ] satisfies BusMessage[]
     )
   );

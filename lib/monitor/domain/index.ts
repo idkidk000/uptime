@@ -25,13 +25,12 @@ export class DomainMonitor extends Monitor<DomainMonitorParams> {
       const url = `https://www.rdap.net/domain/${domain}`;
       const controller = new AbortController();
       const { promise, reject, resolve } = Promise.withResolvers<never>();
-      const timeout = setTimeout(
-        () => {
-          controller.abort();
-          reject('timeout');
-        },
-        (this.params.upWhen?.latency ?? this.settingsClient.current.monitor.defaultTimeout) + 100
-      );
+      const maxLatency = this.params.upWhen?.latency ?? this.settingsClient.current.monitor.defaultTimeout;
+      // biome-ignore format: no
+      const timeout = setTimeout(() => {
+        controller.abort();
+        reject(`Timed out after ${maxLatency}ms`);
+      }, maxLatency );
       const started = performance.now();
       // fetch will throw on abort signal, though it may not be immediate (i.e. if the remote does not respond at all)
       // Promise.race works around this and leaves the fetch dangling until it hits some unknown timeout
