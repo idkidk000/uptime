@@ -109,7 +109,7 @@ export function Select<
             onClick={handleClick}
             role='listitem'
             className={cn(
-              'hover:bg-background py-0',
+              'hover:bg-background py-0 shadow-none border-transparent',
               selected.find((item) => item.value === value) && 'bg-up border-up text-dark hover:bg-up'
             )}
           >

@@ -1,14 +1,14 @@
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
+import type { WrappedApiResponse } from '@/app/api/types';
 import { db } from '@/lib/drizzle';
 import { historySummaryView } from '@/lib/drizzle/schema';
 import type { HistorySummarySelect } from '@/lib/drizzle/zod/schema';
-import type { ApiResponse } from '@/lib/types';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ApiResponse<HistorySummarySelect[]>>> {
+): WrappedApiResponse<HistorySummarySelect[]> {
   try {
     const { id: idString } = await params;
     const id = Number(idString);
@@ -17,7 +17,10 @@ export async function GET(
       .from(historySummaryView)
       .where(eq(historySummaryView.serviceId, id));
     return NextResponse.json({ ok: true, data });
-  } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error : new Error(`${error}`) },
+      { status: 500 }
+    );
   }
 }

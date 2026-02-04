@@ -8,6 +8,7 @@ import { getServices, type ServiceSelectWithTagIds } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates } from '@/actions/state';
 import { getTags } from '@/actions/tag';
+import type { ActionResponse } from '@/actions/types';
 import type { NotifierSelect, StateSelect, TagSelect } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { type InvalidationKind as InvalidateKind, MessageClient } from '@/lib/messaging';
@@ -54,14 +55,22 @@ function timeoutCallback() {
 async function sendClientUpdates(destructuredInvalidations: { kind: InvalidateKind; ids: number[] }[]) {
   try {
     const messages: ([event: 'invalidate', data: Invalidate] | [event: 'update', data: Update])[] = [];
+    async function handleUpdate<Kind extends Update['kind'], Narrowed extends Update = Extract<Update, { kind: Kind }>>(
+      update: Omit<Narrowed, 'data'>,
+      promise: ActionResponse<Narrowed['data']>
+    ) {
+      const response = await promise;
+      if (response.ok) messages.push(['update', { ...update, data: response.data } as Narrowed]);
+      else logger.error(update.kind, response.error);
+    }
     for (const { kind, ids } of destructuredInvalidations) {
-      if (kind === 'group') messages.push(['update', { kind, ids, data: await getGroups(ids) }]);
-      else if (kind === 'service-config') messages.push(['update', { kind, ids, data: await getServices(ids) }]);
-      else if (kind === 'service-state') messages.push(['update', { kind, ids, data: await getServiceStates(ids) }]);
-      else if (kind === 'notifier') messages.push(['update', { kind, ids, data: await getNotifiers(ids) }]);
+      if (kind === 'group') await handleUpdate({ kind, ids }, getGroups(ids));
+      else if (kind === 'service-config') await handleUpdate({ kind, ids }, getServices(ids));
+      else if (kind === 'service-state') await handleUpdate({ kind, ids }, getServiceStates(ids));
+      else if (kind === 'notifier') await handleUpdate({ kind, ids }, getNotifiers(ids));
+      else if (kind === 'settings') await handleUpdate({ kind, ids }, getSettings());
+      else if (kind === 'tag') await handleUpdate({ kind, ids }, getTags(ids));
       else if (kind === 'service-history') messages.push(['invalidate', { kind, ids }]);
-      else if (kind === 'settings') messages.push(['update', { kind, ids, data: await getSettings() }]);
-      else if (kind === 'tag') messages.push(['update', { kind, ids, data: await getTags(ids) }]);
       else throw new Error(`unhandled invalidation kind: ${kind satisfies never as string}`);
     }
     const messageString = messages

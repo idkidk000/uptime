@@ -53,32 +53,56 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
 
   const form = useAppForm({
     defaultValues,
-    onSubmit({ value: { tags, ...value } }) {
+    async onSubmit({ value: { tags, ...value } }) {
       logger.info('submit', value);
-      if (props.mode === 'add' || props.mode === 'clone')
-        addService(value, true)
-          .then((id) => (tags ? setTags(id, tags).then(() => id) : id))
-          .then((id) => {
-            showToast(`Added ${value.name}`, '', ServiceStatus.Up);
-            setNavigateTo(`/dashboard/${id}`);
-          })
-          .catch((err) => {
-            logger.error('Error adding service', err);
-            showToast('Error adding service', String(err), ServiceStatus.Down);
-          });
-      if (props.mode === 'edit')
-        editService({ ...value, id: props.id }, true)
-          .then(() => {
-            if (tags) setTags(props.id, tags);
-          })
-          .then(() => {
-            showToast(`Updated ${value.name}`, '', ServiceStatus.Up);
-            setNavigateTo(`/dashboard/${props.id}`);
-          })
-          .catch((err) => {
-            logger.error('Error updating service', err);
-            showToast('Error updating service', String(err), ServiceStatus.Down);
-          });
+      switch (props.mode) {
+        case 'edit': {
+          const response = await editService({ ...value, id: props.id }, true);
+          if (!response.ok) {
+            logger.error('Error editing service', response.error);
+            showToast('Error editing service', `${response.error}`, ServiceStatus.Down);
+            return;
+          }
+          if (tags) {
+            const response = await setTags(props.id, tags);
+            if (!response.ok) {
+              logger.error('Error setting tags', response.error);
+              showToast('Error setting tags', `${response.error}`, ServiceStatus.Down);
+              return;
+            }
+          }
+          showToast(`Updated ${value.name}`, '', ServiceStatus.Up);
+          setNavigateTo(`/dashboard/${props.id}`);
+          return;
+        }
+        case 'add':
+        case 'clone': {
+          const response = await addService(value, true);
+          if (!response.ok) {
+            logger.error('Error adding service', response.error);
+            showToast('Error adding service', `${response.error}`, ServiceStatus.Down);
+            return;
+          }
+          const id = response.data;
+          if (tags) {
+            const response = await setTags(id, tags);
+            if (!response.ok) {
+              logger.error('Error setting tags', response.error);
+              showToast('Error setting tags', `${response.error}`, ServiceStatus.Down);
+              return;
+            }
+          }
+          showToast(`Added ${value.name}`, '', ServiceStatus.Up);
+          setNavigateTo(`/dashboard/${id}`);
+          return;
+        }
+        default: {
+          const mode = (props satisfies never as { mode: string }).mode;
+          logger.error('Unhandled form mode', mode);
+          showToast('Unhandled form mode', mode, ServiceStatus.Down);
+          setNavigateTo('/dashboard');
+        }
+      }
     },
     validators: {
       onSubmit: makeZodValidator(schema, logger),

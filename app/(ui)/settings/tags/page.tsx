@@ -34,16 +34,26 @@ function TagForm({ id }: { id: number | null }) {
     onSubmit(form) {
       logger.info('submit', form.value);
       if (typeof id === 'number')
-        editTag(form.value as TagUpdate).then(() => {
-          showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
-          form.formApi.reset();
-          close();
+        editTag(form.value as TagUpdate).then((response) => {
+          if (response.ok) {
+            showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
+            form.formApi.reset();
+            close();
+          } else {
+            showToast(`Error updating ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            logger.error(response.error);
+          }
         });
       else
-        addTag(form.value).then(() => {
-          showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
-          form.formApi.reset();
-          close();
+        addTag(form.value).then((response) => {
+          if (response.ok) {
+            showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
+            form.formApi.reset();
+            close();
+          } else {
+            showToast(`Error adding ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            logger.error(response.error);
+          }
         });
     },
     validators: {
@@ -60,13 +70,16 @@ function TagForm({ id }: { id: number | null }) {
 
   const handleDelete = useCallback(() => {
     if (typeof id !== 'number') return;
-    deleteTag(id)
-      .then(() => showToast(`Deleted ${form.state.values.name}`, '', ServiceStatus.Up))
-      .catch(() => showToast(`Cannot delete ${form.state.values.name}`, '', ServiceStatus.Down))
-      .finally(() => {
+    deleteTag(id).then((response) => {
+      if (response.ok) {
+        showToast(`Deleted ${form.state.values.name}`, '', ServiceStatus.Up);
         form.reset();
         close();
-      });
+      } else {
+        showToast(`Error deleting ${form.state.values.name}`, '', ServiceStatus.Up);
+        logger.error(response.error);
+      }
+    });
   }, [id, form]);
 
   return (
@@ -116,10 +129,10 @@ export default function TagsSettingsPage() {
 
   const handleAddClick = useCallback(() => setId(null), []);
 
-  const handleEditClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => setId(Number(event.currentTarget.dataset.id)),
-    []
-  );
+  // biome-ignore format: no
+  const handleEditClick = useCallback((event: MouseEvent<HTMLButtonElement>) =>
+    setId(Number(event.currentTarget.dataset.id)),
+  []);
 
   return (
     <Modal>

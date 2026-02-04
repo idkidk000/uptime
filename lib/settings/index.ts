@@ -7,7 +7,9 @@ export class SettingsClient {
   #messageClient: MessageClient;
   #current: Settings | null = null;
   async #update(): Promise<void> {
-    this.#current = await getSettings();
+    const response = await getSettings();
+    if (response.ok) this.#current = response.data;
+    else throw response.error;
   }
   // biome-ignore format: no
   private constructor(public readonly importMetaUrl: string, messageClient?: MessageClient) {

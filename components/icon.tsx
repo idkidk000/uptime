@@ -1,9 +1,8 @@
-const variants = ['default', 'alert'] as const;
-
-export type IconVariant = (typeof variants)[number];
+export const iconVariants = ['default', 'alert'] as const;
+export type IconVariant = (typeof iconVariants)[number];
 
 const dotSize = 100;
-const circleColour = '#000c'
+const circleColour = '#000c';
 
 export function Icon({ variant }: { variant: IconVariant }) {
   return (
@@ -24,7 +23,7 @@ export function Icon({ variant }: { variant: IconVariant }) {
         </clipPath>
       </defs>
       <g id='g4318' transform='rotate(54,165.75017,187.84186)' clip-path='url(#clipPath75)'>
-      <circle fill={circleColour} id='path1' cx='178.45039' cy='170.01443' r='187.63786' />
+        <circle fill={circleColour} id='path1' cx='178.45039' cy='170.01443' r='187.63786' />
         <path
           d='m 202.61142,151.08453 c -39.08384,3.20712 -123.760961,46.92303 -146.969334,61.69334 -8.420677,13.07567 -18.433848,40.32527 -15.236146,56.62796 1.130571,2.67953 6.342756,3.3996 8.832341,4.68792 5.616173,2.56143 11.691479,3.89715 17.747887,4.93214 10.12211,1.28038 20.345428,1.16348 30.527883,1.27606 16.891089,-0.0333 33.796899,-0.005 50.664029,-1.02043 6.84338,-0.60788 13.63743,-1.64708 20.43715,-2.60964 5.05356,-1.17242 9.88076,-3.10675 14.75139,-4.85748 20.1658,-7.52443 40.23382,-15.30712 60.34036,-22.9877 1.44858,-0.55487 34.43138,-12.51056 56.98362,-24.46625 22.78481,-6.68731 51.07822,-14.09321 51.0782,-15.24025 10.0617,0.98316 -6.17805,-50.39463 -12.78161,-51.46744 -40.98877,-18.9102 -93.56143,-18.77452 -136.37577,-6.56823 z'
           fill='#ffffff'

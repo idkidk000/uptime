@@ -12,8 +12,10 @@ import { getServiceStates, getStatusCounts, type StatusCounts } from '@/actions/
 import { getTags } from '@/actions/tag';
 import { useLogger } from '@/hooks/logger';
 import { useSse } from '@/hooks/sse';
+import { useToast } from '@/hooks/toast';
 import type { NotifierSelect, ServiceWithState, StateSelect, TagSelect } from '@/lib/drizzle/zod/schema';
 import type { Settings } from '@/lib/settings/schema';
+import { ServiceStatus } from '@/lib/types';
 
 interface Context {
   groups: GroupSelectWithNotifiers[];
@@ -67,46 +69,89 @@ export function AppQueriesProvider({
   const queryClient = useQueryClient();
   const logger = useLogger(import.meta.url);
   const { subscribe } = useSse();
+  const { showToast } = useToast();
 
   const groupsQuery = useQuery({
     queryKey: ['group'],
-    queryFn: () => getGroups(),
+    queryFn: () =>
+      getGroups().then((response) => {
+        if (response.ok) return response.data;
+        logger.error('getGroups', response.error);
+        showToast('Error retreiving groups', `${response.error}`, ServiceStatus.Down);
+        throw response.error;
+      }),
     initialData: groups,
   });
 
   const servicesQuery = useQuery({
     queryKey: ['service-config'],
-    queryFn: () => getServices(),
+    queryFn: () =>
+      getServices().then((response) => {
+        if (response.ok) return response.data;
+        logger.error('getServices', response.error);
+        showToast('Error retreiving services', `${response.error}`, ServiceStatus.Down);
+        throw response.error;
+      }),
     initialData: services,
   });
 
   const statesQuery = useQuery({
     queryKey: ['service-state'],
-    queryFn: () => getServiceStates(),
+    queryFn: () =>
+      getServiceStates().then((response) => {
+        if (response.ok) return response.data;
+        logger.error('getServiceStates', response.error);
+        showToast('Error retreiving service states', `${response.error}`, ServiceStatus.Down);
+        throw response.error;
+      }),
     initialData: states,
   });
 
   const statusCountsQuery = useQuery({
     queryKey: ['service-state', 'meta', 'counts'],
-    queryFn: () => getStatusCounts(),
+    queryFn: () =>
+      getStatusCounts().then((response) => {
+        if (response.ok) return response.data;
+        logger.error('getStatusCounts', response.error);
+        showToast('Error retreiving status counts', `${response.error}`, ServiceStatus.Down);
+        throw response.error;
+      }),
     initialData: statusCounts,
   });
 
   const settingsQuery = useQuery({
     queryKey: ['settings'],
-    queryFn: () => getSettings(),
+    queryFn: () =>
+      getSettings().then((response) => {
+        if (response.ok) return response.data;
+        logger.error('getSettings', response.error);
+        showToast('Error retreiving settings', `${response.error}`, ServiceStatus.Down);
+        throw response.error;
+      }),
     initialData: settings,
   });
 
   const notifiersQuery = useQuery({
     queryKey: ['notifier'],
-    queryFn: () => getNotifiers(),
+    queryFn: () =>
+      getNotifiers().then((response) => {
+        if (response.ok) return response.data;
+        logger.error('getNotifiers', response.error);
+        showToast('Error retreiving notifiers', `${response.error}`, ServiceStatus.Down);
+        throw response.error;
+      }),
     initialData: notifiers,
   });
 
   const tagsQuery = useQuery({
     queryKey: ['tag'],
-    queryFn: () => getTags(),
+    queryFn: () =>
+      getTags().then((response) => {
+        if (response.ok) return response.data;
+        logger.error('getTags', response.error);
+        showToast('Error retreiving tags', `${response.error}`, ServiceStatus.Down);
+        throw response.error;
+      }),
     initialData: tags,
   });
 
@@ -209,10 +254,17 @@ export function useServiceWithState(id: number | null | undefined): ServiceWithS
 export function useServiceHistory(
   serviceId: number | null,
   page?: number
-): Awaited<ReturnType<typeof getServiceHistory>> | null {
+): Extract<Awaited<ReturnType<typeof getServiceHistory>>, { ok: true }>['data'] | null {
+  const logger = useLogger(import.meta.url);
+  const { showToast } = useToast();
   const query = useQuery({
     queryKey: ['service-history', serviceId ?? 'meta', { page }],
-    queryFn: () => getServiceHistory(serviceId, { page: page }),
+    queryFn: () =>
+      getServiceHistory(serviceId, { page: page }).then((response) => {
+        if (response.ok) return response.data;
+        logger.error(response.error);
+        showToast('Error retreiving history', `${response.error}`, ServiceStatus.Down);
+      }),
   });
   // docs show to use `usePrefetchQuery` here, but next complains i'm setting state in a render function. calling the method on the queryClient inside a timeout is a workaround
   const client = useQueryClient();
@@ -220,7 +272,11 @@ export function useServiceHistory(
     setTimeout(() =>
       client.prefetchQuery({
         queryKey: ['service-history', serviceId ?? 'meta', { page: page + 1 }],
-        queryFn: () => getServiceHistory(serviceId, { page: page + 1 }),
+        queryFn: () =>
+          getServiceHistory(serviceId, { page: page + 1 }).then((response) => {
+            if (response.ok) return response.data;
+            logger.error(response.error);
+          }),
       })
     );
   return query.data ?? null;

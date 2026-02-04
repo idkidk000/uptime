@@ -15,7 +15,10 @@ import { HistoryCard } from '@/components/history-card';
 import { PageWrapper } from '@/components/page-wrapper';
 import { StatusBadge } from '@/components/status-badge';
 import { useServiceWithState } from '@/hooks/app-queries';
+import { useToast } from '@/hooks/toast';
 import { toDuration, toLocalIso } from '@/lib/date';
+import { ServiceStatus } from '@/lib/types';
+import {Route} from 'next';
 
 const REDIRECT_MILLIS = 3_000;
 
@@ -23,11 +26,35 @@ export default function DetailPage() {
   const { id } = useParams();
   const numId = Number(id);
   const service = useServiceWithState(numId);
+  const { showToast } = useToast();
 
-  const handlePausedClick = useCallback(() => togglePaused(numId), [numId]);
-  const handleClearHistoryClick = useCallback(() => clearServiceHistory(numId), [numId]);
-  const handleCheckClick = useCallback(() => checkService(numId), [numId]);
-  const handleDeleteClick = useCallback(() => deleteService(numId), [numId]);
+  // biome-ignore format: no
+  const handlePausedClick = useCallback(() =>
+    togglePaused(numId).then((response) => {
+      if (!response.ok) showToast('Error toggling paused', `${response.error}`, ServiceStatus.Down);
+    }),
+  [numId]);
+
+  // biome-ignore format: no
+  const handleClearHistoryClick = useCallback(() =>
+    clearServiceHistory(numId).then((response) => {
+      if (!response.ok) showToast('Error clearing history', `${response.error}`, ServiceStatus.Down);
+    }),
+  [numId]);
+
+  // biome-ignore format: no
+  const handleCheckClick = useCallback(() =>
+    checkService(numId).then((response) => {
+      if (!response.ok) showToast('Error checking service', `${response.error}`, ServiceStatus.Down);
+    }),
+  [numId]);
+
+  // biome-ignore format: no
+  const handleDeleteClick = useCallback(() =>
+    deleteService(numId).then((response) => {
+      if (!response.ok) showToast('Error deleting service', `${response.error}`, ServiceStatus.Down);
+    }),
+  [numId]);
 
   useEffect(() => {
     if (service) return;

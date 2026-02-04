@@ -12,6 +12,7 @@ import { InputText } from '@/components/input/input-text';
 import { Select } from '@/components/input/select';
 import { StatusBadge } from '@/components/status-badge';
 import { useAppQueries, useServicesWithState } from '@/hooks/app-queries';
+import { useToast } from '@/hooks/toast';
 import { ServiceStatus } from '@/lib/types';
 import { cn, enumEntries } from '@/lib/utils';
 
@@ -29,6 +30,7 @@ export function ServiceList() {
   const selectionRef = useRef(selection);
   const servicesRef = useRef(services);
   const ulRef = useRef<HTMLUListElement | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     selectionRef.current = selection;
@@ -51,14 +53,18 @@ export function ServiceList() {
 
   const handlePauseSelectionClick = useCallback(() => {
     if (!selectionRef.current?.length) return;
-    void setPausedMulti(selectionRef.current, true);
-    setSelection(null);
+    setPausedMulti(selectionRef.current, true).then((response) => {
+      if (response.ok) setSelection(null);
+      else showToast('Error pausing monitors', `${response.error}`, ServiceStatus.Down);
+    });
   }, []);
 
   const handleResumeSelectionClick = useCallback(() => {
     if (!selectionRef.current?.length) return;
-    void setPausedMulti(selectionRef.current, false);
-    setSelection(null);
+    setPausedMulti(selectionRef.current, false).then((response) => {
+      if (response.ok) setSelection(null);
+      else showToast('Error resuming monitors', `${response.error}`, ServiceStatus.Down);
+    });
   }, []);
 
   // biome-ignore format: no

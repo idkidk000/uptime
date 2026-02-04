@@ -3,29 +3,18 @@
 
 import { Download, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getData, getHistory, setData } from '@/actions/data-transfer';
-import { dataTransferJsonSchema } from '@/actions/data-transfer/schema';
+import type { DataTransferPost } from '@/app/api/data-transfer/route';
+import type { ApiResponse } from '@/app/api/types';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { InputFile } from '@/components/input/input-file';
 import { Switch } from '@/components/input/switch';
 import { Modal, ModalClose, ModalContent, ModalTrigger, useModal } from '@/components/modal';
+import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
 import { toLocalIso } from '@/lib/date';
 import { ServiceStatus } from '@/lib/types';
 import { name, version } from '@/package.json';
-
-// FIXME: other than using <a/> with a href of some api endpoint, is there a less ridiculous way to do this?
-function download(data: unknown, name: string) {
-  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
 
 const jsonSchemaName = `${name}-${version}.schema.json`;
 
@@ -36,6 +25,7 @@ function UploadForm() {
   const { showToast } = useToast();
   const { close, modalRef } = useModal();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const logger = useLogger(import.meta.url);
 
   useEffect(() => {
     stateRef.current = { replace, files };
@@ -54,13 +44,21 @@ function UploadForm() {
     if (!stateRef.current.files?.length) return;
     const file = stateRef.current.files[0];
     const text = await file.text();
-    const json = JSON.parse(text);
-    setData(json, stateRef.current.replace)
-      .then(() => {
-        showToast(`Imported ${file.name}`, '', ServiceStatus.Up);
-        close();
-      })
-      .catch((err) => showToast(`Error importing ${file.name}`, String(err), ServiceStatus.Down));
+    const data = JSON.parse(text);
+    const response: ApiResponse<null> = await fetch('/api/data-transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, replace: stateRef.current.replace } satisfies DataTransferPost),
+    })
+      .then((response) => response.json())
+      .catch((error) => ({ ok: false, error: error instanceof Error ? error : new Error(`${error}`) }));
+    if (response.ok) {
+      showToast(`Imported ${file.name}`, '', ServiceStatus.Up);
+      close();
+    } else {
+      showToast(`Error importing ${file.name}`, `${response.error}`, ServiceStatus.Down);
+      logger.error(response.error);
+    }
   }, []);
 
   return (
@@ -92,25 +90,6 @@ function UploadForm() {
 }
 
 export default function DataSettingsPage() {
-  const handleDownloadSettingsClick = useCallback(() => {
-    getData().then((data) =>
-      download(
-        { ...data, $schema: jsonSchemaName },
-        `${name}-${version}.settings-${toLocalIso().replaceAll(/[: -]/g, '')}.json`
-      )
-    );
-  }, []);
-
-  const handleDownloadSchemaClick = useCallback(() => {
-    download(dataTransferJsonSchema, jsonSchemaName);
-  }, []);
-
-  const handleDownloadHistoryClick = useCallback(() => {
-    getHistory().then((data) =>
-      download(data, `${name}-${version}.history-${toLocalIso().replaceAll(/[: -]/g, '')}.json`)
-    );
-  }, []);
-
   return (
     <Modal>
       <Card className='flex flex-col gap-4'>
@@ -119,7 +98,13 @@ export default function DataSettingsPage() {
           <div className='contents'>
             <label className='contents'>
               Settings and services
-              <Button onClick={handleDownloadSettingsClick} size='md'>
+              <Button
+                as={'a'}
+                href='/api/data-transfer/settings'
+                download={`${name}-${version}.settings-${toLocalIso().replaceAll(/[: -]/g, '')}.json`}
+                size='md'
+                variant='muted'
+              >
                 <Download />
                 Download
               </Button>
@@ -128,7 +113,7 @@ export default function DataSettingsPage() {
           <div className='contents'>
             <label className='contents'>
               JSON schema
-              <Button onClick={handleDownloadSchemaClick} size='md'>
+              <Button as='a' href='/api/data-transfer/schema' download={jsonSchemaName} size='md' variant='muted'>
                 <Download />
                 Download
               </Button>
@@ -137,7 +122,13 @@ export default function DataSettingsPage() {
           <div className='contents'>
             <label className='contents'>
               History
-              <Button onClick={handleDownloadHistoryClick} size='md'>
+              <Button
+                as='a'
+                href='/api/data-transfer/history'
+                download={`${name}-${version}.history-${toLocalIso().replaceAll(/[: -]/g, '')}.json`}
+                size='md'
+                variant='muted'
+              >
                 <Download />
                 Download
               </Button>

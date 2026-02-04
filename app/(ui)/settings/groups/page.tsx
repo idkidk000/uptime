@@ -1,15 +1,11 @@
 'use client';
 
 import { Plus, SquarePen } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useCallback, useMemo, useState } from 'react';
+import { type MouseEvent, useCallback, useMemo, useState } from 'react';
 import z from 'zod';
 import { addGroup, editGroup } from '@/actions/group';
 import { deleteGroup } from '@/actions/group/index';
-import {
-  type GroupSelectWithNotifiers,
-  type GroupUpdateWithNotifiers,
-  groupUpdateWithNotifiersSchema,
-} from '@/actions/group/schema';
+import { type GroupUpdateWithNotifiers, groupUpdateWithNotifiersSchema } from '@/actions/group/schema';
 import { Badge } from '@/components/badge';
 import { Card } from '@/components/card';
 import { ConfirmModal, ConfirmModalTrigger } from '@/components/confirm-modal';
@@ -37,16 +33,26 @@ function GroupForm({ id }: { id?: number }) {
     onSubmit(form) {
       logger.info('submit', form.value);
       if (typeof id === 'number')
-        editGroup(form.value as GroupUpdateWithNotifiers).then(() => {
-          showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
-          form.formApi.reset();
-          close();
+        editGroup(form.value as GroupUpdateWithNotifiers).then((response) => {
+          if (response.ok) {
+            showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
+            form.formApi.reset();
+            close();
+          } else {
+            showToast(`Error updating ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            logger.error(response.error);
+          }
         });
       else
-        addGroup(form.value).then(() => {
-          showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
-          form.formApi.reset();
-          close();
+        addGroup(form.value).then((response) => {
+          if (response.ok) {
+            showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
+            form.formApi.reset();
+            close();
+          } else {
+            showToast(`Error adding ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            logger.error(response.error);
+          }
         });
     },
     validators: {
@@ -63,13 +69,16 @@ function GroupForm({ id }: { id?: number }) {
 
   const handleDelete = useCallback(() => {
     if (typeof id !== 'number') return;
-    deleteGroup(id)
-      .then(() => showToast(`Deleted ${form.state.values.name}`, '', ServiceStatus.Up))
-      .catch(() => showToast(`Cannot delete ${form.state.values.name}`, '', ServiceStatus.Down))
-      .finally(() => {
+    deleteGroup(id).then((response) => {
+      if (response.ok) {
+        showToast(`Deleted ${form.state.values.name}`, '', ServiceStatus.Up);
         form.reset();
         close();
-      });
+      } else {
+        showToast(`Error deleting ${form.state.values.name}`, `${response.error}`, ServiceStatus.Down);
+        logger.error(response.error);
+      }
+    });
   }, [id, form]);
 
   return (
@@ -117,39 +126,23 @@ function GroupForm({ id }: { id?: number }) {
   );
 }
 
-function GroupRow({
-  id,
-  name,
-  setId,
-  notifiers,
-}: Omit<GroupSelectWithNotifiers, 'notifiers'> & {
-  setId: Dispatch<SetStateAction<number | undefined>>;
-  notifiers: { id: number; name: string; active: boolean }[];
-}) {
-  // biome-ignore lint/correctness/useExhaustiveDependencies(setId): state setters are stable
-  const handleClick = useCallback(() => setId(id), [id]);
-  return (
-    <div className='contents'>
-      <div>{name}</div>
-      <div className='flex gap-2'>
-        {notifiers.map((item) => (
-          <Badge key={item.id} size='sm' variant={item.active ? 'up' : 'muted'}>
-            {item.name}
-          </Badge>
-        ))}
-      </div>
-      <ModalTrigger variant='muted' onClick={handleClick}>
-        <SquarePen />
-        Edit
-      </ModalTrigger>
-    </div>
-  );
-}
-
 export default function GroupsSettingsPage() {
   const { groups, notifiers } = useAppQueries();
   const [id, setId] = useState<number | undefined>(undefined);
+
   const handleAddClick = useCallback(() => setId(undefined), []);
+
+  // biome-ignore format: no
+  const handleEditClick = useCallback((event: MouseEvent<HTMLButtonElement>) =>
+    setId(Number(event.currentTarget.dataset.id)),
+  []);
+
+  const groupsWithNotifiers = useMemo(() => {
+    const sortedNotifiers = notifiers.toSorted((a, b) => a.name.localeCompare(b.name));
+    return groups
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .map((group) => ({ ...group, notifiers: sortedNotifiers.filter((item) => group.notifiers.includes(item.id)) }));
+  }, [groups, notifiers]);
 
   return (
     <Modal>
@@ -164,19 +157,22 @@ export default function GroupsSettingsPage() {
             <div>Notifiers</div>
             <div />
           </div>
-          {groups
-            .toSorted((a, b) => a.name.localeCompare(b.name))
-            .map((group) => (
-              <GroupRow
-                key={group.id}
-                {...group}
-                notifiers={group.notifiers
-                  .map((id) => notifiers.find((item) => item.id === id))
-                  .filter((item) => typeof item !== 'undefined')
-                  .toSorted((a, b) => a.name.localeCompare(b.name))}
-                setId={setId}
-              />
-            ))}
+          {groupsWithNotifiers.map((group) => (
+            <div className='contents' key={group.id}>
+              <div>{group.name}</div>
+              <div className='flex gap-2'>
+                {group.notifiers.map((item) => (
+                  <Badge key={item.id} size='sm' variant={item.active ? 'up' : 'muted'}>
+                    {item.name}
+                  </Badge>
+                ))}
+              </div>
+              <ModalTrigger variant='muted' onClick={handleEditClick} data-id={group.id}>
+                <SquarePen />
+                Edit
+              </ModalTrigger>
+            </div>
+          ))}
         </div>
       </Card>
       <ModalContent closedBy='none'>

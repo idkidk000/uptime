@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
+import type { WrappedApiResponse } from '@/app/api/types';
 import { getStatusApi, type StatusApiSelect } from '@/lib/drizzle/queries';
-import type { ApiResponse } from '@/lib/types';
 
-export async function GET(): Promise<NextResponse<ApiResponse<StatusApiSelect[]>>> {
+export async function GET(): WrappedApiResponse<StatusApiSelect[]> {
   try {
     const data = await getStatusApi();
     return NextResponse.json({ ok: true, data });
-  } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error : new Error(`${error}`) },
+      { status: 500 }
+    );
   }
 }

@@ -37,13 +37,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const groups = await getGroups();
-  const services = await getServices();
-  const states = await getServiceStates();
-  const stateCounts = await getStatusCounts();
-  const settings = await getSettings();
-  const notifiers = await getNotifiers();
-  const tags = await getTags();
+  const groupsResponse = await getGroups();
+  const servicesResponse = await getServices();
+  const statesResponse = await getServiceStates();
+  const stateCountsResponse = await getStatusCounts();
+  const settingsResponse = await getSettings();
+  const notifiersResponse = await getNotifiers();
+  const tagsResponse = await getTags();
   return (
     <html lang='en'>
       <head>
@@ -53,23 +53,49 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex flex-col bg-background text-foreground transition-colors duration-150 accent-up antialiased min-h-dvh`}
       >
-        <IsMobileProvider>
-          <SseProvider>
-            <ToastProvider>
-              <RootLayoutClient
-                groups={groups}
-                services={services}
-                states={states}
-                statusCounts={stateCounts}
-                settings={settings}
-                notifiers={notifiers}
-                tags={tags}
-              >
-                {children}
-              </RootLayoutClient>
-            </ToastProvider>
-          </SseProvider>
-        </IsMobileProvider>
+        {groupsResponse.ok &&
+        servicesResponse.ok &&
+        statesResponse.ok &&
+        stateCountsResponse.ok &&
+        settingsResponse.ok &&
+        notifiersResponse.ok &&
+        tagsResponse.ok ? (
+          <IsMobileProvider>
+            <SseProvider>
+              <ToastProvider>
+                <RootLayoutClient
+                  groups={groupsResponse.data}
+                  services={servicesResponse.data}
+                  states={statesResponse.data}
+                  statusCounts={stateCountsResponse.data}
+                  settings={settingsResponse.data}
+                  notifiers={notifiersResponse.data}
+                  tags={tagsResponse.data}
+                >
+                  {children}
+                </RootLayoutClient>
+              </ToastProvider>
+            </SseProvider>
+          </IsMobileProvider>
+        ) : (
+          <div className='flex flex-col gap-4'>
+            <h1 className='text-2xl font-semibold text-down'>Error retreiving data</h1>
+            {[
+              groupsResponse,
+              servicesResponse,
+              statesResponse,
+              stateCountsResponse,
+              settingsResponse,
+              notifiersResponse,
+              tagsResponse,
+            ]
+              .filter((item) => !item.ok)
+              .map((item, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: shut
+                <pre key={i}>{`${item.error}`}</pre>
+              ))}
+          </div>
+        )}
       </body>
     </html>
   );

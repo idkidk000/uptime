@@ -1,10 +1,9 @@
-/** biome-ignore-all lint/suspicious/useAwait: server actions must be async */
-'use server';
-
 import { sql } from 'drizzle-orm';
-import { type DataTransfer, dataTransferSchema } from '@/actions/data-transfer/schema';
+import { type NextRequest, NextResponse } from 'next/server';
+import z from 'zod';
+import { dataTransferSchema } from '@/actions/data-transfer/schema';
 import { updateSettings } from '@/actions/setting';
-import type { ActionResponse } from '@/actions/types';
+import type { WrappedApiResponse } from '@/app/api/types';
 import { db } from '@/lib/drizzle';
 import {
   groupTable,
@@ -20,10 +19,25 @@ import { MessageClient } from '@/lib/messaging';
 const logger = new ServerLogger(import.meta.url);
 const messageClient = new MessageClient(import.meta.url);
 
-export async function setData(data: DataTransfer, replace: boolean): ActionResponse<null> {
+const postSchema = z.object({
+  data: dataTransferSchema,
+  replace: z.boolean(),
+});
+export type DataTransferPost = z.infer<typeof postSchema>;
+
+/* accepts `DataTransferPost` */
+export async function POST(request: NextRequest): WrappedApiResponse<null> {
   try {
-    const { settings, services, groups, notifiers } = dataTransferSchema.parse(data);
-    await updateSettings(settings);
+    const {
+      data: { settings, services, groups, notifiers },
+      replace,
+    } = postSchema.parse(await request.json());
+
+    const response = await updateSettings(settings);
+    if (!response.ok) {
+      logger.error(response.error);
+      return NextResponse.json({ ok: false, error: response.error });
+    }
     if (replace) {
       // schema is mostly delete cascade so this should cover everything
       await db.delete(serviceTable);
@@ -92,9 +106,8 @@ export async function setData(data: DataTransfer, replace: boolean): ActionRespo
     }
     // workers which use caching (monitor, notify) validate updatedAt
     messageClient.send({ cat: 'client-action', kind: 'reload' });
-    return { ok: true, data: null };
+    return NextResponse.json({ ok: true, data: null });
   } catch (error) {
-    logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error : new Error(`${error}`) });
   }
 }

@@ -2,7 +2,7 @@
 
 import { useStore } from '@tanstack/react-form';
 import { Plus, ShieldQuestion, SquarePen } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useCallback, useMemo, useState } from 'react';
+import { type MouseEvent, useCallback, useMemo, useState } from 'react';
 import z from 'zod';
 import { init } from 'zod-empty';
 import { addNotifier, checkNotifier, editNotifier } from '@/actions/notifier';
@@ -14,7 +14,7 @@ import { Modal, ModalContent, ModalTrigger, useModal } from '@/components/modal'
 import { useAppQueries } from '@/hooks/app-queries';
 import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
-import { type NotifierSelect, type NotifierUpdate, notifierInsertSchema } from '@/lib/drizzle/zod/schema';
+import { type NotifierUpdate, notifierInsertSchema } from '@/lib/drizzle/zod/schema';
 import { getJsonSchemaDiscUnionFields, makeZodValidator, useAppForm } from '@/lib/form';
 import { notifierKinds, notifierParamsSchema } from '@/lib/notifier/schema';
 import { ServiceStatus } from '@/lib/types';
@@ -47,16 +47,26 @@ function NotifierForm({ id }: { id: number | undefined }) {
     onSubmit(form) {
       logger.info('submit', form.value);
       if (typeof id === 'number')
-        editNotifier(form.value as NotifierUpdate).then(() => {
-          showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
-          form.formApi.reset();
-          close();
+        editNotifier(form.value as NotifierUpdate).then((response) => {
+          if (response.ok) {
+            showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
+            form.formApi.reset();
+            close();
+          } else {
+            showToast(`Error updating ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            logger.error(response.error);
+          }
         });
       else
-        addNotifier(form.value).then(() => {
-          showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
-          form.formApi.reset();
-          close();
+        addNotifier(form.value).then((response) => {
+          if (response.ok) {
+            showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
+            form.formApi.reset();
+            close();
+          } else {
+            showToast(`Error adding ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            logger.error(response.error);
+          }
         });
     },
     validators: {
@@ -153,65 +163,32 @@ function NotifierForm({ id }: { id: number | undefined }) {
   );
 }
 
-function NotifierRow({
-  id,
-  name,
-  params: { kind },
-  active,
-  setId,
-  checkResult,
-  setCheckResults,
-}: NotifierSelect & {
-  setId: Dispatch<SetStateAction<number | undefined>>;
-  checkResult: boolean | undefined;
-  setCheckResults: Dispatch<SetStateAction<Map<number, boolean>>>;
-}) {
-  const { showToast } = useToast();
-  // biome-ignore lint/correctness/useExhaustiveDependencies(setId): state setters are stable
-  const handleEdit = useCallback(() => setId(id), [id]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies(setCheckResults): state setters are stable
-  const handleCheck = useCallback(
-    () =>
-      checkNotifier(id).then((result) => {
-        setCheckResults((prev) => new Map(prev.entries()).set(id, result));
-        showToast(
-          `${name} test ${result ? 'succeeded' : 'failed'}`,
-          '',
-          result ? ServiceStatus.Up : ServiceStatus.Down
-        );
-      }),
-    [id, name]
-  );
-  return (
-    <div className='contents'>
-      <div>{name}</div>
-      <div>{kind}</div>
-      <div>
-        <Badge size='sm' variant={active ? 'up' : 'paused'}>
-          {active ? 'Active' : 'Disabled'}
-        </Badge>
-      </div>
-      <ModalTrigger variant='muted' onClick={handleEdit}>
-        <SquarePen />
-        Edit
-      </ModalTrigger>
-      <Button
-        onClick={handleCheck}
-        variant={typeof checkResult === 'undefined' ? 'muted' : checkResult ? 'up' : 'down'}
-      >
-        <ShieldQuestion />
-        Check
-      </Button>
-    </div>
-  );
-}
-
 export default function NotifiersSettingsPage() {
   const { notifiers } = useAppQueries();
   const [id, setId] = useState<number | undefined>(undefined);
-  const handleAddClick = useCallback(() => setId(undefined), []);
   const [checkResults, setCheckResults] = useState<Map<number, boolean>>(new Map());
+  const { showToast } = useToast();
+
+  const handleAddClick = useCallback(() => setId(undefined), []);
+
+  // biome-ignore format: no
+  const handleEditClick = useCallback((event: MouseEvent<HTMLButtonElement>) =>
+    setId(Number(event.currentTarget.dataset.id)),
+  []);
+
+  const handleCheckClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    const id = Number(event.currentTarget.dataset.id);
+    const name = event.currentTarget.dataset.name;
+    checkNotifier(id).then((response) => {
+      if (response.ok) {
+        setCheckResults((prev) => new Map(prev.entries()).set(id, true));
+        showToast(`${name} test succeeded`, '', ServiceStatus.Up);
+      } else {
+        setCheckResults((prev) => new Map(prev.entries()).set(id, false));
+        showToast(`${name} test failed`, `${response.error}`, ServiceStatus.Down);
+      }
+    });
+  }, []);
 
   return (
     <Modal>
@@ -230,15 +207,33 @@ export default function NotifiersSettingsPage() {
           </div>
           {notifiers
             .toSorted((a, b) => a.name.localeCompare(b.name))
-            .map((notifier) => (
-              <NotifierRow
-                key={notifier.id}
-                {...notifier}
-                setId={setId}
-                checkResult={checkResults.get(notifier.id)}
-                setCheckResults={setCheckResults}
-              />
-            ))}
+            .map((notifier) => {
+              const checkResult = checkResults.get(notifier.id);
+              return (
+                <div className='contents' key={notifier.id}>
+                  <div>{notifier.name}</div>
+                  <div>{notifier.params.kind}</div>
+                  <div>
+                    <Badge size='sm' variant={notifier.active ? 'up' : 'paused'}>
+                      {notifier.active ? 'Active' : 'Disabled'}
+                    </Badge>
+                  </div>
+                  <ModalTrigger variant='muted' onClick={handleEditClick} data-id={notifier.id}>
+                    <SquarePen />
+                    Edit
+                  </ModalTrigger>
+                  <Button
+                    data-id={notifier.id}
+                    data-name={notifier.name}
+                    onClick={handleCheckClick}
+                    variant={typeof checkResult === 'undefined' ? 'muted' : checkResult ? 'up' : 'down'}
+                  >
+                    <ShieldQuestion />
+                    Check
+                  </Button>
+                </div>
+              );
+            })}
         </div>
       </Card>
       <ModalContent closedBy='none'>

@@ -20,15 +20,15 @@ export default function GeneralSettingsPage() {
   const form = useAppForm({
     defaultValues: settings,
     onSubmit(form) {
-      updateSettings(form.value)
-        .then(() => {
+      updateSettings(form.value).then((response) => {
+        if (response.ok) {
           logger.success('updated settings', form.value);
           showToast('Settings updated', '', ServiceStatus.Up);
-        })
-        .catch((err) => {
-          logger.error('error updating settings', form.value, err);
-          showToast('Error updating settings', String(err), ServiceStatus.Down);
-        });
+        } else {
+          logger.error('error updating settings', form.value, response.error);
+          showToast('Error updating settings', `${response.error}`, ServiceStatus.Down);
+        }
+      });
     },
     validators: {
       onSubmit: makeZodValidator(settingsSchema, logger),
