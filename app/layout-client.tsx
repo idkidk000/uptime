@@ -10,6 +10,7 @@ import { Activity, type ComponentProps, type ReactNode } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { IconUpdater } from '@/components/icon-updater';
 import { ServiceList } from '@/components/service-list';
 import { TopNav } from '@/components/top-nav';
 import { AppQueriesProvider } from '@/hooks/app-queries';
@@ -54,6 +55,7 @@ export default function RootLayoutClient({
             {children}
           </main>
           <BottomNav />
+          <IconUpdater />
           <ReactQueryDevtools />
           <TanStackDevtools plugins={[formDevtoolsPlugin()]} config={{ position: 'middle-right' }} />
         </IntervalProvider>

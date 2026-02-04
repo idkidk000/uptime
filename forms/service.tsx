@@ -2,13 +2,14 @@ import { useStore } from '@tanstack/react-form';
 import Link from 'next/link';
 import { redirect, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import z from 'zod';
 import { init } from 'zod-empty';
-import { addService, editService } from '@/actions/service';
+import { addService, editService, setTags } from '@/actions/service';
 import { Card } from '@/components/card';
 import { useAppQueries } from '@/hooks/app-queries';
 import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
-import { type ServiceInsert, serviceInsertSchema } from '@/lib/drizzle/zod/schema';
+import { serviceInsertSchema } from '@/lib/drizzle/zod/schema';
 import { getJsonSchemaDiscUnionFields, makeZodValidator, useAppForm } from '@/lib/form';
 import { dnsRecordTypes } from '@/lib/monitor/dns/schema';
 import { queryKind } from '@/lib/monitor/http/schema';
@@ -17,13 +18,15 @@ import { ServiceStatus } from '@/lib/types';
 import { lowerToSentenceCase } from '@/lib/utils';
 
 // zod does not provide a way to get defaults back out of a schema. zod-empty is a very buggy 3p lib. `required()` and `prefault()` both give undefined. nullable int gives -Number.MAX_SAFE_INT. it mostly only works on top level trivial parts of the schema
+const schema = serviceInsertSchema.extend({ tags: z.array(z.number()).optional() });
 const insertDefaults = init(serviceInsertSchema);
 insertDefaults.params.upWhen = undefined;
 const monitorParamsJsonSchema = monitorParamsSchema.toJSONSchema({ io: 'input', target: 'openapi-3.0' });
+type DataType = z.infer<typeof schema>;
 
 export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'edit' | 'clone'; id: number }) {
   const logger = useLogger(import.meta.url);
-  const { groups, services } = useAppQueries();
+  const { groups, services, tags } = useAppQueries();
   const { showToast } = useToast();
   const router = useRouter();
   // calling router.push from useAppForm({onSubmit}) does nothing
@@ -44,18 +47,19 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
       return item;
     }
     return insertDefaults;
-  }, [props, services.find]) as ServiceInsert | null;
+  }, [props, services.find]) as DataType | null;
 
   if (defaultValues === null) redirect('/dashboard');
 
   const form = useAppForm({
     defaultValues,
-    onSubmit(form) {
-      logger.info('submit', form.value);
+    onSubmit({ value: { tags, ...value } }) {
+      logger.info('submit', value);
       if (props.mode === 'add' || props.mode === 'clone')
-        addService(form.value, true)
+        addService(value, true)
+          .then((id) => (tags ? setTags(id, tags).then(() => id) : id))
           .then((id) => {
-            showToast(`Added ${form.value.name}`, '', ServiceStatus.Up);
+            showToast(`Added ${value.name}`, '', ServiceStatus.Up);
             setNavigateTo(`/dashboard/${id}`);
           })
           .catch((err) => {
@@ -63,9 +67,12 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
             showToast('Error adding service', String(err), ServiceStatus.Down);
           });
       if (props.mode === 'edit')
-        editService({ ...form.value, id: props.id }, true)
+        editService({ ...value, id: props.id }, true)
           .then(() => {
-            showToast(`Updated ${form.value.name}`, '', ServiceStatus.Up);
+            if (tags) setTags(props.id, tags);
+          })
+          .then(() => {
+            showToast(`Updated ${value.name}`, '', ServiceStatus.Up);
             setNavigateTo(`/dashboard/${props.id}`);
           })
           .catch((err) => {
@@ -74,7 +81,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
           });
     },
     validators: {
-      onSubmit: makeZodValidator(serviceInsertSchema, logger),
+      onSubmit: makeZodValidator(schema, logger),
     },
   });
 
@@ -140,6 +147,18 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
                 mode='number'
                 options={groups.map(({ id, name }) => ({ label: name, value: id }))}
                 description='Parent group'
+              />
+            )}
+          </form.AppField>
+          <form.AppField name='tags'>
+            {(field) => (
+              <field.FormSelect
+                label='Tags'
+                mode='number'
+                options={tags.map(({ id, name }) => ({ label: name, value: id }))}
+                description='Tags to apply'
+                multi
+                allowEmpty
               />
             )}
           </form.AppField>

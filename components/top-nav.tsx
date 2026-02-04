@@ -7,7 +7,7 @@ export function TopNav() {
   return (
     <nav className='flex justify-center bg-background-head p-4 items-center gap-2 shadow-md top-0 sticky z-10'>
       <Link className='contents' href='/dashboard'>
-        <img src='/mascot.png' className='h-lh' alt={description} />
+        <img src='/blahaj.svg' className='h-lh' alt={description} />
         <h1 className='text-2xl font-semibold'>{displayName}</h1>
       </Link>
       <Button as={Link} href='/dashboard' size='lg' className='ms-auto hidden md:inline-flex'>

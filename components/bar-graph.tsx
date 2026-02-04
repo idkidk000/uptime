@@ -38,9 +38,9 @@ export function BarGraph({
         .reduce((acc, item) => Math.max(acc, item.latency), 0) ?? 0;
 
     const itemGeoms =
-      history?.items.map(({ status, latency }, i) => ({
+      history?.items.map(({ status, latency }, i, arr) => ({
         status,
-        x: (viewboxWidth / settings.history.summaryItems) * (i + 0.5),
+        x: (viewboxWidth / settings.history.summaryItems) * (i + settings.history.summaryItems - arr.length + 0.5),
         height:
           typeof latency === 'undefined'
             ? viewboxHeight - strokeWidth

@@ -128,3 +128,8 @@ values (
   'Default group',
   unixepoch()
 );
+--> statement-breakpoint
+PRAGMA journal_mode=WAL;
+PRAGMA auto_vacuum=INCREMENTAL;
+--> statement-breakpoint
+VACUUM;

@@ -47,7 +47,7 @@ export default function DetailPage() {
         )) || (
           <span className='font-semibold text-up'>{`${service.params.kind}: ${'recordType' in service.params ? `${service.params.recordType}: ` : ''}${service.params.address}${'port' in service.params ? `:${service.params.port}` : ''}`}</span>
         )}
-        {service.tags.length && (
+        {!!service.tags.length && (
           <span className='flex gap-4'>
             {service.tags.map((tag) => (
               <Badge size='sm' key={tag.id} variant='muted'>

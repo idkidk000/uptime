@@ -46,6 +46,10 @@ export default async function RootLayout({
   const tags = await getTags();
   return (
     <html lang='en'>
+      <head>
+        {/* <IconUpdater /> updates this dynamically */}
+        <link rel='icon' href='/api/icon/default' />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex flex-col bg-background text-foreground transition-colors duration-150 accent-up antialiased min-h-dvh`}
       >

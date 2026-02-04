@@ -8,7 +8,7 @@ import {
   notifierTable,
   serviceTable,
   type stateTable,
-  type tagTable,
+  tagTable,
 } from '@/lib/drizzle/schema';
 import { monitorParamsSchema } from '@/lib/monitor/schema';
 import { notifierParamsSchema } from '@/lib/notifier/schema';
@@ -71,9 +71,11 @@ export type ServiceUpdate = z.infer<typeof serviceUpdateSchema>;
 export type ServiceInsert = z.infer<typeof serviceInsertSchema>;
 export type ServiceSelect = (typeof serviceTable)['$inferSelect'];
 
-type TagTable = typeof tagTable;
-export type TagInsert = TagTable['$inferInsert'];
-export type TagSelect = TagTable['$inferSelect'];
+export const tagUpdateSchema = createInsertSchema(tagTable).required();
+export const tagInsertSchema = tagUpdateSchema.omit({ id: true });
+export type TagUpdate = z.infer<typeof tagUpdateSchema>;
+export type TagInsert = z.infer<typeof tagInsertSchema>;
+export type TagSelect = (typeof tagTable)['$inferSelect'];
 
 type HistoryTable = typeof historyTable;
 export type HistoryInsert = HistoryTable['$inferInsert'];

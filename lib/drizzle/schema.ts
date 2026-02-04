@@ -28,7 +28,6 @@ export const groupTable = sqliteTable('group', {
     .$onUpdate(() => sql`(unixepoch())`),
 });
 
-// TODO: may want to enable this per service instead
 // biome-ignore format: no
 export const groupToNotifierTable = sqliteTable('groupToNotifier', {
   groupId: integer()

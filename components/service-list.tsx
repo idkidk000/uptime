@@ -87,7 +87,9 @@ export function ServiceList() {
     const search = filter.search?.toLocaleLowerCase();
     const visibleServices = services
       .filter(
-        (service) => filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1)
+        (service) =>
+          (filter.status.length === 0 || (filter.status as number[]).includes(service.state?.status ?? -1)) &&
+          (filter.tags.length === 0 || filter.tags.some((tag) => service.tags.find((item) => item.id === tag)))
       )
       .toSorted((a, b) => a.name.localeCompare(b.name));
 
@@ -100,8 +102,7 @@ export function ServiceList() {
             service.groupId === group.id &&
             (typeof search === 'undefined' ||
               group.name.toLocaleLowerCase().includes(search) ||
-              service.name.toLocaleLowerCase().includes(search) ||
-              service.tags.some((tag) => tag.name.toLocaleLowerCase().includes(search)))
+              service.name.toLocaleLowerCase().includes(search))
         ),
       }))
       .filter((group) => group.services.length);
@@ -127,7 +128,7 @@ export function ServiceList() {
         <div className='flex gap-2'>
           <Button
             variant='muted'
-            className={cn((filter.search !== null || filter.status.length) && 'border-up')}
+            className={cn((filter.search !== null || filter.status.length || filter.tags.length) && 'border-up')}
             size='icon'
             onClick={handleClearFilterClick}
           >
@@ -201,8 +202,14 @@ export function ServiceList() {
                         status={service.state?.status}
                         className='me-auto'
                       >{`${typeof service.state?.uptime1d === 'number' ? Math.round(service.state?.uptime1d) : '0'}%`}</StatusBadge>
-                      <h4 className='truncate'>{service.name}</h4>
-                      {/* TODO: show tags. maybe wrap h4 in an outer and anchor to top right of inner so they can overlap the bar graph */}
+                      <span className='flex gap-2 items-center truncate me-auto'>
+                        <h4 className='truncate'>{service.name}</h4>
+                        {service.tags.map((tag) => (
+                          <Badge size='sm' variant='muted' key={tag.id} className='z-10'>
+                            {tag.name}
+                          </Badge>
+                        ))}
+                      </span>
                       <BarGraph history={service.state?.miniHistory} className='min-h-lh max-h-lh' />
                     </Link>
                   </li>
