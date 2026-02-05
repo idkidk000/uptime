@@ -1,9 +1,9 @@
+/** biome-ignore-all lint/suspicious/noConsole: FIXME: too high to get settings query */
 'use client';
 
 import { createContext, type ReactNode, useContext, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import SuperJSON from 'superjson';
 import type { Invalidate, Update } from '@/app/api/sse/route';
-import { useLogger } from '@/hooks/logger';
 import type { ClientActionMessage, ToastMessage } from '@/lib/messaging';
 
 const RECONNECT_MILLIS = 15_000;
@@ -41,8 +41,6 @@ export function SseProvider({ children }: { children: ReactNode }) {
     interval: NodeJS.Timeout | null;
   }>({ deploymentId: null, errors: 0, interval: null });
 
-  const logger = useLogger(import.meta.url);
-
   const beginReconnectInterval = useEffectEvent(() => {
     state.current.interval ??= setInterval(() => {
       setSseReconnect(Math.random());
@@ -61,7 +59,7 @@ export function SseProvider({ children }: { children: ReactNode }) {
         state.current.interval = null;
       }
       const deploymentId: string = event.data;
-      logger.info('deploymentId changed from', state.current.deploymentId, 'to', deploymentId);
+      console.info('deploymentId changed from', state.current.deploymentId, 'to', deploymentId);
       // deployment id (generated on server startup) changed - reload the frontend
       if (state.current.deploymentId !== null && state.current.deploymentId !== deploymentId) {
         window.location.reload();
@@ -70,7 +68,7 @@ export function SseProvider({ children }: { children: ReactNode }) {
       state.current.deploymentId = deploymentId;
       // used by app-queries hook to invalidate all queries
       if (state.current.errors) {
-        logger.success('reconnected after', state.current.errors, 'errors');
+        console.info('reconnected after', state.current.errors, 'errors');
         for (const callback of callbacksRef.current.get('reconnect') ?? []) callback(null);
         state.current.errors = 0;
       }
@@ -78,7 +76,7 @@ export function SseProvider({ children }: { children: ReactNode }) {
     // `error` event has nothing useful
     eventSource.addEventListener('error', () => {
       ++state.current.errors;
-      logger[state.current.errors >= MAX_SSE_ERRORS ? 'error' : 'warn'](`error count is ${state.current.errors}`);
+      console[state.current.errors >= MAX_SSE_ERRORS ? 'error' : 'warn'](`error count is ${state.current.errors}`);
       beginReconnectInterval();
       eventSource.close();
     });
@@ -104,7 +102,7 @@ export function SseProvider({ children }: { children: ReactNode }) {
   useEffect(() =>
     value.subscribe('client-action', (message) => {
       if (message.kind !== 'reload') return;
-      logger.info('received', message, 'reloading...');
+      console.info('received', message, 'reloading...');
       window.location.reload();
     }), [value]);
 

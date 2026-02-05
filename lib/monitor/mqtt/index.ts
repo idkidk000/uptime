@@ -2,16 +2,20 @@ import { DOMParser } from '@xmldom/xmldom';
 import jsonata from 'jsonata';
 import mqtt from 'mqtt';
 import xpath from 'xpath';
-import { ServerLogger } from '@/lib/logger/server';
-import { Monitor, MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { MessageClient } from '@/lib/messaging';
+import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { Monitor } from '@/lib/monitor/abc';
 import type { MqttMonitorParams } from '@/lib/monitor/mqtt/schema';
 import { parseRegex, roundTo } from '@/lib/utils';
 
 const RE_BARE_HOST = /^(?:.*:\/\/)?(?<host>[a-z\d.]+)(:(?<port>\d+))?/;
 
-const logger = new ServerLogger(import.meta.url);
+const messageClient = new MessageClient(import.meta.url);
 
 export class MqttMonitor extends Monitor<MqttMonitorParams> {
+  constructor(params: MqttMonitorParams) {
+    super(params, messageClient);
+  }
   async check(): Promise<MonitorResponse<'mqtt'>> {
     try {
       const match = RE_BARE_HOST.exec(this.params.address);
@@ -24,7 +28,7 @@ export class MqttMonitor extends Monitor<MqttMonitorParams> {
         };
       // using the non-async mqtt api seems easier to get at each possible failure mode
       const { promise, resolve, reject } = Promise.withResolvers<MonitorResponse<'mqtt'>>();
-      const timeoutMs = this.params.upWhen?.latency ?? this.settingsClient.current.monitor.defaultTimeout;
+      const timeoutMs = this.params.upWhen?.latency ?? this.messageClient.settings.monitor.defaultTimeout;
       const started = performance.now();
       const timeout = setTimeout(() => {
         resolve({
@@ -46,7 +50,7 @@ export class MqttMonitor extends Monitor<MqttMonitorParams> {
         try {
           const latency = roundTo(performance.now() - started, 3);
           const text = payload.toString('utf-8');
-          logger.debugLow({ message: text, latency });
+          this.logger.debugLow({ message: text, latency });
           if (typeof this.params.upWhen?.latency === 'number' && latency > this.params.upWhen.latency) {
             return resolve({
               kind: 'mqtt',

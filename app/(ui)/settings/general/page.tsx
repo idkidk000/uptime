@@ -5,13 +5,16 @@ import { useCallback } from 'react';
 import { updateSettings } from '@/actions/setting';
 import { Card } from '@/components/card';
 import { useAppQueries } from '@/hooks/app-queries';
-import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
 import { getJsonSchemaFields, makeZodValidator, useAppForm } from '@/lib/form';
-import { settingsSchema } from '@/lib/settings/schema';
+import { logLevelNames } from '@/lib/logger';
+import { useLogger } from '@/lib/logger/client';
+import { defaultSettings, settingsSchema } from '@/lib/settings/schema';
 import { ServiceStatus } from '@/lib/types';
 
 const fieldsMeta = getJsonSchemaFields(settingsSchema.toJSONSchema({ io: 'input', target: 'openapi-3.0' }));
+
+// FIXME: need a control for setting log level overrides
 
 export default function GeneralSettingsPage() {
   const logger = useLogger(import.meta.url);
@@ -35,7 +38,7 @@ export default function GeneralSettingsPage() {
     },
   });
 
-  const handleReset = useCallback(() => form.reset(), [form]);
+  const handleReset = useCallback(() => form.reset(defaultSettings), [form]);
 
   return (
     <Card>
@@ -60,6 +63,18 @@ export default function GeneralSettingsPage() {
           <legend>Server sent events</legend>
           <form.AppField name='sse.throttle'>
             {(field) => <field.FormInputDuration fieldsMeta={fieldsMeta} mode='millis' />}
+          </form.AppField>
+        </fieldset>
+        <fieldset>
+          <legend>Logging</legend>
+          <form.AppField name='logging.rootLevel'>
+            {(field) => (
+              <field.FormSelect
+                fieldsMeta={fieldsMeta}
+                mode='text'
+                options={logLevelNames.map((name) => ({ label: name, value: name }))}
+              />
+            )}
           </form.AppField>
         </fieldset>
         <form.AppForm>

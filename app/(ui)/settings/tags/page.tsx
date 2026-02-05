@@ -9,13 +9,13 @@ import { Card } from '@/components/card';
 import { ConfirmModal, ConfirmModalTrigger } from '@/components/confirm-modal';
 import { Modal, ModalContent, ModalTrigger, useModal } from '@/components/modal';
 import { useAppQueries } from '@/hooks/app-queries';
-import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
 import { type TagUpdate, tagInsertSchema } from '@/lib/drizzle/zod/schema';
 import { makeZodValidator, useAppForm } from '@/lib/form';
+import { useLogger } from '@/lib/logger/client';
 import { ServiceStatus } from '@/lib/types';
 
-// TODO: allow selecting services in tag form. probably needs a combobox
+// FIXME: allow selecting services in tag form. probably needs a combobox
 
 // preserve id so same logic can be used for add and edit
 const schema = tagInsertSchema.extend({ id: z.int().min(1).optional() });

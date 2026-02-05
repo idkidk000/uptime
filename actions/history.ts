@@ -11,7 +11,7 @@ import { MessageClient } from '@/lib/messaging';
 import type { Paginated } from '@/lib/types';
 
 const messageClient = new MessageClient(import.meta.url);
-const logger = new ServerLogger(import.meta.url);
+const logger = new ServerLogger(messageClient);
 
 export async function getServiceHistory(
   serviceId: number | null,

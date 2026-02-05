@@ -9,8 +9,8 @@ import { MessageClient } from '@/lib/messaging';
 import { defaultSettings, type Settings, settingsSchema } from '@/lib/settings/schema';
 import { pick } from '@/lib/utils';
 
-const logger = new ServerLogger(import.meta.url);
 const messageClient = new MessageClient(import.meta.url);
+const logger = new ServerLogger(messageClient);
 
 export async function getSettings(): ActionResponse<Settings> {
   try {

@@ -1,6 +1,6 @@
 import { eq, getTableColumns, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
-import { type DataHistory, type DataTransfer, dataTransferJsonSchema } from '@/actions/data-transfer/schema';
+import { type DataHistory, type DataTransfer, dataTransferJsonSchema } from '@/app/api/data-transfer/schema';
 import { db } from '@/lib/drizzle';
 import { jsonMapper } from '@/lib/drizzle/queries';
 import {
@@ -14,7 +14,6 @@ import {
 } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
-import { SettingsClient } from '@/lib/settings';
 import { omit, pick } from '@/lib/utils';
 
 type DataTransferKind = 'settings' | 'history' | 'schema';
@@ -28,9 +27,8 @@ type DataTransferGetResponse<Kind extends DataTransferKind> =
           : never)
   | { ok: false; error: Error };
 
-const logger = new ServerLogger(import.meta.url);
-const messageClient = new MessageClient(import.meta.url);
-const settingsClient = await SettingsClient.newAsync(import.meta.url, messageClient);
+const messageClient = await MessageClient.newAsync(import.meta.url);
+const logger = new ServerLogger(messageClient);
 
 /** not wrapped in an ApiResponse since the response is downloaded to a file */
 export async function GET<Kind extends DataTransferKind>(
@@ -57,7 +55,7 @@ export async function GET<Kind extends DataTransferKind>(
     }
     case 'settings': {
       try {
-        const settings = settingsClient.current;
+        const settings = messageClient.settings;
         const services = await db
           .select({
             ...omit(getTableColumns(serviceTable), ['id', 'groupId', 'createdAt', 'updatedAt']),

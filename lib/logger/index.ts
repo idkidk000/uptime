@@ -1,4 +1,5 @@
 import { toLocalIso } from '@/lib/date';
+import { typedEntries } from '@/lib/utils';
 
 export const ansiStyles = {
   fg: {
@@ -47,7 +48,7 @@ export const ansiStyles = {
   clear: '\x1bc',
 } as const;
 
-const levels = {
+export const logLevels = {
   'Debug:High': { colour: ansiStyles.fgIntense.blue, method: 'debug', value: 0 },
   'Debug:Med': { colour: ansiStyles.fgIntense.blue, method: 'debug', value: 1 },
   'Debug:Low': { colour: ansiStyles.fgIntense.blue, method: 'debug', value: 2 },
@@ -56,7 +57,9 @@ const levels = {
   Warn: { colour: ansiStyles.fgIntense.yellow, method: 'warn', value: 5 },
   Error: { colour: ansiStyles.fgIntense.red, method: 'error', value: 6 },
 } as const;
-type LevelName = keyof typeof levels;
+
+export const logLevelNames = typedEntries(logLevels).map(([key]) => key);
+export type LogLevelName = keyof typeof logLevels;
 
 export enum LogDate {
   None,
@@ -64,32 +67,33 @@ export enum LogDate {
   DateTime,
 }
 
-// TODO: require an object matching { current: Settings} (i.e. settingsRef on the client and an instantiated SettingsClient on the server). add log filters to the settings schema. implement them here
 export abstract class BaseLogger {
-  #name: string;
-  #showDate: LogDate;
-  #console: typeof globalThis.console;
-  #colour: boolean;
-  #makePrefix(levelName: LevelName, colour: string) {
+  public readonly name: string;
+  public readonly showDate: LogDate;
+  protected readonly console: typeof globalThis.console;
+  public readonly colour: boolean;
+  #makePrefix(levelName: LogLevelName, colour: string) {
     const parts = [
-      this.#showDate === LogDate.DateTime
+      this.showDate === LogDate.DateTime
         ? toLocalIso(Date.now(), { endAt: 's' })
-        : this.#showDate === LogDate.Time
+        : this.showDate === LogDate.Time
           ? toLocalIso(Date.now(), { endAt: 's', showDate: false })
           : null,
       levelName,
-      this.#name,
+      this.name,
     ].filter((item) => item !== null);
-    if (parts.length && this.#colour) return `${ansiStyles.bold}${colour}[${parts.join(' ')}]${ansiStyles.reset}`;
+    if (parts.length && this.colour) return `${ansiStyles.bold}${colour}[${parts.join(' ')}]${ansiStyles.reset}`;
     if (parts.length) return `[${parts.join(' ')}]`;
     return '';
   }
-  #log(levelName: LevelName | null, ...message: unknown[]) {
-    if (levelName === null) this.#console.log(...message);
+  abstract suppress(levelValue: number): boolean;
+  #log(levelName: LogLevelName | null, ...message: unknown[]) {
+    if (levelName === null) this.console.log(...message);
     else {
-      const { colour, method } = levels[levelName];
+      const { colour, method, value } = logLevels[levelName];
+      if (this.suppress(value)) return;
       const prefix = this.#makePrefix(levelName, colour);
-      this.#console[method](prefix, ...message);
+      this.console[method](prefix, ...message);
     }
   }
   constructor(
@@ -102,10 +106,10 @@ export abstract class BaseLogger {
       showDate?: LogDate;
     } = {}
   ) {
-    this.#name = name;
-    this.#console = console;
-    this.#colour = colour;
-    this.#showDate = showDate;
+    this.name = name;
+    this.console = console;
+    this.colour = colour;
+    this.showDate = showDate;
   }
   debugHigh(...message: unknown[]) {
     this.#log('Debug:High', ...message);
@@ -132,6 +136,6 @@ export abstract class BaseLogger {
     this.#log(null, ...message);
   }
   clear(): void {
-    this.#console.clear();
+    this.console.clear();
   }
 }

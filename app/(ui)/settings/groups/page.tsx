@@ -11,9 +11,9 @@ import { Card } from '@/components/card';
 import { ConfirmModal, ConfirmModalTrigger } from '@/components/confirm-modal';
 import { Modal, ModalContent, ModalTrigger, useModal } from '@/components/modal';
 import { useAppQueries } from '@/hooks/app-queries';
-import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
 import { makeZodValidator, useAppForm } from '@/lib/form';
+import { useLogger } from '@/lib/logger/client';
 import { ServiceStatus } from '@/lib/types';
 
 // preserve id so same logic can be used for add and edit

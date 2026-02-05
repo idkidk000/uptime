@@ -2,8 +2,8 @@ import { MessageServer } from '@/lib/messaging';
 
 let messageServer: MessageServer;
 
-export function start() {
-  messageServer = new MessageServer();
+export async function start() {
+  messageServer = await MessageServer.newAsync();
 }
 
 export function stop() {

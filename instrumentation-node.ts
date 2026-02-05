@@ -1,27 +1,33 @@
 import process, { env } from 'node:process';
 import { ServerLogger } from '@/lib/logger/server';
 import * as Messaging from '@/workers/messaging';
-import * as Monitor from '@/workers/monitor';
-import * as Notifier from '@/workers/notifier';
 
 const logger = new ServerLogger(import.meta.url);
 
-function stop() {
-  Monitor.stop();
-  Messaging.stop();
-  Notifier.stop();
-
-  // have to exit manually since we trapped the signal
-  process.exit(0);
-}
-
-function main() {
+// structured this way because MessageServer must be running before top-level await MessageClient.newAsync() in workers can resolve. top-level awaits in imports are resolved before any of the module code runs, which would cause a deadlock
+async function main() {
   // don't validate certificates (this could have just been a fetch param)
   env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+  let Monitor: typeof import('@/workers/monitor') | null = null;
+  let Notifier: typeof import('@/workers/notifier') | null = null;
+
+  function stop() {
+    Monitor?.stop();
+    Notifier?.stop();
+    Messaging.stop();
+    // have to exit manually since we trapped the signal
+    process.exit(0);
+  }
+
   try {
-    Messaging.start();
-    Notifier.start();
+    await Messaging.start();
+
+    Monitor = await import('@/workers/monitor');
+    Notifier = await import('@/workers/notifier');
+
     Monitor.start();
+    Notifier.start();
 
     process.addListener('SIGINT', stop);
     process.addListener('SIGTERM', stop);
@@ -31,4 +37,4 @@ function main() {
   }
 }
 
-main();
+await main();

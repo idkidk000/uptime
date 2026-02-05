@@ -17,8 +17,8 @@ import { ServerLogger } from '@/lib/logger/server';
 import { type BusMessage, MessageClient } from '@/lib/messaging';
 import { omit, pick } from '@/lib/utils';
 
-const logger = new ServerLogger(import.meta.url);
 const messageClient = new MessageClient(import.meta.url);
+const logger = new ServerLogger(messageClient);
 
 export interface ServiceSelectWithTagIds extends ServiceSelect {
   tags: number[];

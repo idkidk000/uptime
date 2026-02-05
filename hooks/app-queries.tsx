@@ -10,10 +10,10 @@ import { getServices, type ServiceSelectWithTagIds } from '@/actions/service';
 import { getSettings } from '@/actions/setting';
 import { getServiceStates, getStatusCounts, type StatusCounts } from '@/actions/state';
 import { getTags } from '@/actions/tag';
-import { useLogger } from '@/hooks/logger';
 import { useSse } from '@/hooks/sse';
 import { useToast } from '@/hooks/toast';
 import type { NotifierSelect, ServiceWithState, StateSelect, TagSelect } from '@/lib/drizzle/zod/schema';
+import { useLogger, useLoggerWithSettingsRef } from '@/lib/logger/client';
 import type { Settings } from '@/lib/settings/schema';
 import { ServiceStatus } from '@/lib/types';
 
@@ -67,16 +67,17 @@ export function AppQueriesProvider({
   tags: TagSelect[];
 }) {
   const queryClient = useQueryClient();
-  const logger = useLogger(import.meta.url);
+  // const logger = useLogger(import.meta.url);
   const { subscribe } = useSse();
   const { showToast } = useToast();
+  let logger: ReturnType<typeof useLogger> | null = null;
 
   const groupsQuery = useQuery({
     queryKey: ['group'],
     queryFn: () =>
       getGroups().then((response) => {
         if (response.ok) return response.data;
-        logger.error('getGroups', response.error);
+        logger?.error('getGroups', response.error);
         showToast('Error retreiving groups', `${response.error}`, ServiceStatus.Down);
         throw response.error;
       }),
@@ -88,7 +89,7 @@ export function AppQueriesProvider({
     queryFn: () =>
       getServices().then((response) => {
         if (response.ok) return response.data;
-        logger.error('getServices', response.error);
+        logger?.error('getServices', response.error);
         showToast('Error retreiving services', `${response.error}`, ServiceStatus.Down);
         throw response.error;
       }),
@@ -100,7 +101,7 @@ export function AppQueriesProvider({
     queryFn: () =>
       getServiceStates().then((response) => {
         if (response.ok) return response.data;
-        logger.error('getServiceStates', response.error);
+        logger?.error('getServiceStates', response.error);
         showToast('Error retreiving service states', `${response.error}`, ServiceStatus.Down);
         throw response.error;
       }),
@@ -112,7 +113,7 @@ export function AppQueriesProvider({
     queryFn: () =>
       getStatusCounts().then((response) => {
         if (response.ok) return response.data;
-        logger.error('getStatusCounts', response.error);
+        logger?.error('getStatusCounts', response.error);
         showToast('Error retreiving status counts', `${response.error}`, ServiceStatus.Down);
         throw response.error;
       }),
@@ -124,7 +125,7 @@ export function AppQueriesProvider({
     queryFn: () =>
       getSettings().then((response) => {
         if (response.ok) return response.data;
-        logger.error('getSettings', response.error);
+        logger?.error('getSettings', response.error);
         showToast('Error retreiving settings', `${response.error}`, ServiceStatus.Down);
         throw response.error;
       }),
@@ -136,7 +137,7 @@ export function AppQueriesProvider({
     queryFn: () =>
       getNotifiers().then((response) => {
         if (response.ok) return response.data;
-        logger.error('getNotifiers', response.error);
+        logger?.error('getNotifiers', response.error);
         showToast('Error retreiving notifiers', `${response.error}`, ServiceStatus.Down);
         throw response.error;
       }),
@@ -148,7 +149,7 @@ export function AppQueriesProvider({
     queryFn: () =>
       getTags().then((response) => {
         if (response.ok) return response.data;
-        logger.error('getTags', response.error);
+        logger?.error('getTags', response.error);
         showToast('Error retreiving tags', `${response.error}`, ServiceStatus.Down);
         throw response.error;
       }),
@@ -156,6 +157,8 @@ export function AppQueriesProvider({
   });
 
   const settingsRef = useRef(settingsQuery.data);
+
+  logger = useLoggerWithSettingsRef(settingsRef, import.meta.url);
 
   useEffect(() => {
     settingsRef.current = settingsQuery.data;
@@ -209,7 +212,7 @@ export function AppQueriesProvider({
       }),
     ];
     return () => void unsubscribers.map((fn) => fn());
-  }, []);
+  }, [logger]);
 
   return <Context value={value}>{children}</Context>;
 }

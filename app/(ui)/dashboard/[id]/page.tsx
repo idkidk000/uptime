@@ -18,7 +18,6 @@ import { useServiceWithState } from '@/hooks/app-queries';
 import { useToast } from '@/hooks/toast';
 import { toDuration, toLocalIso } from '@/lib/date';
 import { ServiceStatus } from '@/lib/types';
-import {Route} from 'next';
 
 const REDIRECT_MILLIS = 3_000;
 

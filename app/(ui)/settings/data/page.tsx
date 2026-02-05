@@ -3,16 +3,16 @@
 
 import { Download, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DataTransferPost } from '@/app/api/data-transfer/route';
+import type { DataTransferPost } from '@/app/api/data-transfer/schema';
 import type { ApiResponse } from '@/app/api/types';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { InputFile } from '@/components/input/input-file';
 import { Switch } from '@/components/input/switch';
 import { Modal, ModalClose, ModalContent, ModalTrigger, useModal } from '@/components/modal';
-import { useLogger } from '@/hooks/logger';
 import { useToast } from '@/hooks/toast';
 import { toLocalIso } from '@/lib/date';
+import { useLogger } from '@/lib/logger/client';
 import { ServiceStatus } from '@/lib/types';
 import { name, version } from '@/package.json';
 

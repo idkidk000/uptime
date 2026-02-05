@@ -24,7 +24,6 @@ export function Select<
   children,
   allowEmpty,
   multi,
-  alignment = 'center',
   contain,
   hideValue,
   ...props
@@ -36,7 +35,6 @@ export function Select<
   options: { value: ValueType; label: string }[];
   allowEmpty?: AllowEmpty;
   multi?: Multi;
-  alignment?: ComponentProps<typeof PopoverContent>['alignment'];
   contain?: boolean;
   hideValue?: boolean;
 } & Omit<ComponentProps<typeof PopoverTrigger>, 'role' | 'aria-valuenow' | 'value'>) {
@@ -94,11 +92,9 @@ export function Select<
       </PopoverTrigger>
       <PopoverContent
         role='listbox'
-        alignment={alignment}
         className={cn(
           'open:flex flex-col gap-2',
-          contain && 'rounded-t-none border-t-0',
-          contain && (alignment === 'center' ? 'w-[calc(anchor-size(width)-2em)]' : 'w-[calc(anchor-size(width)-1em)]')
+          contain && 'rounded-t-none border-t-0 w-[calc(anchor-size(width)-2em)]'
         )}
       >
         {[...(allowEmpty && !multi ? [{ label: '-', value: 'undefined' }] : []), ...options].map(({ label, value }) => (

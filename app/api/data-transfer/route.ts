@@ -1,8 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
-import z from 'zod';
-import { dataTransferSchema } from '@/actions/data-transfer/schema';
 import { updateSettings } from '@/actions/setting';
+import { dataTransferPostSchema } from '@/app/api/data-transfer/schema';
 import type { WrappedApiResponse } from '@/app/api/types';
 import { db } from '@/lib/drizzle';
 import {
@@ -16,22 +15,15 @@ import {
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 
-const logger = new ServerLogger(import.meta.url);
 const messageClient = new MessageClient(import.meta.url);
-
-const postSchema = z.object({
-  data: dataTransferSchema,
-  replace: z.boolean(),
-});
-export type DataTransferPost = z.infer<typeof postSchema>;
-
+const logger = new ServerLogger(messageClient);
 /* accepts `DataTransferPost` */
 export async function POST(request: NextRequest): WrappedApiResponse<null> {
   try {
     const {
       data: { settings, services, groups, notifiers },
       replace,
-    } = postSchema.parse(await request.json());
+    } = dataTransferPostSchema.parse(await request.json());
 
     const response = await updateSettings(settings);
     if (!response.ok) {

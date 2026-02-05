@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
 import { text } from 'node:stream/consumers';
-import { ServerLogger } from '@/lib/logger/server';
-import { Monitor, MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { MessageClient } from '@/lib/messaging';
+import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { Monitor } from '@/lib/monitor/abc';
 import type { PingMonitorParams } from '@/lib/monitor/ping/schema';
 
 const RE_SAFE = /^[a-zA-Z0-9._-]+$/;
@@ -10,9 +11,12 @@ const RE_RTT = /= (?<min>[\d.]+)\/(?<avg>[\d.]+)\/(?<max>[\d.]+)\/(?<mdev>[\d.]+
 
 const COUNT = 5;
 
-const logger = new ServerLogger(import.meta.url);
+const messageClient = new MessageClient(import.meta.url);
 
 export class PingMonitor extends Monitor<PingMonitorParams> {
+  constructor(params: PingMonitorParams) {
+    super(params, messageClient);
+  }
   async check(): Promise<MonitorResponse<'ping'>> {
     try {
       const safeMatch = RE_SAFE.exec(this.params.address);
@@ -31,7 +35,7 @@ export class PingMonitor extends Monitor<PingMonitorParams> {
           COUNT,
           '-A',
           '-w',
-          Math.ceil(this.settingsClient.current.monitor.defaultTimeout / 1000),
+          Math.ceil(this.messageClient.settings.monitor.defaultTimeout / 1000),
           this.params.address,
         ].map(String)
       );
@@ -54,7 +58,7 @@ export class PingMonitor extends Monitor<PingMonitorParams> {
         };
       const recvMatch = RE_RECV.exec(stdout);
       if (!recvMatch?.groups) {
-        logger.warn('could not parse output\n', stdout, '\n', { recvMatch });
+        this.logger.warn('could not parse output\n', stdout, '\n', { recvMatch });
         return {
           kind: 'ping',
           ok: false,
@@ -73,7 +77,7 @@ export class PingMonitor extends Monitor<PingMonitorParams> {
       const packetLoss = (1 - packetsReceived / COUNT) * 100;
       const rttMatch = RE_RTT.exec(stdout);
       if (!rttMatch?.groups) {
-        logger.warn('could not parse output\n', stdout, '\n', { rttMatch });
+        this.logger.warn('could not parse output\n', stdout, '\n', { rttMatch });
         return {
           kind: 'ping',
           ok: false,
@@ -82,7 +86,7 @@ export class PingMonitor extends Monitor<PingMonitorParams> {
         };
       }
       const latency = Number(rttMatch.groups.avg);
-      logger.debugLow(this.params.address, { packetsReceived, packetLoss, latency });
+      this.logger.debugLow(this.params.address, { packetsReceived, packetLoss, latency });
       if (typeof this.params.upWhen?.latency === 'number' && latency > this.params.upWhen.latency)
         return {
           kind: 'ping',

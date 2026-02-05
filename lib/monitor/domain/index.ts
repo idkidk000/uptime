@@ -1,6 +1,8 @@
 import z from 'zod';
 import { DAY_MILLIS, dateDiff, toLocalIso } from '@/lib/date';
-import { Monitor, MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { MessageClient } from '@/lib/messaging';
+import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { Monitor } from '@/lib/monitor/abc';
 import type { DomainMonitorParams } from '@/lib/monitor/domain/schema';
 import { roundTo } from '@/lib/utils';
 import { name, version } from '@/package.json';
@@ -9,8 +11,12 @@ const RE_BARE_HOST = /^(?:.*:\/\/)?(?<host>[a-z\d.]+)(:(?<port>\d+))?/;
 
 const schema = z.object({ events: z.array(z.object({ eventAction: z.string(), eventDate: z.coerce.date() })) });
 
-//FIXME: this could almost be a HttpMonitor jsonata query if i'd designed things a bit better
+const messageClient = new MessageClient(import.meta.url);
+
 export class DomainMonitor extends Monitor<DomainMonitorParams> {
+  constructor(params: DomainMonitorParams) {
+    super(params, messageClient);
+  }
   async check(): Promise<MonitorResponse<'domain'>> {
     try {
       const match = RE_BARE_HOST.exec(this.params.address);
@@ -25,7 +31,7 @@ export class DomainMonitor extends Monitor<DomainMonitorParams> {
       const url = `https://www.rdap.net/domain/${domain}`;
       const controller = new AbortController();
       const { promise, reject, resolve } = Promise.withResolvers<never>();
-      const maxLatency = this.params.upWhen?.latency ?? this.settingsClient.current.monitor.defaultTimeout;
+      const maxLatency = this.params.upWhen?.latency ?? this.messageClient.settings.monitor.defaultTimeout;
       // biome-ignore format: no
       const timeout = setTimeout(() => {
         controller.abort();

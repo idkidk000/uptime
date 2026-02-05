@@ -1,12 +1,19 @@
 import { connect } from 'node:tls';
 import { dateDiff, toLocalIso } from '@/lib/date';
-import { Monitor, MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { MessageClient } from '@/lib/messaging';
+import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { Monitor } from '@/lib/monitor/abc';
 import type { SslMonitorParams } from '@/lib/monitor/ssl/schema';
 import { roundTo } from '@/lib/utils';
 
 const RE_BARE_HOST = /^(?:.*:\/\/)?(?<host>[a-z\d.]+)(:(?<port>\d+))?/;
 
+const messageClient = new MessageClient(import.meta.url);
+
 export class SslMonitor extends Monitor<SslMonitorParams> {
+  constructor(params: SslMonitorParams) {
+    super(params, messageClient);
+  }
   async check(): Promise<MonitorResponse<'ssl'>> {
     const match = RE_BARE_HOST.exec(this.params.address);
     if (!match?.groups)
@@ -24,7 +31,7 @@ export class SslMonitor extends Monitor<SslMonitorParams> {
         host,
         port,
         rejectUnauthorized: false,
-        timeout: this.settingsClient.current.monitor.defaultTimeout,
+        timeout: this.messageClient.settings.monitor.defaultTimeout,
       });
       try {
         const { promise, resolve, reject } = Promise.withResolvers();

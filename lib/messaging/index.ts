@@ -3,10 +3,16 @@ import { createServer, Socket } from 'node:net';
 import { join, sep } from 'node:path';
 import { env } from 'node:process';
 import { createInterface } from 'node:readline';
+import { eq, getTableColumns } from 'drizzle-orm';
 import SuperJSON from 'superjson';
+import { db } from '@/lib/drizzle';
+import { keyValTable } from '@/lib/drizzle/schema';
+import { MessageServerLogger } from '@/lib/logger/message-server';
 import { ServerLogger } from '@/lib/logger/server';
 import type { MonitorDownReason } from '@/lib/monitor';
+import { defaultSettings, type Settings } from '@/lib/settings/schema';
 import type { ServiceStatus } from '@/lib/types';
+import { pick } from '@/lib/utils';
 import { name } from '@/package.json';
 
 // use a unix socket on systems which support it. fallback to tcp/ip and hope we don't have a port collision
@@ -55,6 +61,11 @@ export type ClientActionMessage = {
   cat: 'client-action';
   kind: ClientActionKind;
 };
+export type SettingsMessage = {
+  cat: 'settings';
+  kind: 'update';
+  data: Settings;
+};
 export type BusMessage =
   | {
       cat: 'server-action';
@@ -68,7 +79,8 @@ export type BusMessage =
     }
   | ToastMessage
   | StatusMessage
-  | ClientActionMessage;
+  | ClientActionMessage
+  | SettingsMessage;
 
 // FIXME: the generated type is correct but the def is horrible and keys have to be asserted, which defeats the point of this. may need to refactor Message
 type SubscriptionKey = BusMessage extends infer M
@@ -93,11 +105,12 @@ function isUnixLike() {
 }
 
 export class MessageServer {
-  #logger = new ServerLogger(import.meta.url, 'MessageServer');
+  #logger = new MessageServerLogger(import.meta.url, this, 'MessageServer');
   #subscriptions = new Map<SubscriptionKey, Set<Socket>>();
   #cache: BusMessage[] = [];
   /** cache is in use while this is not null */
   #cacheTimeout: NodeJS.Timeout | null;
+  settingsMessage: SettingsMessage;
   #parseMessage(data: string): InternalMessage | null {
     try {
       const parsed: InternalMessage = SuperJSON.parse(data);
@@ -120,6 +133,13 @@ export class MessageServer {
       switch (internalMessage.kind) {
         case 'message': {
           if (this.#cacheTimeout !== null) this.#cache.push(internalMessage.msg);
+          if (internalMessage.msg.cat === 'invalidation' && internalMessage.msg.kind === 'settings') {
+            MessageServer.#getSettings().then((data) => {
+              this.settingsMessage.data = data;
+              for (const client of this.#subscriptions.get('settings.update') ?? [])
+                client.write(`${SuperJSON.stringify(this.settingsMessage)}\n`);
+            });
+          }
           const subscriptions = [
             ...(this.#subscriptions.get(`${internalMessage.msg.cat}.`) ?? []),
             ...(this.#subscriptions.get(`${internalMessage.msg.cat}.${internalMessage.msg.kind}` as SubscriptionKey) ??
@@ -133,6 +153,8 @@ export class MessageServer {
         case 'subscribe': {
           if (!this.#subscriptions.get(internalMessage.key)?.add(client))
             this.#subscriptions.set(internalMessage.key, new Set([client]));
+          if (internalMessage.key === 'settings.update')
+            client?.write(`${SuperJSON.stringify(this.settingsMessage)}\n`);
           if (this.#cacheTimeout === null) return;
           for (const cachedMessage of this.#cache) {
             if (
@@ -163,7 +185,8 @@ export class MessageServer {
       }
     });
   });
-  constructor() {
+  private constructor(settings: Settings) {
+    this.settingsMessage = { cat: 'settings', data: settings, kind: 'update' };
     try {
       rmSync(SOCKET_PATH, { force: true });
     } catch {
@@ -185,7 +208,7 @@ export class MessageServer {
     if (isUnixLike()) this.#server.listen(SOCKET_PATH);
     else this.#server.listen(SOCKET_FALLBACK_PORT, SOCKET_FALLBACK_ADDR);
   }
-  stop() {
+  stop(): void {
     this.#server.close();
     if (this.#cacheTimeout !== null) clearTimeout(this.#cacheTimeout);
     try {
@@ -194,16 +217,35 @@ export class MessageServer {
       /* empty */
     }
   }
+  static async #getSettings(): Promise<Settings> {
+    const rows = await db
+      .select(pick(getTableColumns(keyValTable), ['value']))
+      .from(keyValTable)
+      .where(eq(keyValTable.key, 'settings'));
+    // deals with no current settings and schema drift
+    return { ...defaultSettings, ...(rows.at(0)?.value as Settings | undefined) };
+  }
+  static async newAsync() {
+    const settings = await MessageServer.#getSettings();
+    return new MessageServer(settings);
+  }
 }
 
-// during dev this gets reinstantiated every time a server action which has a top-level MessageClient is called. it's only a dev thing and doesn't happen after bundling
+// during dev this gets reinstantiated every time a server action which has a top-level MessageClient is called due to hmr
+/** `.settings` returns defaults until `MessageClient` has connected. use `await MessageClient.newAsync()` if you need live from the start */
 export class MessageClient {
   #socket: Socket | null = null;
   #subscriptions = new Map<SubscriptionKey, Set<Callback>>();
   #queue: string[] = [];
   #logger: ServerLogger;
-  constructor(public readonly importMetaUrl: string) {
-    this.#logger = new ServerLogger(importMetaUrl, 'MessageClient');
+  #settings: Settings;
+  constructor(
+    public readonly importMetaUrl: string,
+    /** function to be called when `settings` is live */
+    resolve?: () => void
+  ) {
+    this.#settings = { ...defaultSettings };
+    this.#logger = new ServerLogger(this, 'MessageClient');
     // next creates an instance per server action (not per server action module) during next build to figure out bundling. there is no server to connect to
     if (env.IS_BUILDING) return;
     let socket: Socket | null = null;
@@ -214,10 +256,9 @@ export class MessageClient {
       socket.connect(isUnixLike() ? { path: SOCKET_PATH } : { port: SOCKET_FALLBACK_PORT, host: SOCKET_FALLBACK_ADDR });
       socket.addListener('ready', () => {
         if (!socket) {
-          this.#logger.error('MessageClient connected but socket is null');
+          this.#logger.error('connected but socket is null');
           return;
         }
-        this.#logger.info('MessageClient connected');
         this.#socket = socket;
         clearInterval(interval);
         if (this.#queue.length) this.#logger.debugLow('pushing queued messages', this.#queue);
@@ -239,6 +280,10 @@ export class MessageClient {
         });
       });
     }, 100);
+    this.subscribe({ cat: 'settings', kind: 'update' }, (message) => {
+      this.#settings = message.data;
+      resolve?.();
+    });
   }
   #sendInternalMessage(internalMessage: InternalMessage) {
     // this also can't work during next build
@@ -274,5 +319,19 @@ export class MessageClient {
         this.#subscriptions.delete(key);
       }
     };
+  }
+  get settings(): Readonly<Settings> {
+    return Object.freeze({ ...this.#settings });
+  }
+  static async newAsync(importMetaUrl: string): Promise<MessageClient> {
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    const client = new MessageClient(importMetaUrl, resolve);
+    // no server to connect to during build
+    if (!env.IS_BUILDING) {
+      const timeout = setTimeout(() => reject('Connect timeout. Is the MessageServer running?'), 1000);
+      await promise;
+      clearTimeout(timeout);
+    }
+    return client;
   }
 }

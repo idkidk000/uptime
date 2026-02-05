@@ -1,5 +1,4 @@
 import z from 'zod';
-import type { SettingsClient } from '@/lib/settings';
 import { enumToObject } from '@/lib/utils';
 
 export enum MonitorDownReason {
@@ -45,11 +44,3 @@ export type MonitorResponse<Kind extends string = string> = { kind: Kind; messag
   | { ok: true; latency: number }
   | { ok: false; reason: MonitorDownReason }
 );
-
-export abstract class Monitor<Params extends BaseMonitorParams = BaseMonitorParams> {
-  constructor(
-    public readonly params: Params,
-    public readonly settingsClient: SettingsClient
-  ) {}
-  abstract check(): Promise<MonitorResponse<Params['kind']>>;
-}

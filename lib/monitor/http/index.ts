@@ -1,12 +1,19 @@
 import { DOMParser } from '@xmldom/xmldom';
 import jsonata from 'jsonata';
 import xpath from 'xpath';
-import { Monitor, MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { MessageClient } from '@/lib/messaging';
+import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { Monitor } from '@/lib/monitor/abc';
 import type { HttpMonitorParams } from '@/lib/monitor/http/schema';
 import { parseRegex, roundTo } from '@/lib/utils';
 import { name, version } from '@/package.json';
 
+const messageClient = new MessageClient(import.meta.url);
+
 export class HttpMonitor extends Monitor<HttpMonitorParams> {
+  constructor(params: HttpMonitorParams) {
+    super(params, messageClient);
+  }
   async check(): Promise<MonitorResponse<'http'>> {
     try {
       const controller = new AbortController();
@@ -16,7 +23,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
           controller.abort();
           reject('timeout');
         },
-        (this.params.upWhen?.latency ?? this.settingsClient.current.monitor.defaultTimeout) + 100
+        (this.params.upWhen?.latency ?? this.messageClient.settings.monitor.defaultTimeout) + 100
       );
       const started = performance.now();
       // fetch will throw on abort signal, though it may not be immediate (i.e. if the remote does not respond at all)

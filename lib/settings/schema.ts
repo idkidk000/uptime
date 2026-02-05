@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logLevelNames } from '@/lib/logger';
 
 export const settingsSchema = z
   .object({
@@ -17,6 +18,17 @@ export const settingsSchema = z
     sse: z
       .object({
         throttle: z.int().min(0).default(250).describe('Throttle for client updates and invalidations'),
+      })
+      .prefault({}),
+    logging: z
+      .object({
+        rootLevel: z.enum(logLevelNames).default('Info').describe('Root log level'),
+        overrides: z
+          .record(z.string(), z.enum(logLevelNames))
+          .default({})
+          .describe(
+            'Logger name prefix overrides. Setting `workers/` to `Debug:High` would show all log messages for all workers regardless of the root log level'
+          ),
       })
       .prefault({}),
   })

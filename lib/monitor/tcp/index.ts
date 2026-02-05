@@ -1,9 +1,16 @@
 import { Socket } from 'node:net';
-import { Monitor, MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { MessageClient } from '@/lib/messaging';
+import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { Monitor } from '@/lib/monitor/abc';
 import type { TcpMonitorParams } from '@/lib/monitor/tcp/schema';
 import { roundTo } from '@/lib/utils';
 
+const messageClient = new MessageClient(import.meta.url);
+
 export class TcpMonitor extends Monitor<TcpMonitorParams> {
+  constructor(params: TcpMonitorParams) {
+    super(params, messageClient);
+  }
   async check(): Promise<MonitorResponse<'tcp'>> {
     try {
       const socket = new Socket();
@@ -14,10 +21,10 @@ export class TcpMonitor extends Monitor<TcpMonitorParams> {
             kind: 'tcp',
             ok: false,
             reason: MonitorDownReason.Timeout,
-            message: `Could not connect in ${this.settingsClient.current.monitor.defaultTimeout}ms`,
+            message: `Could not connect in ${this.messageClient.settings.monitor.defaultTimeout}ms`,
           });
           socket.destroy();
-        }, this.settingsClient.current.monitor.defaultTimeout);
+        }, this.messageClient.settings.monitor.defaultTimeout);
         socket.addListener('error', (err) => {
           resolve({
             kind: 'tcp',

@@ -19,7 +19,7 @@ import { ServiceStatus } from '@/lib/types';
 import { displayName } from '@/package.json';
 
 const messageClient = new MessageClient(import.meta.url);
-const logger = new ServerLogger(import.meta.url);
+const logger = new ServerLogger(messageClient);
 
 export async function getNotifiers(notifierIds?: number[]): ActionResponse<NotifierSelect[]> {
   try {

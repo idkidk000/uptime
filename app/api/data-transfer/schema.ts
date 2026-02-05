@@ -23,3 +23,10 @@ export type DataTransfer = z.infer<typeof dataTransferSchema>;
 export interface DataHistory extends Omit<HistorySelect, 'serviceId'> {
   name: string;
 }
+
+export const dataTransferPostSchema = z.object({
+  data: dataTransferSchema,
+  replace: z.boolean(),
+});
+
+export type DataTransferPost = z.infer<typeof dataTransferPostSchema>;

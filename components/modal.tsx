@@ -94,9 +94,7 @@ export function ModalClose({ children, onClick, ...props }: ComponentProps<typeo
   );
 }
 
-// TODO: firefox cannot transition backdrops
-
-/** place this **OUTSIDE** of any opacity/translate/scale transformed elements (e.g. <Card/>) or the close animation will snap to the center of its parent */
+/** place this **OUTSIDE** of any elements which create their own stacking context (opacity/translate/scale transform, isolation:isolate, etc) (e.g. <Card/>) or the close animation will snap to the center of that context. portaling the Modal to document.body is another workaround but that breaks animations */
 export function ModalContent({
   children,
   className,

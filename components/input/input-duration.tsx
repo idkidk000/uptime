@@ -116,7 +116,6 @@ export function InputDuration<AllowEmpty extends boolean>({
         allowEmpty={allowEmpty}
         placeholder='Period'
         className='rounded-s-none border-s'
-        alignment='left'
       />
     </div>
   );

@@ -1,12 +1,19 @@
 import { Resolver } from 'node:dns/promises';
-import { Monitor, MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { MessageClient } from '@/lib/messaging';
+import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
+import { Monitor } from '@/lib/monitor/abc';
 import type { DnsMonitorParams } from '@/lib/monitor/dns/schema';
 import { roundTo } from '@/lib/utils';
 
+const messageClient = new MessageClient(import.meta.url);
+
 export class DnsMonitor extends Monitor<DnsMonitorParams> {
+  constructor(params: DnsMonitorParams) {
+    super(params, messageClient);
+  }
   async check(): Promise<MonitorResponse<'dns'>> {
     try {
-      const resolver = new Resolver({ timeout: this.settingsClient.current.monitor.defaultTimeout });
+      const resolver = new Resolver({ timeout: this.messageClient.settings.monitor.defaultTimeout });
       if (this.params.resolver) resolver.setServers([this.params.resolver]);
       const started = performance.now();
       const results = (await resolver.resolve(this.params.address, this.params.recordType)) as string[];

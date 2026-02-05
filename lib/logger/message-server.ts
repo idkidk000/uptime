@@ -3,18 +3,16 @@ import { relative, sep } from 'node:path';
 import { cwd, stderr, stdout } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { BaseLogger, type LogLevelName, logLevels } from '@/lib/logger';
-import { MessageClient } from '@/lib/messaging';
+import type { MessageServer } from '@/lib/messaging';
 import { typedEntries } from '@/lib/utils';
 
 const MAX_PATH_DEPTH = 5;
 
-export class ServerLogger extends BaseLogger {
-  #messageClient: MessageClient | null = null;
-  constructor(
-    ...[param, name]: [messageClient: MessageClient, name?: string] | [importMetaUrl: string, name?: string]
-  ) {
+export class MessageServerLogger extends BaseLogger {
+  #messageServer: MessageServer;
+  constructor(importMetaUrl: string, messageServer: MessageServer, name?: string) {
     super(
-      `${relative(cwd(), fileURLToPath(param instanceof MessageClient ? param.importMetaUrl : param))
+      `${relative(cwd(), fileURLToPath(importMetaUrl))
         .split(sep)
         .slice(-MAX_PATH_DEPTH)
         .join(sep)}${name ? `:${name}` : ''}`,
@@ -33,11 +31,11 @@ export class ServerLogger extends BaseLogger {
       }),
       true
     );
-    if (param instanceof MessageClient) this.#messageClient = param;
+    this.#messageServer = messageServer;
   }
   suppress(levelValue: number): boolean {
-    const overrides = this.#messageClient?.settings?.logging.overrides;
-    let levelName: LogLevelName | undefined = this.#messageClient?.settings?.logging.rootLevel;
+    const overrides = this.#messageServer.settingsMessage.data.logging.overrides;
+    let levelName: LogLevelName | undefined = this.#messageServer.settingsMessage.data.logging.rootLevel;
     if (overrides) {
       const override = typedEntries(overrides)
         .toSorted(([a], [b]) => b.length - a.length)

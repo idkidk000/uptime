@@ -12,7 +12,6 @@ import type { ActionResponse } from '@/actions/types';
 import type { NotifierSelect, StateSelect, TagSelect } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { type InvalidationKind as InvalidateKind, MessageClient } from '@/lib/messaging';
-import { SettingsClient } from '@/lib/settings';
 import type { Settings } from '@/lib/settings/schema';
 
 export type Update = { ids: number[] } & (
@@ -29,9 +28,9 @@ export interface Invalidate {
   ids: number[];
 }
 
-const messageClient = new MessageClient(import.meta.url);
-const settingsClient = await SettingsClient.newAsync(import.meta.url, messageClient);
-const logger = new ServerLogger(import.meta.url);
+const messageClient = await MessageClient.newAsync(import.meta.url);
+const logger = new ServerLogger(messageClient);
+
 const streamControllers = new Set<ReadableStreamDefaultController<unknown>>();
 /** only used in sync code */
 const invalidations = new Map<InvalidateKind, Set<number>>();
@@ -79,7 +78,7 @@ async function sendClientUpdates(destructuredInvalidations: { kind: InvalidateKi
     for (const controller of streamControllers) controller.enqueue(messageString);
   } finally {
     // re-trigger if there are new invalidations since we blocked the timeout from being set
-    if (invalidations.size) timeout = setTimeout(timeoutCallback, settingsClient.current.sse.throttle);
+    if (invalidations.size) timeout = setTimeout(timeoutCallback, messageClient.settings.sse.throttle);
     else timeout = null;
   }
 }
@@ -92,7 +91,7 @@ messageClient.subscribe({ cat: 'invalidation' }, (message) => {
     return;
   }
   if (!invalidations.get(message.kind)?.add(message.id)) invalidations.set(message.kind, new Set([message.id]));
-  timeout ??= setTimeout(timeoutCallback, settingsClient.current.sse.throttle);
+  timeout ??= setTimeout(timeoutCallback, messageClient.settings.sse.throttle);
 });
 
 // toasts are sent immediately

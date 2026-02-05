@@ -12,15 +12,13 @@ import { historyTable, serviceTable, stateTable } from '@/lib/drizzle/schema';
 import type { ServiceWithState, StateInsert } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
-import type { Monitor } from '@/lib/monitor';
+import type { Monitor } from '@/lib/monitor/abc';
 import { getMonitor } from '@/lib/monitor/utils';
-import { SettingsClient } from '@/lib/settings';
 import { ServiceStatus } from '@/lib/types';
 import { concurrently } from '@/lib/utils';
 
-const messageClient = new MessageClient(import.meta.url);
-const settingsClient = await SettingsClient.newAsync(import.meta.url, messageClient);
-const logger = new ServerLogger(import.meta.url);
+const messageClient = await MessageClient.newAsync(import.meta.url);
+const logger = new ServerLogger(messageClient);
 let interval: NodeJS.Timeout | null = null;
 const POLL_MILLIS = 60_000;
 const STARTUP_DELAY_MILLIS = 5_000;
@@ -31,7 +29,7 @@ function getInstance(service: ServiceWithState): Monitor | null {
   if (!service.active) return null;
   const cached = cache.get(service.id);
   if (cached && cached.updatedAt === service.updatedAt) return cached.monitor;
-  const monitor = getMonitor(service.params, settingsClient);
+  const monitor = getMonitor(service.params);
   cache.set(service.id, { updatedAt: service.updatedAt, monitor });
   return monitor;
 }
@@ -64,7 +62,7 @@ async function checkService(service: ServiceWithState): Promise<void> {
   const [updated] = await db.transaction(async (tx) => {
     await tx.insert(historyTable).values({ serviceId: service.id, result: current, status });
 
-    const miniHistory = await getMiniHistory(service.id, settingsClient.current.history.summaryItems, tx);
+    const miniHistory = await getMiniHistory(service.id, messageClient.settings.history.summaryItems, tx);
     const { uptime1d, uptime30d }: UptimeSelect = await tx.get(getUptimeSql(service.id));
     const { latency1d }: LatencySelect = await tx.get(getLatencySql(service.id));
 
@@ -119,7 +117,7 @@ async function checkService(service: ServiceWithState): Promise<void> {
 }
 
 export async function checkServices() {
-  if (!settingsClient.current.monitor.enable) return;
+  if (!messageClient.settings.monitor.enable) return;
   const services = await db
     .select({ ...getTableColumns(serviceTable), state: getTableColumns(stateTable) })
     .from(serviceTable)
@@ -129,7 +127,7 @@ export async function checkServices() {
     'checking services',
     services.map(({ id, name, state }) => ({ id, name, lastCheck: state?.updatedAt, nextCheck: state?.nextCheckAt }))
   );
-  await concurrently(services, checkService, settingsClient.current.monitor.concurrency);
+  await concurrently(services, checkService, messageClient.settings.monitor.concurrency);
 }
 
 function checkServiceById(id: number): void {
