@@ -39,12 +39,11 @@ export type NotifierInsert = z.infer<typeof notifierInsertSchema>;
 export type NotifierSelect = (typeof notifierTable)['$inferSelect'];
 
 export const groupInsertSchema = createInsertSchema(groupTable)
-  .omit({ createdAt: true, updatedAt: true, id: true })
-  .extend({ name: z.string().min(1) });
+  .omit({ createdAt: true, updatedAt: true, id: true, renotifySeconds: true })
+  .extend({ name: z.string().min(1), renotifySeconds: z.int().min(60).optional() });
 
-type GroupTable = typeof groupTable;
-export type GroupInsert = GroupTable['$inferInsert'];
-export type GroupSelect = GroupTable['$inferSelect'];
+export type GroupInsert = z.infer<typeof groupInsertSchema>;
+export type GroupSelect = (typeof groupTable)['$inferSelect'];
 
 type GroupToNotifierTable = typeof groupToNotifierTable;
 export type GroupToNotifierInsert = GroupToNotifierTable['$inferInsert'];

@@ -39,7 +39,7 @@ export async function getServiceHistory(
     };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -56,6 +56,6 @@ export async function clearServiceHistory(serviceId: number): ActionResponse<nul
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }

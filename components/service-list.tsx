@@ -55,7 +55,7 @@ export function ServiceList() {
     if (!selectionRef.current?.length) return;
     setPausedMulti(selectionRef.current, true).then((response) => {
       if (response.ok) setSelection(null);
-      else showToast('Error pausing monitors', `${response.error}`, ServiceStatus.Down);
+      else showToast('Error pausing monitors', response.error, ServiceStatus.Down);
     });
   }, []);
 
@@ -63,7 +63,7 @@ export function ServiceList() {
     if (!selectionRef.current?.length) return;
     setPausedMulti(selectionRef.current, false).then((response) => {
       if (response.ok) setSelection(null);
-      else showToast('Error resuming monitors', `${response.error}`, ServiceStatus.Down);
+      else showToast('Error resuming monitors', response.error, ServiceStatus.Down);
     });
   }, []);
 

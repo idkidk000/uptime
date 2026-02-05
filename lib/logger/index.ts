@@ -1,4 +1,5 @@
 import { toLocalIso } from '@/lib/date';
+import type { Settings } from '@/lib/settings/schema';
 import { typedEntries } from '@/lib/utils';
 
 export const ansiStyles = {
@@ -70,8 +71,9 @@ export enum LogDate {
 export abstract class BaseLogger {
   public readonly name: string;
   public readonly showDate: LogDate;
-  protected readonly console: typeof globalThis.console;
+  #console: typeof globalThis.console;
   public readonly colour: boolean;
+  #cachedLevel: { settings: Settings['logging'] | undefined; levelValue: number } | null = null;
   #makePrefix(levelName: LogLevelName, colour: string) {
     const parts = [
       this.showDate === LogDate.DateTime
@@ -86,14 +88,28 @@ export abstract class BaseLogger {
     if (parts.length) return `[${parts.join(' ')}]`;
     return '';
   }
-  abstract suppress(levelValue: number): boolean;
+  abstract get logSettings(): Settings['logging'] | undefined;
+  get #minLevel(): number {
+    if (this.#cachedLevel?.settings === this.logSettings) return this.#cachedLevel?.levelValue ?? 0;
+    const overrides = this.logSettings?.overrides.toSorted((a, b) => b.name.length - a.name.length);
+    const levelName =
+      overrides?.find((item) => this.name.startsWith(item.name))?.level ??
+      overrides?.find((item) => this.name.split(':')[0].startsWith(item.name))?.level ??
+      this.logSettings?.rootLevel ??
+      'Debug:High';
+    const levelValue = logLevels[levelName].value;
+    this.#cachedLevel = {
+      settings: this.logSettings,
+      levelValue,
+    };
+    return levelValue;
+  }
   #log(levelName: LogLevelName | null, ...message: unknown[]) {
-    if (levelName === null) this.console.log(...message);
+    if (levelName === null) this.#console.log(...message);
     else {
       const { colour, method, value } = logLevels[levelName];
-      if (this.suppress(value)) return;
-      const prefix = this.#makePrefix(levelName, colour);
-      this.console[method](prefix, ...message);
+      if (value < this.#minLevel) return;
+      this.#console[method](this.#makePrefix(levelName, colour), ...message);
     }
   }
   constructor(
@@ -107,7 +123,7 @@ export abstract class BaseLogger {
     } = {}
   ) {
     this.name = name;
-    this.console = console;
+    this.#console = console;
     this.colour = colour;
     this.showDate = showDate;
   }
@@ -136,6 +152,6 @@ export abstract class BaseLogger {
     this.#log(null, ...message);
   }
   clear(): void {
-    this.console.clear();
+    this.#console.clear();
   }
 }

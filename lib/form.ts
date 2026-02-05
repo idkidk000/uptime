@@ -112,10 +112,19 @@ export function makeZodValidator(
   return function ({ value }: { value: unknown }) {
     logger.debugLow('validating', value);
     const parsed = zodSchema.safeParse(value);
-    if (parsed.success) return null;
+    if (parsed.success) {
+      logger.success('validation success');
+      return null;
+    }
     const fields: Record<string, string> = Object.fromEntries(
       parsed.error.issues
-        .map((issue) => [issue.path.filter((item) => typeof item === 'string').join('.'), issue.message])
+        .map((issue) => [
+          issue.path.reduce<string>(
+            (acc, item) => `${acc}${typeof item === 'number' ? `[${item}]` : `${acc.length ? '.' : ''}${item}`}`,
+            ''
+          ),
+          issue.message,
+        ])
         .filter(([path]) => path.length)
     );
     logger.warn('validation error', fields);

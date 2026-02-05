@@ -40,7 +40,7 @@ function TagForm({ id }: { id: number | null }) {
             form.formApi.reset();
             close();
           } else {
-            showToast(`Error updating ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            showToast(`Error updating ${form.value.name}`, response.error, ServiceStatus.Down);
             logger.error(response.error);
           }
         });
@@ -51,7 +51,7 @@ function TagForm({ id }: { id: number | null }) {
             form.formApi.reset();
             close();
           } else {
-            showToast(`Error adding ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            showToast(`Error adding ${form.value.name}`, response.error, ServiceStatus.Down);
             logger.error(response.error);
           }
         });

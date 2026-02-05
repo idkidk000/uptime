@@ -24,11 +24,21 @@ export const settingsSchema = z
       .object({
         rootLevel: z.enum(logLevelNames).default('Info').describe('Root log level'),
         overrides: z
-          .record(z.string(), z.enum(logLevelNames))
-          .default({})
+          .array(z.object({ name: z.string().min(1), level: z.enum(logLevelNames) }))
+          .default([])
           .describe(
             'Logger name prefix overrides. Setting `workers/` to `Debug:High` would show all log messages for all workers regardless of the root log level'
           ),
+      })
+      .prefault({}),
+    database: z
+      .object({
+        maintenanceFrequency: z
+          .int()
+          .min(3600000)
+          .max(86400000 * 30)
+          .default(86400000)
+          .describe('How often to delete expired history and vacuum the databse'),
       })
       .prefault({}),
   })

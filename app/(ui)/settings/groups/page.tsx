@@ -26,10 +26,13 @@ function GroupForm({ id }: { id?: number }) {
   const { showToast } = useToast();
   const { notifiers, groups } = useAppQueries();
 
-  const group = useMemo(() => groups.find((item) => item.id === id), [id, groups]);
+  const group = useMemo(() => {
+    const item = groups.find((item) => item.id === id);
+    if (item) return { ...item, renotifySeconds: item.renotifySeconds ?? undefined };
+  }, [id, groups]);
 
   const form = useAppForm({
-    defaultValues: (group ?? { name: '', active: true, notifiers: [] }) as DataType,
+    defaultValues: (group ?? { name: '', active: true, notifiers: [], renotifySeconds: undefined }) as DataType,
     onSubmit(form) {
       logger.info('submit', form.value);
       if (typeof id === 'number')
@@ -39,7 +42,7 @@ function GroupForm({ id }: { id?: number }) {
             form.formApi.reset();
             close();
           } else {
-            showToast(`Error updating ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            showToast(`Error updating ${form.value.name}`, response.error, ServiceStatus.Down);
             logger.error(response.error);
           }
         });
@@ -50,7 +53,7 @@ function GroupForm({ id }: { id?: number }) {
             form.formApi.reset();
             close();
           } else {
-            showToast(`Error adding ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            showToast(`Error adding ${form.value.name}`, response.error, ServiceStatus.Down);
             logger.error(response.error);
           }
         });
@@ -75,7 +78,7 @@ function GroupForm({ id }: { id?: number }) {
         form.reset();
         close();
       } else {
-        showToast(`Error deleting ${form.state.values.name}`, `${response.error}`, ServiceStatus.Down);
+        showToast(`Error deleting ${form.state.values.name}`, response.error, ServiceStatus.Down);
         logger.error(response.error);
       }
     });
@@ -85,6 +88,16 @@ function GroupForm({ id }: { id?: number }) {
     <form>
       <form.AppField name='name'>
         {(field) => <field.FormInputText label='Name' description='Unique name' />}
+      </form.AppField>
+      <form.AppField name='renotifySeconds'>
+        {(field) => (
+          <field.FormInputDuration
+            label='Renotify'
+            description='How often to resend notifications'
+            allowEmpty
+            mode='seconds'
+          />
+        )}
       </form.AppField>
       <form.AppField name='notifiers'>
         {(field) => (

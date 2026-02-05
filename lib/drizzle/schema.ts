@@ -23,6 +23,7 @@ export const groupTable = sqliteTable('group', {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull().unique(),
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  renotifySeconds: integer(),
   updatedAt: integer({ mode: 'timestamp' })
     .notNull()
     .$onUpdate(() => sql`(unixepoch())`),
@@ -46,7 +47,6 @@ export const serviceTable = sqliteTable('service', {
     .default(1)
     .references(() => groupTable.id, { onDelete: 'set default', onUpdate: 'cascade' }),
   active: integer({ mode: 'boolean' }).notNull(),
-
   params: text({ mode: 'json' }).notNull().$type<MonitorParams>(),
   checkSeconds: integer().notNull(),
   failuresBeforeDown: integer().notNull(),

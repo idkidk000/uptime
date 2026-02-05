@@ -30,7 +30,7 @@ export async function getNotifiers(notifierIds?: number[]): ActionResponse<Notif
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -42,7 +42,7 @@ export async function addNotifier(data: NotifierInsert): ActionResponse<number> 
     return { ok: true, data: id };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -55,7 +55,7 @@ export async function editNotifier(data: NotifierUpdate): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -73,6 +73,6 @@ export async function checkNotifier(id: number): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }

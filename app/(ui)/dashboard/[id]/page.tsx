@@ -30,28 +30,28 @@ export default function DetailPage() {
   // biome-ignore format: no
   const handlePausedClick = useCallback(() =>
     togglePaused(numId).then((response) => {
-      if (!response.ok) showToast('Error toggling paused', `${response.error}`, ServiceStatus.Down);
+      if (!response.ok) showToast('Error toggling paused', response.error, ServiceStatus.Down);
     }),
   [numId]);
 
   // biome-ignore format: no
   const handleClearHistoryClick = useCallback(() =>
     clearServiceHistory(numId).then((response) => {
-      if (!response.ok) showToast('Error clearing history', `${response.error}`, ServiceStatus.Down);
+      if (!response.ok) showToast('Error clearing history', response.error, ServiceStatus.Down);
     }),
   [numId]);
 
   // biome-ignore format: no
   const handleCheckClick = useCallback(() =>
     checkService(numId).then((response) => {
-      if (!response.ok) showToast('Error checking service', `${response.error}`, ServiceStatus.Down);
+      if (!response.ok) showToast('Error checking service', response.error, ServiceStatus.Down);
     }),
   [numId]);
 
   // biome-ignore format: no
   const handleDeleteClick = useCallback(() =>
     deleteService(numId).then((response) => {
-      if (!response.ok) showToast('Error deleting service', `${response.error}`, ServiceStatus.Down);
+      if (!response.ok) showToast('Error deleting service', response.error, ServiceStatus.Down);
     }),
   [numId]);
 

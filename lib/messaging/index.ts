@@ -321,7 +321,7 @@ export class MessageClient {
     };
   }
   get settings(): Readonly<Settings> {
-    return Object.freeze({ ...this.#settings });
+    return this.#settings;
   }
   static async newAsync(importMetaUrl: string): Promise<MessageClient> {
     const { promise, resolve, reject } = Promise.withResolvers<void>();

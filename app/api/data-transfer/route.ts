@@ -100,6 +100,6 @@ export async function POST(request: NextRequest): WrappedApiResponse<null> {
     messageClient.send({ cat: 'client-action', kind: 'reload' });
     return NextResponse.json({ ok: true, data: null });
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error : new Error(`${error}`) });
+    return NextResponse.json({ ok: false, error: `${error}` }, { status: 500 });
   }
 }

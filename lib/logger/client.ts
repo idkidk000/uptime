@@ -2,9 +2,8 @@
 
 import type { RefObject } from 'react';
 import { useAppQueries } from '@/hooks/app-queries';
-import { BaseLogger, type LogLevelName, logLevels } from '@/lib/logger';
+import { BaseLogger } from '@/lib/logger';
 import type { Settings } from '@/lib/settings/schema';
-import { typedEntries } from '@/lib/utils';
 
 const MAX_PATH_DEPTH = 5;
 
@@ -22,18 +21,8 @@ export class ClientLogger extends BaseLogger {
     );
     this.#settingsRef = settingsRef;
   }
-  suppress(levelValue: number): boolean {
-    const overrides = this.#settingsRef?.current?.logging.overrides;
-    let levelName: LogLevelName | undefined = this.#settingsRef?.current?.logging.rootLevel;
-    if (overrides) {
-      const override = typedEntries(overrides)
-        .toSorted(([a], [b]) => b.length - a.length)
-        .find(([key]) => key.startsWith(this.name));
-      if (override) levelName = override[1];
-    }
-    if (!levelName) return false;
-    if (levelValue >= logLevels[levelName].value) return false;
-    return true;
+  get logSettings() {
+    return this.#settingsRef.current.logging;
   }
 }
 

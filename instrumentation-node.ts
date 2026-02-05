@@ -9,13 +9,13 @@ async function main() {
   // don't validate certificates (this could have just been a fetch param)
   env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-  let Monitor: typeof import('@/workers/monitor') | null = null;
-  let Notifier: typeof import('@/workers/notifier') | null = null;
+  const workers: { start: () => void; stop: () => void }[] = [];
 
   function stop() {
-    Monitor?.stop();
-    Notifier?.stop();
+    for (const worker of workers) worker.stop();
+
     Messaging.stop();
+
     // have to exit manually since we trapped the signal
     process.exit(0);
   }
@@ -23,11 +23,13 @@ async function main() {
   try {
     await Messaging.start();
 
-    Monitor = await import('@/workers/monitor');
-    Notifier = await import('@/workers/notifier');
+    workers.push(
+      await import('@/workers/monitor'),
+      await import('@/workers/notifier'),
+      await import('@/workers/db-maintenance')
+    );
 
-    Monitor.start();
-    Notifier.start();
+    for (const worker of workers) worker.start();
 
     process.addListener('SIGINT', stop);
     process.addListener('SIGTERM', stop);

@@ -22,7 +22,7 @@ export async function getSettings(): ActionResponse<Settings> {
     return { ok: true, data: { ...defaultSettings, ...(rows.at(0)?.value as Settings | undefined) } };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -40,6 +40,6 @@ export async function updateSettings(data: Settings): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }

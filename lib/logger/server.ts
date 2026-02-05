@@ -2,9 +2,8 @@ import { Console } from 'node:console';
 import { relative, sep } from 'node:path';
 import { cwd, stderr, stdout } from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { BaseLogger, type LogLevelName, logLevels } from '@/lib/logger';
+import { BaseLogger } from '@/lib/logger';
 import { MessageClient } from '@/lib/messaging';
-import { typedEntries } from '@/lib/utils';
 
 const MAX_PATH_DEPTH = 5;
 
@@ -35,17 +34,7 @@ export class ServerLogger extends BaseLogger {
     );
     if (param instanceof MessageClient) this.#messageClient = param;
   }
-  suppress(levelValue: number): boolean {
-    const overrides = this.#messageClient?.settings?.logging.overrides;
-    let levelName: LogLevelName | undefined = this.#messageClient?.settings?.logging.rootLevel;
-    if (overrides) {
-      const override = typedEntries(overrides)
-        .toSorted(([a], [b]) => b.length - a.length)
-        .find(([key]) => key.startsWith(this.name));
-      if (override) levelName = override[1];
-    }
-    if (!levelName) return false;
-    if (levelValue >= logLevels[levelName].value) return false;
-    return true;
+  get logSettings() {
+    return this.#messageClient?.settings.logging;
   }
 }

@@ -9,7 +9,7 @@ import { pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 
-// TODO: renotify. needs interval config on the service/group. use state.changedAt
+// FIXME: add renotify. use group.renotifySeconds and state.changedAt. probably align it to day start
 
 export function start(): void {
   const cache = new Map<number, { updatedAt: Date; notifier: Notifier }>();

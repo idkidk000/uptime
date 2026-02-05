@@ -36,7 +36,7 @@ export async function getGroups(groupIds?: number[]): ActionResponse<GroupSelect
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -53,7 +53,7 @@ export async function addGroup(data: GroupInsertWithNotifiers): ActionResponse<n
     return { ok: true, data: row.id };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -73,7 +73,7 @@ export async function editGroup(data: GroupUpdateWithNotifiers): ActionResponse<
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -89,6 +89,6 @@ export async function deleteGroup(id: number): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }

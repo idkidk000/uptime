@@ -56,7 +56,7 @@ function UploadForm() {
       showToast(`Imported ${file.name}`, '', ServiceStatus.Up);
       close();
     } else {
-      showToast(`Error importing ${file.name}`, `${response.error}`, ServiceStatus.Down);
+      showToast(`Error importing ${file.name}`, response.error, ServiceStatus.Down);
       logger.error(response.error);
     }
   }, []);

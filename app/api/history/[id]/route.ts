@@ -18,9 +18,6 @@ export async function GET(
       .where(eq(historySummaryView.serviceId, id));
     return NextResponse.json({ ok: true, data });
   } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error : new Error(`${error}`) },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: `${error}` }, { status: 500 });
   }
 }

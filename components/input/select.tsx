@@ -66,7 +66,7 @@ export function Select<
         role='list'
         aria-valuenow={value as number}
         variant={variant}
-        className={cn(selected.length === 0 && 'text-foreground/65', className)}
+        className={cn('bg-background-card', selected.length === 0 && 'text-foreground/65', className)}
         {...props}
       >
         {hideValue ? (

@@ -60,14 +60,14 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
           const response = await editService({ ...value, id: props.id }, true);
           if (!response.ok) {
             logger.error('Error editing service', response.error);
-            showToast('Error editing service', `${response.error}`, ServiceStatus.Down);
+            showToast('Error editing service', response.error, ServiceStatus.Down);
             return;
           }
           if (tags) {
             const response = await setTags(props.id, tags);
             if (!response.ok) {
               logger.error('Error setting tags', response.error);
-              showToast('Error setting tags', `${response.error}`, ServiceStatus.Down);
+              showToast('Error setting tags', response.error, ServiceStatus.Down);
               return;
             }
           }
@@ -80,7 +80,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
           const response = await addService(value, true);
           if (!response.ok) {
             logger.error('Error adding service', response.error);
-            showToast('Error adding service', `${response.error}`, ServiceStatus.Down);
+            showToast('Error adding service', response.error, ServiceStatus.Down);
             return;
           }
           const id = response.data;
@@ -88,7 +88,7 @@ export function ServiceForm(props: { mode: 'add'; id?: undefined } | { mode: 'ed
             const response = await setTags(id, tags);
             if (!response.ok) {
               logger.error('Error setting tags', response.error);
-              showToast('Error setting tags', `${response.error}`, ServiceStatus.Down);
+              showToast('Error setting tags', response.error, ServiceStatus.Down);
               return;
             }
           }

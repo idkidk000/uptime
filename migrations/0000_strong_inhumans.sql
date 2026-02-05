@@ -2,6 +2,7 @@ CREATE TABLE `group` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
 	`createdAt` integer DEFAULT (unixepoch()) NOT NULL,
+	`renotifySeconds` integer,
 	`updatedAt` integer NOT NULL
 );
 --> statement-breakpoint
@@ -86,7 +87,7 @@ CREATE TABLE `tag` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `tag_name_unique` ON `tag` (`name`);--> statement-breakpoint
-CREATE VIEW `historySummary` AS
+CREATE VIEW `historySummary` AS 
     select
       name,
       id,
@@ -117,19 +118,3 @@ CREATE VIEW `historySummary` AS
         )
       )
     order by createdAt desc;
---> statement-breakpoint
-insert into "group" (
-  id,
-  name,
-  updatedAt
-)
-values (
-  1,
-  'Default group',
-  unixepoch()
-);
---> statement-breakpoint
-PRAGMA journal_mode=WAL;
-PRAGMA auto_vacuum=INCREMENTAL;
---> statement-breakpoint
-VACUUM;

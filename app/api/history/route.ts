@@ -9,9 +9,6 @@ export async function GET(): WrappedApiResponse<HistorySummarySelect[]> {
     const data: HistorySummarySelect[] = await db.select().from(historySummaryView);
     return NextResponse.json({ ok: true, data });
   } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error : new Error(`${error}`) },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: `${error}` }, { status: 500 });
   }
 }

@@ -25,7 +25,7 @@ export async function getServiceStates(serviceIds?: number[]): ActionResponse<St
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }
 
@@ -44,6 +44,6 @@ export async function getStatusCounts(): ActionResponse<StatusCounts> {
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: error instanceof Error ? error : new Error(`${error}`) };
+    return { ok: false, error: `${error}` };
   }
 }

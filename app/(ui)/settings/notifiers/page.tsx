@@ -2,7 +2,7 @@
 
 import { useStore } from '@tanstack/react-form';
 import { Plus, ShieldQuestion, SquarePen } from 'lucide-react';
-import { type MouseEvent, useCallback, useMemo, useState } from 'react';
+import { Activity, type MouseEvent, useCallback, useMemo, useState } from 'react';
 import z from 'zod';
 import { init } from 'zod-empty';
 import { addNotifier, checkNotifier, editNotifier } from '@/actions/notifier';
@@ -19,8 +19,6 @@ import { useLogger } from '@/lib/logger/client';
 import { notifierKinds, notifierParamsSchema } from '@/lib/notifier/schema';
 import { ServiceStatus } from '@/lib/types';
 import { enumEntries, lowerToSentenceCase } from '@/lib/utils';
-
-//FIXME: params.priority: Record<ServiceStatus,number>. Probably needs to be a one-off control
 
 const schema = notifierInsertSchema.extend({ id: z.int().min(1).optional() });
 type DataType = z.infer<typeof schema>;
@@ -53,7 +51,7 @@ function NotifierForm({ id }: { id: number | undefined }) {
             form.formApi.reset();
             close();
           } else {
-            showToast(`Error updating ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            showToast(`Error updating ${form.value.name}`, response.error, ServiceStatus.Down);
             logger.error(response.error);
           }
         });
@@ -64,7 +62,7 @@ function NotifierForm({ id }: { id: number | undefined }) {
             form.formApi.reset();
             close();
           } else {
-            showToast(`Error adding ${form.value.name}`, `${response.error}`, ServiceStatus.Down);
+            showToast(`Error adding ${form.value.name}`, response.error, ServiceStatus.Down);
             logger.error(response.error);
           }
         });
@@ -136,6 +134,16 @@ function NotifierForm({ id }: { id: number | undefined }) {
           )}
         </form.AppField>
       </fieldset>
+      <Activity mode={notifierFields.has('params.priority') ? 'visible' : 'hidden'}>
+        <fieldset>
+          <legend>Priorities</legend>
+          {enumEntries(ServiceStatus).map(([name, value]) => (
+            <form.AppField name={`params.priority.${value}`} key={value}>
+              {(field) => <field.FormInputNumber label={name} placeholder='Priority' allowEmpty />}
+            </form.AppField>
+          ))}
+        </fieldset>
+      </Activity>
       <form.AppForm>
         <div className='col-span-full flex gap-8 justify-center'>
           <form.Button type='button' onClick={form.handleSubmit}>
@@ -185,7 +193,7 @@ export default function NotifiersSettingsPage() {
         showToast(`${name} test succeeded`, '', ServiceStatus.Up);
       } else {
         setCheckResults((prev) => new Map(prev.entries()).set(id, false));
-        showToast(`${name} test failed`, `${response.error}`, ServiceStatus.Down);
+        showToast(`${name} test failed`, response.error, ServiceStatus.Down);
       }
     });
   }, []);
