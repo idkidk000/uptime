@@ -9,7 +9,7 @@ import type { StateSelect } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 import { ServiceStatus } from '@/lib/types';
-import { enumEntries, pick } from '@/lib/utils';
+import { enumEntries, formatError, pick } from '@/lib/utils';
 
 export type StatusCounts = Record<ServiceStatus | -1, number>;
 
@@ -25,7 +25,7 @@ export async function getServiceStates(serviceIds?: number[]): ActionResponse<St
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -44,6 +44,6 @@ export async function getStatusCounts(): ActionResponse<StatusCounts> {
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }

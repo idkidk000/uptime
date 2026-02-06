@@ -125,6 +125,10 @@ export class MessageServer {
       this.#logger.warn('socket error', err);
     });
     const readline = createInterface(client);
+    // this is just a guess because readline does not expose an 'error' event
+    readline.addListener('error', (err) => {
+      this.#logger.warn('socket readline error', err);
+    });
     readline.addListener('line', (data) => {
       this.#logger.debugLow('received', data);
       const internalMessage = this.#parseMessage(data);
@@ -153,8 +157,15 @@ export class MessageServer {
         case 'subscribe': {
           if (!this.#subscriptions.get(internalMessage.key)?.add(client))
             this.#subscriptions.set(internalMessage.key, new Set([client]));
-          if (internalMessage.key === 'settings.update')
-            client?.write(`${SuperJSON.stringify(this.settingsMessage)}\n`);
+          if (internalMessage.key === 'settings.update') {
+            // FIXME: dev mode occasionally spawns and immediately discards message clients due to hmr. so the pipe is already closed at this point and throws. but legacy apis are ridiculous. i have error handlers on `client`, 'readline' and `this.#server` but node is still spamming "uncaught" EPIPE errors from this line to the console
+            try {
+              client.write(`${SuperJSON.stringify(this.settingsMessage)}\n`);
+            } catch {
+              // empty
+            }
+          }
+
           if (this.#cacheTimeout === null) return;
           for (const cachedMessage of this.#cache) {
             if (

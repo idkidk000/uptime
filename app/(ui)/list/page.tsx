@@ -1,19 +1,11 @@
 'use client';
 
 import { redirect } from 'next/navigation';
-import { PageWrapper } from '@/components/page-wrapper';
-import { ServiceList } from '@/components/service-list';
 import { useIsMobile } from '@/hooks/mobile';
 
+// dummy page. the <Activity/> wrapping <ServiceList/> which is the sidebar in desktop is unhidden based on pathName
 export default function ListPage() {
   const { isMobile } = useIsMobile();
-
-  // this page is a duplication of the sidebar visible on desktop
   if (!isMobile) return redirect('/dashboard');
-
-  return (
-    <PageWrapper pageTitle={null}>
-      <ServiceList />
-    </PageWrapper>
-  );
+  return null;
 }

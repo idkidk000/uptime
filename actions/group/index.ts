@@ -15,7 +15,7 @@ import { numberArrayMapper } from '@/lib/drizzle/queries';
 import { groupTable, groupToNotifierTable, serviceTable } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { type BusMessage, MessageClient } from '@/lib/messaging';
-import { pick } from '@/lib/utils';
+import { formatError, pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 const logger = new ServerLogger(messageClient);
@@ -36,7 +36,7 @@ export async function getGroups(groupIds?: number[]): ActionResponse<GroupSelect
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -53,7 +53,7 @@ export async function addGroup(data: GroupInsertWithNotifiers): ActionResponse<n
     return { ok: true, data: row.id };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -73,7 +73,7 @@ export async function editGroup(data: GroupUpdateWithNotifiers): ActionResponse<
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -89,6 +89,6 @@ export async function deleteGroup(id: number): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }

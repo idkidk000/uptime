@@ -111,7 +111,16 @@ export function ServiceList() {
               service.name.toLocaleLowerCase().includes(search))
         ),
       }))
-      .filter((group) => group.services.length);
+      .filter((group) => group.services.length)
+      .map((group) => ({
+        ...group,
+        statusCounts: enumEntries(ServiceStatus)
+          .map(([, status]) => ({
+            status,
+            count: group.services.filter((service) => service.state?.status === status).length,
+          }))
+          .filter((item) => item.count),
+      }));
   }, [filter, groups, services]);
 
   return (
@@ -191,6 +200,11 @@ export function ServiceList() {
                 <Badge variant='muted' size='sm'>
                   {group.services.length}
                 </Badge>
+                {group.statusCounts.map(({ status, count }) => (
+                  <StatusBadge key={status} status={status} size='sm'>
+                    {count}
+                  </StatusBadge>
+                ))}
               </summary>
               <ul className='grid grid-cols-[auto_auto_2fr_3fr] gap-4 pt-2'>
                 {group.services.map((service) => (

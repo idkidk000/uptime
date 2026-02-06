@@ -9,7 +9,7 @@ async function main() {
   // don't validate certificates (this could have just been a fetch param)
   env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-  const workers: { start: () => void; stop: () => void }[] = [];
+  const workers: { start: () => void | Promise<void>; stop: () => void | Promise<void> }[] = [];
 
   function stop() {
     for (const worker of workers) worker.stop();

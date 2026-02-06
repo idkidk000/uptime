@@ -10,9 +10,7 @@ export const notifierTable = sqliteTable('notifier', {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull().unique(),
   active: integer({ mode: 'boolean' }).notNull(),
-
   params: text({ mode: 'json' }).notNull().$type<NotifierParams>(),
-
   createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer({ mode: 'timestamp' })
     .notNull()

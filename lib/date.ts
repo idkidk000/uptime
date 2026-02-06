@@ -16,7 +16,7 @@ export const YEAR_DAYS = 365;
 export const YEAR_MILLIS = YEAR_DAYS * DAY_MILLIS;
 export const SECOND_MICROS = 1_000_000;
 
-export const toDuration = (millis: number) => {
+export function toDuration(millis: number) {
   if (Math.abs(millis) > YEAR_MILLIS * 3) return `${Math.round(millis / YEAR_MILLIS)} years`;
   if (Math.abs(millis) > MONTH_MILLIS * 3) return `${Math.round(millis / MONTH_MILLIS)} months`;
   if (Math.abs(millis) > WEEK_MILLIS * 3) return `${Math.round(millis / WEEK_MILLIS)} weeks`;
@@ -24,9 +24,9 @@ export const toDuration = (millis: number) => {
   if (Math.abs(millis) > HOUR_MILLIS * 3) return `${Math.round(millis / HOUR_MILLIS)} hours`;
   if (Math.abs(millis) > MINUTE_MILLIS * 3) return `${Math.round(millis / MINUTE_MILLIS)} minutes`;
   return `${Math.round(millis / SECOND_MILLIS)} seconds`;
-};
+}
 
-export const dateAdd = (
+export function dateAdd(
   {
     days,
     hours,
@@ -45,7 +45,7 @@ export const dateAdd = (
     years?: number;
   },
   date?: Date | number | string
-) => {
+) {
   const dt = date ? new Date(date) : new Date();
   if (days) dt.setDate(dt.getDate() + days);
   if (hours) dt.setHours(dt.getHours() + hours);
@@ -55,19 +55,19 @@ export const dateAdd = (
   if (seconds) dt.setSeconds(dt.getSeconds() + seconds);
   if (years) dt.setFullYear(dt.getFullYear() + years);
   return dt;
-};
+}
 
 /** a-b. difference in ms */
-export const dateDiff = (a: Date | number | string, b: Date | number | string = Date.now()) => {
+export function dateDiff(a: Date | number | string, b: Date | number | string = Date.now()) {
   const dtA = new Date(a);
   const dtB = new Date(b);
   return dtA.getTime() - dtB.getTime();
-};
+}
 
-export const toLocalIso = (
+export function toLocalIso(
   date: Date | number | string = new Date(),
   { endAt = 'd', showDate = true }: { endAt?: 'd' | 'h' | 'm' | 's' | 'n'; showDate?: boolean | 'auto' } = {}
-) => {
+) {
   const dt = new Date(date);
   const datePart = [
     dt.getFullYear().toString().padStart(4, '0'),
@@ -100,9 +100,9 @@ export const toLocalIso = (
 
   if (timeParts.length) return `${localShowDate ? `${datePart} ` : ''}${timeParts.join(':')}`;
   return datePart;
-};
+}
 
-export const toRelative = (date: Date | number | string | undefined) => {
+export function toRelative(date: Date | number | string | undefined) {
   if (typeof date === 'undefined') return '';
   const ts = new Date(date).getTime();
   const now = Date.now();
@@ -137,4 +137,35 @@ export const toRelative = (date: Date | number | string | undefined) => {
                   : [minutes];
   const formatted = `${ts > now ? 'In ' : ''}${parts.map(({ string }) => string).join(', ')}${ts < now ? ' ago' : ''}`;
   return formatted;
-};
+}
+
+export function dateSet(
+  {
+    days,
+    hours,
+    millis,
+    minutes,
+    months,
+    seconds,
+    years,
+  }: {
+    millis?: number;
+    seconds?: number;
+    minutes?: number;
+    hours?: number;
+    days?: number;
+    months?: number;
+    years?: number;
+  },
+  date?: Date | number | string
+) {
+  const dt = date ? new Date(date) : new Date();
+  if (typeof days !== 'undefined') dt.setDate(days);
+  if (typeof hours !== 'undefined') dt.setHours(hours);
+  if (typeof millis !== 'undefined') dt.setMilliseconds(millis);
+  if (typeof minutes !== 'undefined') dt.setMinutes(minutes);
+  if (typeof months !== 'undefined') dt.setMonth(months);
+  if (typeof seconds !== 'undefined') dt.setSeconds(seconds);
+  if (typeof years !== 'undefined') dt.setFullYear(years);
+  return dt;
+}

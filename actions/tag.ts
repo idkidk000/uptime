@@ -15,7 +15,7 @@ import {
 } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { type BusMessage, MessageClient } from '@/lib/messaging';
-import { pick } from '@/lib/utils';
+import { formatError, pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 const logger = new ServerLogger(messageClient);
@@ -29,7 +29,7 @@ export async function getTags(ids?: number[]): ActionResponse<TagSelect[]> {
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -44,7 +44,7 @@ export async function addTag(data: TagInsert): ActionResponse<number> {
     return { ok: true, data: id };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -56,7 +56,7 @@ export async function editTag(data: TagUpdate): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -75,7 +75,7 @@ export async function deleteTag(id: number): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -103,6 +103,6 @@ export async function tagServices(tagId: number, serviceIds: number[], replace: 
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }

@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/toast';
 import { toLocalIso } from '@/lib/date';
 import { useLogger } from '@/lib/logger/client';
 import { ServiceStatus } from '@/lib/types';
+import { formatError } from '@/lib/utils';
 import { name, version } from '@/package.json';
 
 const jsonSchemaName = `${name}-${version}.schema.json`;
@@ -51,7 +52,7 @@ function UploadForm() {
       body: JSON.stringify({ data, replace: stateRef.current.replace } satisfies DataTransferPost),
     })
       .then((response) => response.json())
-      .catch((error) => ({ ok: false, error: error instanceof Error ? error : new Error(`${error}`) }));
+      .catch((error) => ({ ok: false, error: formatError(error) }));
     if (response.ok) {
       showToast(`Imported ${file.name}`, '', ServiceStatus.Up);
       close();

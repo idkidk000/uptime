@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Activity, type ComponentProps, type ReactNode } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/button';
@@ -20,6 +21,7 @@ import { useIsMobile } from '@/hooks/mobile';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // don't mark stale after some timeout
       staleTime: Infinity,
       // these options are actually refetch on x **if stale** (i.e. they were inactive then were invalidated via sse)
       refetchOnMount: true,
@@ -29,21 +31,22 @@ const queryClient = new QueryClient({
   },
 });
 
-// hidden <Activity/> renders the component at a lower priority with display:none and hooks disabled
+// the same <ServiceList/> is used for desktop sidebar and mobile /list page. <Activity/> preserves state while hidden
 export default function RootLayoutClient({
   children,
   ...queryData
 }: { children: ReactNode } & ComponentProps<typeof AppQueriesProvider>) {
   const { isMobile } = useIsMobile();
+  const pathName = usePathname();
   return (
     <QueryClientProvider client={queryClient}>
       <AppQueriesProvider {...queryData}>
         <IntervalProvider>
           <TopNav />
           <main className='grid grid-cols-1 md:grid-cols-[minmax(0,26rem)_1fr] p-4 md:gap-4 md:mt-4'>
-            <Activity mode={isMobile ? 'hidden' : 'visible'}>
+            <Activity mode={isMobile && pathName !== '/list' ? 'hidden' : 'visible'}>
               <article className='flex flex-col gap-4 @container/sidebar'>
-                <Card variant='ghost' className='shrink-0'>
+                <Card variant='ghost' className='shrink-0 max-md:hidden'>
                   <Button className='me-auto' as={Link} href='/add' size='lg'>
                     <Plus />
                     Add New Service

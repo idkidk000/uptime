@@ -3,8 +3,11 @@ import { Notifier } from '@/lib/notifier';
 import type { WebhookNotifierParams } from '@/lib/notifier/webhook/schema';
 
 export class WebhookNotifier extends Notifier<WebhookNotifierParams> {
-  async send(message: StatusMessage) {
-    if (this.params.statuses && !this.params.statuses.includes(message.kind)) return;
+  async send(...messages: StatusMessage[]) {
+    const filtered = this.params.statuses
+      ? messages.filter((message) => this.params.statuses?.includes(message.kind))
+      : messages;
+    if (!filtered.length) return;
     await fetch(this.params.address, {
       method: 'POST',
       headers: {
@@ -12,7 +15,7 @@ export class WebhookNotifier extends Notifier<WebhookNotifierParams> {
         ...this.params.headers,
       },
       cache: 'no-store',
-      body: JSON.stringify(message),
+      body: JSON.stringify(filtered),
     });
   }
 }

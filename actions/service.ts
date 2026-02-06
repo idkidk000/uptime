@@ -15,7 +15,7 @@ import {
 } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { type BusMessage, MessageClient } from '@/lib/messaging';
-import { omit, pick } from '@/lib/utils';
+import { formatError, omit, pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 const logger = new ServerLogger(messageClient);
@@ -42,7 +42,7 @@ export async function getServices(serviceIds?: number[]): ActionResponse<Service
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -52,7 +52,7 @@ export async function checkService(id: number): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -69,7 +69,7 @@ export async function togglePaused(id: number, force?: boolean): ActionResponse<
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -88,7 +88,7 @@ export async function setPausedMulti(ids: number[], pause: boolean): ActionRespo
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -103,7 +103,7 @@ export async function deleteService(id: number): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -119,7 +119,7 @@ export async function addService(data: ServiceInsert, check: boolean): ActionRes
     return { ok: true, data: row.id };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -136,7 +136,7 @@ export async function editService(data: ServiceUpdate, check: boolean): ActionRe
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -154,6 +154,6 @@ export async function setTags(serviceId: number, tagIds: number[]): ActionRespon
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }

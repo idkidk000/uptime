@@ -14,6 +14,7 @@ import {
 } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
+import { formatError } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 const logger = new ServerLogger(messageClient);
@@ -100,6 +101,6 @@ export async function POST(request: NextRequest): WrappedApiResponse<null> {
     messageClient.send({ cat: 'client-action', kind: 'reload' });
     return NextResponse.json({ ok: true, data: null });
   } catch (error) {
-    return NextResponse.json({ ok: false, error: `${error}` }, { status: 500 });
+    return NextResponse.json({ ok: false, error: formatError(error) }, { status: 500 });
   }
 }

@@ -14,7 +14,7 @@ import {
 } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
-import { omit, pick } from '@/lib/utils';
+import { formatError, omit, pick } from '@/lib/utils';
 
 type DataTransferKind = 'settings' | 'history' | 'schema';
 type DataTransferGetResponse<Kind extends DataTransferKind> =
@@ -25,7 +25,7 @@ type DataTransferGetResponse<Kind extends DataTransferKind> =
         : Kind extends 'schema'
           ? Record<string, unknown>
           : never)
-  | { ok: false; error: Error };
+  | { ok: false; error: string };
 
 const messageClient = await MessageClient.newAsync(import.meta.url);
 const logger = new ServerLogger(messageClient);
@@ -47,10 +47,7 @@ export async function GET<Kind extends DataTransferKind>(
         return NextResponse.json(data as Response);
       } catch (error) {
         logger.error(error);
-        return NextResponse.json(
-          { ok: false, error: error instanceof Error ? error : new Error(`${error}`) },
-          { status: 500 }
-        );
+        return NextResponse.json({ ok: false, error: formatError(error) }, { status: 500 });
       }
     }
     case 'settings': {
@@ -87,10 +84,7 @@ export async function GET<Kind extends DataTransferKind>(
         return NextResponse.json(data as Response);
       } catch (error) {
         logger.error(error);
-        return NextResponse.json(
-          { ok: false, error: error instanceof Error ? error : new Error(`${error}`) },
-          { status: 500 }
-        );
+        return NextResponse.json({ ok: false, error: formatError(error) }, { status: 500 });
       }
     }
     case 'schema': {
@@ -98,7 +92,7 @@ export async function GET<Kind extends DataTransferKind>(
     }
     default: {
       logger.error('unhandled kind', kind);
-      return NextResponse.json({ ok: false, error: new Error('Invalid data transfer kind') }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Error: Invalid data transfer kind' }, { status: 400 });
     }
   }
 }

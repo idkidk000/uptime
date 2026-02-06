@@ -5,7 +5,7 @@ import { MessageClient } from '@/lib/messaging';
 import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
 import { Monitor } from '@/lib/monitor/abc';
 import type { HttpMonitorParams } from '@/lib/monitor/http/schema';
-import { parseRegex, roundTo } from '@/lib/utils';
+import { isErrorLike, parseRegex, roundTo } from '@/lib/utils';
 import { name, version } from '@/package.json';
 
 const messageClient = new MessageClient(import.meta.url);
@@ -132,7 +132,7 @@ export class HttpMonitor extends Monitor<HttpMonitorParams> {
         message,
       };
     } catch (err) {
-      if (Error.isError(err) && err.name === 'AbortError')
+      if (isErrorLike(err) && err.name === 'AbortError')
         return { kind: 'http', ok: false, reason: MonitorDownReason.Timeout, message: err.message };
       return { kind: 'http', ok: false, reason: MonitorDownReason.Error, message: String(err) };
     }

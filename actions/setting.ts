@@ -7,7 +7,7 @@ import { keyValTable } from '@/lib/drizzle/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 import { defaultSettings, type Settings, settingsSchema } from '@/lib/settings/schema';
-import { pick } from '@/lib/utils';
+import { formatError, pick } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 const logger = new ServerLogger(messageClient);
@@ -22,7 +22,7 @@ export async function getSettings(): ActionResponse<Settings> {
     return { ok: true, data: { ...defaultSettings, ...(rows.at(0)?.value as Settings | undefined) } };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -40,6 +40,6 @@ export async function updateSettings(data: Settings): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }

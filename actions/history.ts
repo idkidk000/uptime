@@ -9,6 +9,7 @@ import type { HistorySummarySelect } from '@/lib/drizzle/zod/schema';
 import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 import type { Paginated } from '@/lib/types';
+import { formatError } from '@/lib/utils';
 
 const messageClient = new MessageClient(import.meta.url);
 const logger = new ServerLogger(messageClient);
@@ -39,7 +40,7 @@ export async function getServiceHistory(
     };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -56,6 +57,6 @@ export async function clearServiceHistory(serviceId: number): ActionResponse<nul
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }

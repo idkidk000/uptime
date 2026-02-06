@@ -38,6 +38,7 @@
     "typescript": "^5"
   },
   "displayName": "Uptime Blåhaj",
+  "license": "GPL-3.0-only",
   "name": "uptime-blahaj",
   "private": true,
   "repository": "https://github.com/idkidk000/uptime",

@@ -122,3 +122,23 @@ export function camelToTitleCase(value: string): string {
     .map((token) => `${token[0].toLocaleUpperCase()}${token.slice(1)}`)
     .join(' ');
 }
+
+export interface ErrorLike {
+  name: string;
+  message: string;
+}
+
+export function isErrorLike(value: unknown): value is ErrorLike {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    'name' in value &&
+    'message' in value &&
+    typeof value.name === 'string' &&
+    typeof value.message === 'string'
+  );
+}
+
+export function formatError(...[value]: [error: Error] | [errorLike: ErrorLike] | [value: unknown]): string {
+  return isErrorLike(value) ? `${value.name}: ${value.message}` : `${value}`;
+}

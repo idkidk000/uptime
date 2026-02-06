@@ -16,6 +16,7 @@ import { ServerLogger } from '@/lib/logger/server';
 import { MessageClient } from '@/lib/messaging';
 import { getNotifier } from '@/lib/notifier/utils';
 import { ServiceStatus } from '@/lib/types';
+import { formatError } from '@/lib/utils';
 import { displayName } from '@/package.json';
 
 const messageClient = new MessageClient(import.meta.url);
@@ -30,7 +31,7 @@ export async function getNotifiers(notifierIds?: number[]): ActionResponse<Notif
     return { ok: true, data };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -42,7 +43,7 @@ export async function addNotifier(data: NotifierInsert): ActionResponse<number> 
     return { ok: true, data: id };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -55,7 +56,7 @@ export async function editNotifier(data: NotifierUpdate): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }
 
@@ -73,6 +74,6 @@ export async function checkNotifier(id: number): ActionResponse<null> {
     return { ok: true, data: null };
   } catch (error) {
     logger.error(error);
-    return { ok: false, error: `${error}` };
+    return { ok: false, error: formatError(error) };
   }
 }

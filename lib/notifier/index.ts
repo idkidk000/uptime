@@ -12,5 +12,5 @@ export type BaseNotifierParams = z.infer<typeof baseNotifierParamsSchema>;
 
 export abstract class Notifier<Params extends BaseNotifierParams = BaseNotifierParams> {
   constructor(public readonly params: Params) {}
-  abstract send(message: StatusMessage): Promise<void>;
+  abstract send(...messages: StatusMessage[]): Promise<void>;
 }

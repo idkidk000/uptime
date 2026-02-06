@@ -4,7 +4,7 @@ import { MessageClient } from '@/lib/messaging';
 import { MonitorDownReason, type MonitorResponse } from '@/lib/monitor';
 import { Monitor } from '@/lib/monitor/abc';
 import type { DomainMonitorParams } from '@/lib/monitor/domain/schema';
-import { roundTo } from '@/lib/utils';
+import { isErrorLike, roundTo } from '@/lib/utils';
 import { name, version } from '@/package.json';
 
 const RE_BARE_HOST = /^(?:.*:\/\/)?(?<host>[a-z\d.]+)(:(?<port>\d+))?/;
@@ -91,7 +91,7 @@ export class DomainMonitor extends Monitor<DomainMonitorParams> {
         message: `Domain will expire at ${toLocalIso(expirationDate, { endAt: 's' })}`,
       };
     } catch (err) {
-      if (Error.isError(err) && err.name === 'AbortError')
+      if (isErrorLike(err) && err.name === 'AbortError')
         return { kind: 'domain', ok: false, reason: MonitorDownReason.Timeout, message: err.message };
       return { kind: 'domain', ok: false, reason: MonitorDownReason.Error, message: String(err) };
     }
